@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "532519393347",
+    "project_id": "opencloudhealth",
+    "storage_bucket": "opencloudhealth.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:532519393347:android:21cfa900a1614550089cf6",
+        "android_client_info": {
+          "package_name": "com.example.open_cloud_health"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "532519393347-j15q3ccp332o83toq555otnp98uacfgl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBFqOeLVAvV4-HywVHOJ4QdAk0v7Z4W-_Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "532519393347-j15q3ccp332o83toq555otnp98uacfgl.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

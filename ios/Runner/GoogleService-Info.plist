@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>532519393347-fs3163tqeqp9ifjhudtda3vuoj1lhivv.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.532519393347-fs3163tqeqp9ifjhudtda3vuoj1lhivv</string>
+	<key>API_KEY</key>
+	<string>AIzaSyAhKvEMkrnVTOZg41KSootwKT8Sb7CzPKs</string>
+	<key>GCM_SENDER_ID</key>
+	<string>532519393347</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.openCloudHealth</string>
+	<key>PROJECT_ID</key>
+	<string>opencloudhealth</string>
+	<key>STORAGE_BUCKET</key>
+	<string>opencloudhealth.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:532519393347:ios:82f5d5a3066c4048089cf6</string>
+</dict>
+</plist>
