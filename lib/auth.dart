@@ -24,7 +24,15 @@ class Auth {
     await _firebaseAuth.createUserWithEmailAndPassword(
       email: email,
       password: password,
-    );
+    ).then((value) => {
+      _firebaseAuth.currentUser!.sendEmailVerification()
+    });
+  }
+
+  Future<void> sendPasswordResetEmail({
+    required String email
+  }) async {
+    await _firebaseAuth.sendPasswordResetEmail(email: email);
   }
 
   Future<void> signOut() async {

@@ -1,7 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:open_cloud_health/auth.dart';
 import 'package:flutter/material.dart';
+import 'package:open_cloud_health/pages/shared_app_bar.dart';
+import './drawer.dart';
 import 'package:open_cloud_health/main.dart';
+import 'package:open_cloud_health/pages/medical_history_page.dart';
 
 class HomePage extends StatelessWidget {
   HomePage({super.key});
@@ -13,7 +16,7 @@ class HomePage extends StatelessWidget {
   }
 
   Widget _title() {
-    return const Center(child: Text('OpenCloudHealth'));
+    return const Text('OpenCloudHealth');
   }
 
   Widget _userUid() {
@@ -27,56 +30,20 @@ class HomePage extends StatelessWidget {
     );
   }
 
+  Widget _createProfileButton(BuildContext context) {
+    return ElevatedButton(
+      onPressed: () => {
+        Navigator.pushNamed(context, "/profile_creator")
+      },
+      child: const Text('Create Profile'),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: _title(),
-        actions: <Widget>[
-          IconButton(
-              onPressed: () {
-                debugPrint('user');
-              },
-              icon: const Icon(Icons.person))
-        ],
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: <Widget>[
-            const SizedBox(
-              height: 100.0,
-              child: DrawerHeader(
-                decoration: BoxDecoration(
-                  color: Colors.blue,
-                ),
-                child: Text(
-                  'Drawer',
-                  style: TextStyle(
-                    color: Colors.white
-                  ),
-                ),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Home'),
-              onTap: (){
-                // change app state here
-                Navigator.pop(context);
-              },
-            ),
-            const AboutListTile(
-              icon: Icon(Icons.info),
-              applicationIcon: Icon(Icons.local_play),
-              applicationName: 'OpenCloudHealth',
-              applicationVersion: '1.0.0',
-              applicationLegalese: '© 2023 Company',
-              child: Text('About'),
-            )
-          ],
-        ),
-      ),
+      appBar: const SharedAppBar(),
+      drawer: const DrawerPage(),
       body: Container(
         height: double.infinity,
         width: double.infinity,
@@ -84,7 +51,11 @@ class HomePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[_userUid(), _signOutButton()],
+          children: <Widget>[
+            _userUid(), 
+            _signOutButton(),
+            _createProfileButton(context),
+          ],
         ),
       ),
     );
