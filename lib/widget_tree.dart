@@ -11,6 +11,16 @@ class WidgetTree extends StatefulWidget {
 }
 
 class _WidgetTreeState extends State<WidgetTree> {
+  Future<void> signOut() async {
+    await Auth().signOut();
+  }
+
+  @override
+  void dispose(){
+    signOut();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(

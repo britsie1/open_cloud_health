@@ -36,15 +36,12 @@ class _LoginPageState extends State<LoginPage> {
         email: _controllerEmail.text,
         password: _controllerPassword.text,
       );
+      
     } on FirebaseAuthException catch (e) {
       setState(() {
         errorMessage = e.message;
       });
     }
-  }
-
-  Widget _title() {
-    return Text(isLogin ? 'Login' : 'Register');
   }
 
   Widget _entryEmailField(String title, TextEditingController controller) {
@@ -74,6 +71,9 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _submitButton() {
     return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size.fromHeight(50),
+      ),
       onPressed: (){
         if (isLogin)
         {
@@ -101,16 +101,21 @@ class _LoginPageState extends State<LoginPage> {
     }, child: Text(isLogin ? 'Don\'t have an account? Register.' : 'Already have an account? Login.'));
   }
 
+  Widget _forgotPassword(){
+    return Visibility(
+      visible: isLogin,
+      child: TextButton(onPressed: (){
+      Navigator.pushNamed(context, "/reset_password");
+    }, child: const Text("Forgot Password"),),);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: _title(),
-      ),
       body: Container(
         height: double.infinity,
         width: double.infinity,
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(40),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -123,7 +128,11 @@ class _LoginPageState extends State<LoginPage> {
             ),
             _errorMessage(),
             _submitButton(),
-            _loginOrRegisterButton()
+            const SizedBox(
+              height: 10,
+            ),
+            _forgotPassword(),
+            _loginOrRegisterButton(),
           ]),
       ),
     );
