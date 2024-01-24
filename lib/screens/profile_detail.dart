@@ -17,7 +17,6 @@ class ProfileDetailScreen extends ConsumerStatefulWidget {
 class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
   final _selectedDateController = TextEditingController();
   final _form = GlobalKey<FormState>();
-
   var _enteredName = '';
   var _enteredMiddleNames = '';
   var _enteredSurname = '';
@@ -64,8 +63,17 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
           _selectedBloodType,
           _isOrganDonor);
     } else {
-      // var oldProfile = ref.read(profilesProvider.notifier).updateProfile(
-      //   Profile(name: name, middleNames: middleNames, surname: surname, dateOfBirth: dateOfBirth, gender: gender, bloodType: bloodType, isOrganDonor: isOrganDonor))
+      ref.read(profilesProvider.notifier).updateProfile(
+            Profile(
+                id: widget.profile!.id,
+                name: _enteredName,
+                middleNames: _enteredMiddleNames,
+                surname: _enteredSurname,
+                dateOfBirth: DateTime.parse(_selectedDateController.text),
+                gender: _selectedGender!,
+                bloodType: _selectedBloodType,
+                isOrganDonor: _isOrganDonor),
+          );
     }
 
     Navigator.of(context).pop();
