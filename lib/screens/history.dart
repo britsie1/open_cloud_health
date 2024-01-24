@@ -24,7 +24,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         actions: const [AccountAppBarActions()],
       ),
       drawer: MainDrawer(
-        profile: widget.profile,
+        profileId: widget.profile.id,
       ),
       body: Column(
         children: [

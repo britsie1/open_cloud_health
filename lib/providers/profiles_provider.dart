@@ -5,7 +5,7 @@ import 'package:open_cloud_health/models/profile.dart';
 class ProfilesNotifier extends StateNotifier<List<Profile>> {
   ProfilesNotifier() : super(const []);
 
-  Future<void> loadProfiles() async {
+  Future<List<Profile>> fetchProfiles() async {
     final db = await getDatabase();
     final data = await db.query('profiles');
 
@@ -25,14 +25,21 @@ class ProfilesNotifier extends StateNotifier<List<Profile>> {
           )
           .toList();
 
-      state = profiles;
+      return profiles;
     } catch (error) {
       print('Error: $error');
+      return [];
     }
   }
 
+  Future<void> loadProfiles() async {
+    final profiles = await fetchProfiles();
+    state = profiles;
+  }
+
   Profile getProfile(String id) {
-    return state.where((profile) => profile.id == id).first;
+    return state.firstWhere((profile) => profile.id == id,
+        orElse: () => throw Exception('Profile not found'));
   }
 
   void updateProfile(Profile profile) async {
@@ -51,9 +58,15 @@ class ProfilesNotifier extends StateNotifier<List<Profile>> {
         where: 'id = ?',
         whereArgs: [profile.id]);
 
-    var oldProfile = state.where((oldProfile) => oldProfile.id == profile.id).first;
-    oldProfile = profile;
-    state = [...state];
+    final updatedProfiles = state.map((oldProfile) {
+      if (oldProfile.id == profile.id) {
+        return profile;
+      } else {
+        return oldProfile;
+      }
+    }).toList();
+
+    state = updatedProfiles;
   }
 
   void addProfile(

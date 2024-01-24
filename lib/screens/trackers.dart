@@ -14,7 +14,7 @@ class TrackersScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Trackers"),
         actions: const [AccountAppBarActions()]),
-      drawer: MainDrawer(profile: profile),
+      drawer: MainDrawer(profileId: profile.id),
       body: const Center(
         child: Text('Trackers screen'),
       ),
