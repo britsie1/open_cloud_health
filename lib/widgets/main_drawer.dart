@@ -8,10 +8,10 @@ import 'package:open_cloud_health/screens/profiles.dart';
 import 'package:open_cloud_health/screens/trackers.dart';
 
 class MainDrawer extends ConsumerStatefulWidget {
-  const MainDrawer({super.key, required this.profileId});
+  const MainDrawer(
+      {super.key, required this.profileId, required this.currentRouteName});
   final String profileId;
-
-  //final Profile profile;
+  final String currentRouteName;
 
   @override
   ConsumerState<MainDrawer> createState() => _MainDrawerState();
@@ -20,47 +20,40 @@ class MainDrawer extends ConsumerStatefulWidget {
 class _MainDrawerState extends ConsumerState<MainDrawer> {
   void _navigateTo(String page, Profile profile) {
     Navigator.of(context).pop();
+
+    if (widget.currentRouteName == page) {
+      return;
+    }
+
+    Widget pageToNavigateTo = const ProfilesScreen();
+
     switch (page) {
       case 'profiles':
-        Navigator.of(context)
-            .push(MaterialPageRoute(builder: (ctx) => const ProfilesScreen()));
+        pageToNavigateTo = const ProfilesScreen();
         break;
       case 'about':
         showAboutDialog(context: context);
         break;
       case 'trackers':
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (ctx) => TrackersScreen(
-              profile: profile,
-            ),
-          ),
-        );
+        pageToNavigateTo = TrackersScreen(profile: profile);
         break;
       case 'history':
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (ctx) => HistoryScreen(
-              profile: profile,
-            ),
-          ),
-        );
+        pageToNavigateTo = HistoryScreen(profile: profile);
         break;
-      case 'information':
-      Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (ctx) => ProfileDetailScreen(
-              profile: profile,
-            ),
-          ),
-        );
-      break;
+      case 'profile_detail':
+        pageToNavigateTo = ProfileDetailScreen(profile: profile);
+        break;
     }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (ctx) => pageToNavigateTo),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    var profile = ref.watch(profilesProvider.notifier).getProfile(widget.profileId);
+    var profile =
+        ref.watch(profilesProvider.notifier).getProfile(widget.profileId);
 
     return Drawer(
       child: ListView(
@@ -91,7 +84,7 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
           ListTile(
             leading: const Icon(Icons.medical_information_outlined),
             title: const Text('Medical Information'),
-            onTap: () => _navigateTo('information', profile),
+            onTap: () => _navigateTo('profile_detail', profile),
           ),
           ListTile(
             leading: const Icon(Icons.history),

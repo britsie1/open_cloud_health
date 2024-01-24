@@ -25,6 +25,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ),
       drawer: MainDrawer(
         profileId: widget.profile.id,
+        currentRouteName: 'history',
       ),
       body: Column(
         children: [

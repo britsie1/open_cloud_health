@@ -15,7 +15,7 @@ class DashboardScreen extends StatelessWidget {
         title: const Text('Dashboard'),
         actions: const [AccountAppBarActions()],
       ),
-      drawer: MainDrawer(profileId: profile.id),
+      drawer: MainDrawer(profileId: profile.id, currentRouteName: 'dashboard',),
       body: const Center(
         child: Text('This is your dashboard.'),
       ),
