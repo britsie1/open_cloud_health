@@ -1,19 +1,42 @@
-import 'package:flutter/material.dart';
-import 'package:open_cloud_health/models/profile.dart';
-import 'package:open_cloud_health/screens/profile_detail.dart';
-import 'package:open_cloud_health/screens/dashboard.dart';
+import 'dart:io';
 
-class ProfilesList extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_cloud_health/models/profile.dart';
+import 'package:open_cloud_health/providers/profiles_provider.dart';
+import 'package:open_cloud_health/screens/history.dart';
+import 'package:open_cloud_health/screens/profile_detail.dart';
+
+class ProfilesList extends ConsumerStatefulWidget {
   const ProfilesList({super.key, required this.profiles});
 
   final List<Profile> profiles;
 
   @override
+  ConsumerState<ProfilesList> createState() => _ProfilesListState();
+}
+
+class _ProfilesListState extends ConsumerState<ProfilesList> {
+  Future<ImageProvider> getProfileImage(Profile profile) async {
+    if (profile.image.isEmpty) {
+      return AssetImage(
+          'assets/images/${profile.gender.name.toString()}_placeholder.png');
+    } else {
+      String filepath = await ref
+          .read(profilesProvider.notifier)
+          .getProfileImagePath(profile.image, profile.name);
+      return FileImage(File(filepath));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final profiles = ref.watch(profilesProvider);
+
     void selectProfile(Profile profile) {
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (ctx) => DashboardScreen(profile: profile),
+          builder: (ctx) => HistoryScreen(profile: profile),
         ),
       );
     }
@@ -30,19 +53,35 @@ class ProfilesList extends StatelessWidget {
         Expanded(
           child: ListView.builder(
             itemCount: profiles.length,
-            itemBuilder: ((context, index) => ListTile(
-                  leading: CircleAvatar(
-                    radius: 22,
-                    backgroundImage: AssetImage(
-                        'assets/images/${profiles[index].gender.name.toString()}_placeholder.png'),
-                  ),
-                  title: Text(
-                    profiles[index].name,
-                    style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                        color: Theme.of(context).colorScheme.onBackground),
-                  ),
-                  onTap: () {
-                    selectProfile(profiles[index]);
+            itemBuilder: ((context, index) => FutureBuilder(
+                  future: getProfileImage(profiles[index]),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: Text('Loading...'));
+                    } else if (snapshot.hasError) {
+                      return const Center(child: Text('Error loading profile'));
+                    } else {
+                      return ListTile(
+                        contentPadding: const EdgeInsets.all(5),
+                        leading: CircleAvatar(
+                          radius: 30,
+                          backgroundImage: snapshot.data,
+                        ),
+                        title: Text(
+                          profiles[index].name,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium!
+                              .copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onBackground),
+                        ),
+                        onTap: () {
+                          selectProfile(profiles[index]);
+                        },
+                      );
+                    }
                   },
                 )),
           ),

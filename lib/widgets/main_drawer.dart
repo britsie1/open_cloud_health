@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/profile.dart';
@@ -5,7 +7,6 @@ import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/screens/profile_detail.dart';
 import 'package:open_cloud_health/screens/history.dart';
 import 'package:open_cloud_health/screens/profiles.dart';
-import 'package:open_cloud_health/screens/trackers.dart';
 
 class MainDrawer extends ConsumerStatefulWidget {
   const MainDrawer(
@@ -18,6 +19,8 @@ class MainDrawer extends ConsumerStatefulWidget {
 }
 
 class _MainDrawerState extends ConsumerState<MainDrawer> {
+  File? _profileImageFile;
+
   void _navigateTo(String page, Profile profile) {
     Navigator.of(context).pop();
 
@@ -34,9 +37,6 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
       case 'about':
         showAboutDialog(context: context);
         break;
-      case 'trackers':
-        pageToNavigateTo = TrackersScreen(profile: profile);
-        break;
       case 'history':
         pageToNavigateTo = HistoryScreen(profile: profile);
         break;
@@ -51,9 +51,37 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
   }
 
   @override
+  void initState() {
+    super.initState();
+
+    var profile =
+        ref.read(profilesProvider.notifier).getProfile(widget.profileId);
+
+    if (profile.image.isNotEmpty) {
+      ref
+          .read(profilesProvider.notifier)
+          .getProfileImagePath(profile.image, profile.name)
+          .then((value) {
+        setState(() {
+          _profileImageFile = File.fromUri(Uri(path: value));
+        });
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     var profile =
         ref.watch(profilesProvider.notifier).getProfile(widget.profileId);
+
+    ImageProvider getProfileImage(Profile profile) {
+      if (_profileImageFile != null) {
+        return FileImage(_profileImageFile!);
+      } else {
+        return AssetImage(
+            'assets/images/${profile.gender.name}_placeholder.png');
+      }
+    }
 
     return Drawer(
       child: ListView(
@@ -61,9 +89,8 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
           DrawerHeader(
             child: Column(
               children: [
-                const CircleAvatar(
-                  radius: 40,
-                ),
+                CircleAvatar(
+                    radius: 40, backgroundImage: getProfileImage(profile)),
                 const SizedBox(
                   height: 16,
                 ),
@@ -73,28 +100,18 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
           ),
           ListTile(
             leading: const Icon(Icons.supervised_user_circle_outlined),
-            title: const Text('Change Profile'),
+            title: const Text('Switch Profile'),
             onTap: () => _navigateTo('profiles', profile),
           ),
           ListTile(
-            leading: const Icon(Icons.dashboard),
-            title: const Text('Dashboard'),
-            onTap: () => _navigateTo('dashboard', profile),
-          ),
-          ListTile(
             leading: const Icon(Icons.medical_information_outlined),
-            title: const Text('Medical Information'),
+            title: const Text('Profile Information'),
             onTap: () => _navigateTo('profile_detail', profile),
           ),
           ListTile(
             leading: const Icon(Icons.history),
             title: const Text('Medical History'),
             onTap: () => _navigateTo('history', profile),
-          ),
-          ListTile(
-            leading: const Icon(Icons.track_changes),
-            title: const Text('Trackers'),
-            onTap: () => _navigateTo('trackers', profile),
           ),
           ListTile(
             leading: const Icon(Icons.share),

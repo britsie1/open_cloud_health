@@ -1,8 +1,12 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_cupertino_datetime_picker/flutter_cupertino_datetime_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ProfileDetailScreen extends ConsumerStatefulWidget {
   const ProfileDetailScreen({super.key, required this.profile});
@@ -23,11 +27,28 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
   var _isOrganDonor = false;
   Gender? _selectedGender;
   var _selectedBloodType = 'Unknown';
+  File? _pickImageFile;
 
   @override
   void dispose() {
     _selectedDateController.dispose();
     super.dispose();
+  }
+
+  void _pickImage(ImageSource imageSource) async {
+    final pickedImage = await ImagePicker().pickImage(
+      source: imageSource,
+      imageQuality: 50,
+      maxWidth: 150,
+    );
+
+    if (pickedImage == null) {
+      return;
+    }
+
+    setState(() {
+      _pickImageFile = File(pickedImage.path);
+    });
   }
 
   @override
@@ -43,6 +64,15 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
       _selectedGender = widget.profile!.gender;
       _selectedBloodType = widget.profile!.bloodType;
       _isOrganDonor = widget.profile!.isOrganDonor;
+
+      ref
+          .read(profilesProvider.notifier)
+          .getProfileImagePath(widget.profile!.image, widget.profile!.name)
+          .then((value) {
+        setState(() {
+          _pickImageFile = File.fromUri(Uri(path: value));
+        });
+      });
     }
   }
 
@@ -53,6 +83,10 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
     }
     _form.currentState!.save();
 
+    Uint8List profileImage = _pickImageFile != null
+        ? _pickImageFile!.readAsBytesSync()
+        : Uint8List(0);
+
     if (widget.profile == null) {
       ref.read(profilesProvider.notifier).addProfile(
           _enteredName,
@@ -61,7 +95,8 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
           DateTime.parse(_selectedDateController.text),
           _selectedGender!,
           _selectedBloodType,
-          _isOrganDonor);
+          _isOrganDonor,
+          profileImage);
     } else {
       ref.read(profilesProvider.notifier).updateProfile(
             Profile(
@@ -72,7 +107,8 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                 dateOfBirth: DateTime.parse(_selectedDateController.text),
                 gender: _selectedGender!,
                 bloodType: _selectedBloodType,
-                isOrganDonor: _isOrganDonor),
+                isOrganDonor: _isOrganDonor,
+                image: profileImage),
           );
     }
 
@@ -92,9 +128,19 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ImageProvider imageToShow = AssetImage(
+        _selectedGender == null || _selectedGender == Gender.male
+            ? 'assets/images/male_placeholder.png'
+            : 'assets/images/female_placeholder.png');
+
+    if (_pickImageFile != null) {
+      imageToShow = FileImage(_pickImageFile!);
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Profile'),
+        title: Text(
+            widget.profile != null ? 'Profile Information' : 'Create Profile'),
         actions: [
           IconButton(
             onPressed: () {
@@ -113,23 +159,54 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
               child: Column(
                 children: [
                   Center(
-                    child: Container(
-                      height: 160,
-                      width: 160,
-                      decoration: BoxDecoration(
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(80.0)),
-                        border: Border.all(
-                          color: Colors.white,
-                          width: 4.0,
+                    child: Stack(
+                      alignment: Alignment.bottomCenter,
+                      children: [
+                        Container(
+                          height: 160,
+                          width: 160,
+                          decoration: BoxDecoration(
+                            borderRadius:
+                                const BorderRadius.all(Radius.circular(80.0)),
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 4.0,
+                            ),
+                            image: DecorationImage(
+                                image: imageToShow, fit: BoxFit.cover),
+                          ),
                         ),
-                        image: DecorationImage(
-                            image: AssetImage(_selectedGender == null ||
-                                    _selectedGender == Gender.male
-                                ? 'assets/images/male_placeholder.png'
-                                : 'assets/images/female_placeholder.png'),
-                            fit: BoxFit.cover),
-                      ),
+                        PopupMenuButton(
+                          position: PopupMenuPosition.under,
+                          icon: const Icon(
+                            Icons.edit,
+                            color: Colors.white,
+                          ),
+                          itemBuilder: (ctx) => const [
+                            PopupMenuItem(
+                              value: 'camera',
+                              child: ListTile(
+                                leading: Icon(Icons.camera_alt_outlined),
+                                title: Text('Camera'),
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'gallery',
+                              child: ListTile(
+                                leading: Icon(Icons.image_search_rounded),
+                                title: Text('Gallery'),
+                              ),
+                            ),
+                          ],
+                          onSelected: (value) {
+                            if (value == 'camera') {
+                              _pickImage(ImageSource.camera);
+                            } else {
+                              _pickImage(ImageSource.gallery);
+                            }
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -276,7 +353,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                         const SizedBox(
                           width: 16,
                         ),
-                        const Icon(Icons.water_drop_outlined),
+                        const Icon(Icons.bloodtype_outlined),
                         const SizedBox(
                           width: 16,
                         ),
