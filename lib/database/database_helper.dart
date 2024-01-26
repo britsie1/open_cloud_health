@@ -21,6 +21,8 @@ Future<Database> getDatabase() async {
 String _getInitialScript(){
   _buffer.write(profilesTable);
   _buffer.write(historyTable);
+  _buffer.write(attachementsTable);
+  _buffer.write(allergyTable);
 
   return _buffer.toString();
 }
@@ -34,14 +36,34 @@ String profilesTable = '''
     dateOfBirth TEXT,
     bloodType TEXT, 
     gender TEXT,
-    isOrganDonor TEXT
+    isOrganDonor TEXT,
+    image BLOB
   ); ''';
 
 String historyTable = '''
   CREATE TABLE history(
     id TEXT PRIMARY KEY,
-    userId TEXT,
+    profileId TEXT,
     title TEXT,
     date TEXT,
     description TEXT
   )''';
+
+String attachementsTable = '''
+  CREATE TABLE attachments(
+    id TEXT PRIMARY KEY,
+    historyId TEXT,
+    filename TEXT PRIMARY KEY,
+    uploadDate TEXT,
+    content BLOB
+  )
+''';
+
+String allergyTable = '''
+  CREATE TABLE allergy(
+    id TEXT PRIMARY KEY,
+    profileId TEXT,
+    name TEXT,
+    note TEXT
+  )
+''';
