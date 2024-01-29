@@ -24,13 +24,6 @@ class _AccountAppBarActionsState extends State<AccountAppBarActions> {
           ),
         ),
         PopupMenuItem(
-          value: 'donate',
-          child: ListTile(
-            leading: Icon(Icons.handshake_outlined),
-            title: Text('Donate'),
-          ),
-        ),
-        PopupMenuItem(
           value: 'logout',
           child: ListTile(
             leading: Icon(Icons.exit_to_app),

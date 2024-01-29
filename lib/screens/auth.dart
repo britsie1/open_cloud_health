@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:open_cloud_health/providers/profiles_provider.dart';
+import 'package:open_cloud_health/screens/history.dart';
+import 'package:open_cloud_health/screens/profile_detail.dart';
 import 'package:open_cloud_health/screens/profiles.dart';
 
 enum _SupportState {
@@ -9,14 +13,14 @@ enum _SupportState {
   unsupported,
 }
 
-class AuthScreen extends StatefulWidget {
+class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
 
   @override
-  State<AuthScreen> createState() => _AuthScreenState();
+  ConsumerState<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends ConsumerState<AuthScreen> {
   final LocalAuthentication auth = LocalAuthentication();
   _SupportState _supportState = _SupportState.unknown;
   var _isAuthenticating = false;
@@ -75,11 +79,31 @@ class _AuthScreenState extends State<AuthScreen> {
       });
     }
 
+    await ref.read(profilesProvider.notifier).loadProfiles();
+
     if (!mounted) {
       return;
     }
 
-    //TODO: check if there are multiple profiles, and if not, navigate to the dashboard of the first profile
+    var profiles = ref.read(profilesProvider);
+
+    if (profiles.isEmpty) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (ctx) => const ProfileDetailScreen(profile: null),
+        ),
+      );
+      return;
+    }
+
+    if (profiles.length == 1) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (ctx) => HistoryScreen(profile: profiles[0]),
+        ),
+      );
+      return;
+    }
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(

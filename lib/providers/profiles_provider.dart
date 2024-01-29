@@ -21,7 +21,7 @@ class ProfilesNotifier extends StateNotifier<List<Profile>> {
     return file.path;
   }
 
-  Future<List<Profile>> fetchProfiles() async {
+  Future<List<Profile>> _fetchProfiles() async {
     final db = await getDatabase();
     final data = await db.query('profiles');
 
@@ -50,7 +50,7 @@ class ProfilesNotifier extends StateNotifier<List<Profile>> {
   }
 
   Future<void> loadProfiles() async {
-    final profiles = await fetchProfiles();
+    final profiles = await _fetchProfiles();
     state = profiles;
   }
 
