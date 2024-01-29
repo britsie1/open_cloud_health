@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:open_cloud_health/screens/profiles.dart';
 
 class ProfileDetailScreen extends ConsumerStatefulWidget {
   const ProfileDetailScreen({super.key, required this.profile});
@@ -112,7 +113,15 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
           );
     }
 
-    Navigator.of(context).pop();
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (ctx) => const ProfilesScreen(),
+        ),
+      );
+    }
   }
 
   String getGenderDisplayString(Gender gender) {

@@ -22,20 +22,17 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
   File? _profileImageFile;
 
   void _navigateTo(String page, Profile profile) {
-    Navigator.of(context).pop();
-
-    if (widget.currentRouteName == page) {
+    if (page == 'about'){
+      showAboutDialog(context: context);
       return;
     }
 
+    Navigator.of(context).pop();
     Widget pageToNavigateTo = const ProfilesScreen();
 
     switch (page) {
       case 'profiles':
         pageToNavigateTo = const ProfilesScreen();
-        break;
-      case 'about':
-        showAboutDialog(context: context);
         break;
       case 'history':
         pageToNavigateTo = HistoryScreen(profile: profile);
