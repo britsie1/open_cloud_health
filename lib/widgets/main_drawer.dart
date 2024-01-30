@@ -28,6 +28,11 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
     }
 
     Navigator.of(context).pop();
+
+    if (page == widget.currentRouteName){
+      return;
+    }
+    
     Widget pageToNavigateTo = const ProfilesScreen();
 
     switch (page) {
@@ -57,7 +62,7 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
     if (profile.image.isNotEmpty) {
       ref
           .read(profilesProvider.notifier)
-          .getProfileImagePath(profile.image, profile.name)
+          .getProfileImagePath(profile.image, profile.id)
           .then((value) {
         setState(() {
           _profileImageFile = File.fromUri(Uri(path: value));

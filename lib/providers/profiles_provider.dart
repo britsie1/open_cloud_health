@@ -9,14 +9,14 @@ import 'package:path_provider/path_provider.dart';
 class ProfilesNotifier extends StateNotifier<List<Profile>> {
   ProfilesNotifier() : super(const []);
 
-  Future<String> getProfileImagePath(Uint8List imageData, String name) async {
+  Future<String> getProfileImagePath(Uint8List imageData, String id) async {
     var tempDir = await getTemporaryDirectory();
-    final filePath = '${tempDir.path}/$name.png';
+    final filePath = '${tempDir.path}/$id.png';
     if (await File(filePath).exists()) {
       return filePath;
     }
 
-    File file = await File('${tempDir.path}/$name.png').create();
+    File file = await File('${tempDir.path}/$id.png').create();
     file.writeAsBytesSync(imageData);
     return file.path;
   }

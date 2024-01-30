@@ -1,16 +1,19 @@
+import 'dart:io';
+
 import 'package:sqflite/sqflite.dart' as sql;
 import 'package:path/path.dart' as path;
 import 'package:sqflite/sqlite_api.dart';
-
-final _buffer = StringBuffer();
 
 Future<Database> getDatabase() async {
   final dbPath = await sql.getDatabasesPath();
   //await sql.deleteDatabase(path.join(dbPath, 'opencloudhealth.db'));
   final db = await sql.openDatabase(
     path.join(dbPath, 'opencloudhealth.db'),
-    onCreate: (db, version) {
-      return db.execute(_getInitialScript());
+    onCreate: (db, version) async {
+      await db.execute(createProfilesTable);
+      await db.execute(createHistoryTable);
+      await db.execute(createAttachementsTable);
+      await db.execute(createAllergyTable);
     },
     version: 1,
   );
@@ -18,16 +21,18 @@ Future<Database> getDatabase() async {
   return db;
 }
 
-String _getInitialScript(){
-  _buffer.write(profilesTable);
-  _buffer.write(historyTable);
-  _buffer.write(attachementsTable);
-  _buffer.write(allergyTable);
-
-  return _buffer.toString();
+Future<void> resetDatabase() async {
+  final dbPath = await sql.getDatabasesPath();
+  await sql.deleteDatabase(path.join(dbPath, 'opencloudhealth.db'));
 }
 
-String profilesTable = '''
+Future<int> getDatabaseSize() async {
+  final dbPath = await sql.getDatabasesPath();
+  final dbFilePath = path.join(dbPath, 'opencloudhealth.db');
+  return File(dbFilePath).lengthSync();
+}
+
+String createProfilesTable = '''
   CREATE TABLE profiles(
     id TEXT PRIMARY KEY, 
     name TEXT, 
@@ -38,32 +43,30 @@ String profilesTable = '''
     gender TEXT,
     isOrganDonor TEXT,
     image BLOB
-  ); ''';
+  )''';
 
-String historyTable = '''
+String createHistoryTable = '''
   CREATE TABLE history(
     id TEXT PRIMARY KEY,
     profileId TEXT,
     title TEXT,
-    date TEXT,
-    description TEXT
+    description TEXT,
+    date TEXT
   )''';
 
-String attachementsTable = '''
+String createAttachementsTable = '''
   CREATE TABLE attachments(
     id TEXT PRIMARY KEY,
     historyId TEXT,
-    filename TEXT PRIMARY KEY,
+    filename TEXT,
     uploadDate TEXT,
     content BLOB
-  )
-''';
+  )''';
 
-String allergyTable = '''
+String createAllergyTable = '''
   CREATE TABLE allergy(
     id TEXT PRIMARY KEY,
     profileId TEXT,
     name TEXT,
     note TEXT
-  )
-''';
+  )''';
