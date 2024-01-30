@@ -8,6 +8,7 @@ import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:open_cloud_health/screens/profiles.dart';
+import 'package:path_provider/path_provider.dart';
 
 class ProfileDetailScreen extends ConsumerStatefulWidget {
   const ProfileDetailScreen({super.key, required this.profile});
@@ -39,7 +40,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
   void _pickImage(ImageSource imageSource) async {
     final pickedImage = await ImagePicker().pickImage(
       source: imageSource,
-      imageQuality: 50,
+      imageQuality: 75,
       maxWidth: 150,
     );
 
@@ -66,18 +67,20 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
       _selectedBloodType = widget.profile!.bloodType;
       _isOrganDonor = widget.profile!.isOrganDonor;
 
-      ref
-          .read(profilesProvider.notifier)
-          .getProfileImagePath(widget.profile!.image, widget.profile!.name)
-          .then((value) {
-        setState(() {
-          _pickImageFile = File.fromUri(Uri(path: value));
+      if (widget.profile!.image.isNotEmpty) {
+        ref
+            .read(profilesProvider.notifier)
+            .getProfileImagePath(widget.profile!.image, widget.profile!.id)
+            .then((value) {
+          setState(() {
+            _pickImageFile = File.fromUri(Uri(path: value));
+          });
         });
-      });
+      }
     }
   }
 
-  void _saveProfile() {
+  void _saveProfile() async {
     final isValid = _form.currentState!.validate();
     if (!isValid) {
       return;
@@ -111,6 +114,16 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                 isOrganDonor: _isOrganDonor,
                 image: profileImage),
           );
+    }
+
+    Directory tempDir = await getTemporaryDirectory();
+    final filePath = '${tempDir.path}/$_enteredName.jpg';
+    if (await File(filePath).exists()) {
+      File(filePath).delete();
+    }
+
+    if (!mounted) {
+      return;
     }
 
     if (Navigator.of(context).canPop()) {
@@ -301,6 +314,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                               DatePicker.showDatePicker(
                                 context,
                                 maxDateTime: DateTime.now(),
+                                dateFormat: 'yyyy-MMMM-dd',
                                 initialDateTime:
                                     _selectedDateController.text.isEmpty
                                         ? DateTime(DateTime.now().year - 18)

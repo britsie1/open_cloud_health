@@ -24,7 +24,7 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
     } else {
       String filepath = await ref
           .read(profilesProvider.notifier)
-          .getProfileImagePath(profile.image, profile.name);
+          .getProfileImagePath(profile.image, profile.id);
       return FileImage(File(filepath));
     }
   }
