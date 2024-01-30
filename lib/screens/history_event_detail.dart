@@ -51,13 +51,13 @@ class _HistoryEventDetailScreenState
       _enteredTitle = widget.historyEvent!.title;
       _enteredDescription = widget.historyEvent!.description;
       _selectedDateController.text = widget.historyEvent!.formattedDate;
-    }
 
-    fetchAttachments(widget.historyEvent!.id).then((value) {
-      setState(() {
-        selectedFiles = value;
+      fetchAttachments(widget.historyEvent!.id).then((value) {
+        setState(() {
+          selectedFiles = value;
+        });
       });
-    });
+    }
   }
 
   void _attachFiles() async {
@@ -179,109 +179,111 @@ class _HistoryEventDetailScreenState
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Form(
-              key: _form,
-              child: Column(
-                children: [
-                  TextFormField(
-                    initialValue: _enteredTitle,
-                    decoration: const InputDecoration(labelText: 'Title'),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter an event title';
-                      }
-                      return null;
-                    },
-                    onSaved: (newValue) {
-                      _enteredTitle = newValue!;
-                    },
-                  ),
-                  TextFormField(
-                    decoration: const InputDecoration(labelText: 'Event Date'),
-                    readOnly: true,
-                    controller: _selectedDateController,
-                    onTap: () {
-                      DatePicker.showDatePicker(
-                        context,
-                        dateFormat: 'yyyy-MMM-dd HH:mm',
-                        maxDateTime: DateTime.now(),
-                        initialDateTime: _selectedDateController.text.isEmpty
-                            ? DateTime.now()
-                            : DateTime.parse(_selectedDateController.text),
-                        onConfirm: (dateTime, selectedIndex) {
-                          _selectedDateController.text =
-                              history.formatter.format(dateTime);
-                        },
-                      );
-                    },
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please select a date for the event';
-                      }
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    initialValue: _enteredDescription,
-                    maxLines: 5,
-                    textAlignVertical: TextAlignVertical.top,
-                    decoration: const InputDecoration(
-                        labelText: 'Description', alignLabelWithHint: true),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter an event description';
-                      }
-                      return null;
-                    },
-                    onSaved: (newValue) {
-                      _enteredDescription = newValue!;
-                    },
-                  ),
-                  const SizedBox(
-                    height: 20,
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _attachFiles,
-                    icon: const Icon(Icons.attach_file),
-                    label: const Text('Attach Files'),
-                  ),
-                  const SizedBox(
-                    height: 20,
-                  ),
-                  SizedBox(
-                    width: double.infinity,
-                    child: Text(
-                      'Attachments',
-                      style: Theme.of(context).textTheme.titleMedium,
-                      textAlign: TextAlign.left,
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Form(
+                key: _form,
+                child: Column(
+                  children: [
+                    TextFormField(
+                      initialValue: _enteredTitle,
+                      decoration: const InputDecoration(labelText: 'Title'),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter an event title';
+                        }
+                        return null;
+                      },
+                      onSaved: (newValue) {
+                        _enteredTitle = newValue!;
+                      },
                     ),
-                  ),
-                  const SizedBox(
-                    height: 20,
-                  ),
-                ],
+                    TextFormField(
+                      decoration: const InputDecoration(labelText: 'Event Date'),
+                      readOnly: true,
+                      controller: _selectedDateController,
+                      onTap: () {
+                        DatePicker.showDatePicker(
+                          context,
+                          dateFormat: 'yyyy-MMM-dd HH:mm',
+                          maxDateTime: DateTime.now(),
+                          initialDateTime: _selectedDateController.text.isEmpty
+                              ? DateTime.now()
+                              : DateTime.parse(_selectedDateController.text),
+                          onConfirm: (dateTime, selectedIndex) {
+                            _selectedDateController.text =
+                                history.formatter.format(dateTime);
+                          },
+                        );
+                      },
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please select a date for the event';
+                        }
+                        return null;
+                      },
+                    ),
+                    TextFormField(
+                      initialValue: _enteredDescription,
+                      maxLines: 5,
+                      textAlignVertical: TextAlignVertical.top,
+                      decoration: const InputDecoration(
+                          labelText: 'Description', alignLabelWithHint: true),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter an event description';
+                        }
+                        return null;
+                      },
+                      onSaved: (newValue) {
+                        _enteredDescription = newValue!;
+                      },
+                    ),
+                    const SizedBox(
+                      height: 20,
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _attachFiles,
+                      icon: const Icon(Icons.attach_file),
+                      label: const Text('Attach Files'),
+                    ),
+                    const SizedBox(
+                      height: 20,
+                    ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: Text(
+                        'Attachments',
+                        style: Theme.of(context).textTheme.titleMedium,
+                        textAlign: TextAlign.left,
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 20,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          if (selectedFiles.isEmpty)
-            const SizedBox(
-              width: double.infinity,
-              child: Text('There are no attachments for this event.'),
-            ),
-          if (selectedFiles.isNotEmpty)
-            Expanded(
-              child: ListView.builder(
-                itemCount: selectedFiles.length,
-                itemBuilder: ((context, index) => AttachmentItem(
-                    attachment: selectedFiles[index],
-                    onRemoveAttachment: removeAttachment)),
+            if (selectedFiles.isEmpty)
+              const SizedBox(
+                width: double.infinity,
+                child: Padding(
+                  padding: EdgeInsets.only(left: 20),
+                  child: Text('There are no attachments for this event.'),
+                ),
               ),
-            ),
-        ],
+            if (selectedFiles.isNotEmpty)
+              Column(
+                children: selectedFiles.map((item) {
+                  return AttachmentItem(attachment: item, onRemoveAttachment: removeAttachment);
+                }).toList(),
+              )
+          ],
+        ),
       ),
     );
   }
