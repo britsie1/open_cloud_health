@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:open_cloud_health/database/database_helper.dart';
 import 'package:open_cloud_health/screens/auth.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:open_cloud_health/storage/google_drive_helper.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -14,6 +16,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late double databaseSize = 0;
+  String lastBackupDateTime = 'Loading...';
 
   Future<void> resetDB() async {
     await resetDatabase();
@@ -37,7 +40,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
 
-    getDatabaseSize().then((value) => { setState(() => databaseSize = value / 1024) });
+    getLastBackupDateTime().then(
+      (value) {
+        setState(() {
+          lastBackupDateTime = '$value UTC';
+        });
+      },
+    );
+
+    getDatabaseSize()
+        .then((value) => {setState(() => databaseSize = value / 1024)});
+  }
+
+  Future<void> _uploadBackup() async {
+    try {
+      showGeneralDialog(
+        context: context,
+        barrierDismissible: false,
+        transitionDuration: const Duration(seconds: 1),
+        barrierColor: Colors.black.withOpacity(0.5),
+        pageBuilder: (context, animation, secondaryAnimation) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      await backupToGoogleDrive();
+
+      setState(() {
+        lastBackupDateTime =
+            '${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())} UTC';
+      });
+    } finally {
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    }
   }
 
   @override
@@ -51,10 +88,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ElevatedButton(
+                onPressed: _uploadBackup,
+                child: const Text('Backup to Google Drive')),
+            ElevatedButton(
               onPressed: resetDB,
               child: const Text('Reset Database'),
             ),
-            Text('Database Size: ${databaseSize}kb')
+            Text('Database Size: ${databaseSize}kb'),
+            Text('Last updated: $lastBackupDateTime'),
           ],
         ),
       ),

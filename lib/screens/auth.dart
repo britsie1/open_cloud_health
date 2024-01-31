@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/screens/history.dart';
-import 'package:open_cloud_health/screens/profile_detail.dart';
 import 'package:open_cloud_health/screens/profiles.dart';
 
 enum _SupportState {
@@ -90,7 +89,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     if (profiles.isEmpty) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (ctx) => const ProfileDetailScreen(profile: null),
+          builder: (ctx) => const ProfilesScreen(),
         ),
       );
       return;
