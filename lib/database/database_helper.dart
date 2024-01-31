@@ -6,7 +6,6 @@ import 'package:sqflite/sqlite_api.dart';
 
 Future<Database> getDatabase() async {
   final dbPath = await sql.getDatabasesPath();
-  //await sql.deleteDatabase(path.join(dbPath, 'opencloudhealth.db'));
   final db = await sql.openDatabase(
     path.join(dbPath, 'opencloudhealth.db'),
     onCreate: (db, version) async {

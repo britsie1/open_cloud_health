@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_cloud_health/storage/google_drive_helper.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/screens/history.dart';
@@ -27,6 +28,10 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
           .getProfileImagePath(profile.image, profile.id);
       return FileImage(File(filepath));
     }
+  }
+
+  Future<void> restoreBackup() async {
+    await restoreFromBackup(ref);
   }
 
   @override
@@ -121,18 +126,28 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
               const SizedBox(
                 height: 16,
               ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (ctx) => const ProfileDetailScreen(
-                        profile: null,
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('Create or import a profile'),
+              Row(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: restoreBackup,
+                    icon: const Icon(Icons.restore),
+                    label: const Text('Restore backup'),
+                  ),
+                  const Spacer(),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (ctx) => const ProfileDetailScreen(
+                            profile: null,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Create a Profile'),
+                  ),
+                ],
               )
             ],
           ),
