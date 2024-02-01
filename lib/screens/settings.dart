@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:open_cloud_health/database/database_helper.dart';
 import 'package:open_cloud_health/screens/auth.dart';
+import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_cloud_health/storage/google_drive_helper.dart';
 
@@ -16,25 +17,8 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late double databaseSize = 0;
+  late double documentsFileSize = 0;
   String lastBackupDateTime = 'Loading...';
-
-  Future<void> resetDB() async {
-    await resetDatabase();
-
-    Directory dir = await getTemporaryDirectory();
-    dir.deleteSync(recursive: true);
-    dir.create();
-
-    if (!mounted) {
-      return;
-    }
-
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (ctx) => const AuthScreen(),
-      ),
-    );
-  }
 
   @override
   void initState() {
@@ -50,35 +34,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     getDatabaseSize()
         .then((value) => {setState(() => databaseSize = value / 1024)});
-  }
 
-  Future<void> _uploadBackup() async {
-    try {
-      showGeneralDialog(
-        context: context,
-        barrierDismissible: false,
-        transitionDuration: const Duration(seconds: 1),
-        barrierColor: Colors.black.withOpacity(0.5),
-        pageBuilder: (context, animation, secondaryAnimation) => const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+    getApplicationDocumentsDirectory().then((appDir) {
+      var files = appDir.listSync();
+      var size = files
+          .where((file) => basename(file.path) != 'opencloudhealth.db')
+          .map((file) {
+        if (file is File) {
+          return File(file.path).lengthSync();
+        }
 
-      await backupToGoogleDrive();
+        return 0;
+      }).reduce((value, element) => value + element);
 
       setState(() {
-        lastBackupDateTime =
-            '${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())} UTC';
+        documentsFileSize = size / 1024;
       });
-    } finally {
-      if (mounted) {
-        Navigator.pop(context);
-      }
-    }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    Future<void> resetDB() async {
+      await resetDatabase();
+
+      Directory dir = await getTemporaryDirectory();
+      dir.deleteSync(recursive: true);
+      dir.create();
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (ctx) => const AuthScreen(),
+        ),
+      );
+    }
+
+    Future<void> uploadBackup() async {
+      try {
+        showGeneralDialog(
+          context: context,
+          barrierDismissible: false,
+          transitionDuration: const Duration(seconds: 1),
+          barrierColor: Colors.black.withOpacity(0.5),
+          pageBuilder: (context, animation, secondaryAnimation) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+
+        await backupToGoogleDrive();
+
+        setState(() {
+          lastBackupDateTime =
+              '${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())} UTC';
+        });
+      } finally {
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
@@ -88,14 +107,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ElevatedButton(
-                onPressed: _uploadBackup,
+                onPressed: uploadBackup,
                 child: const Text('Backup to Google Drive')),
             ElevatedButton(
               onPressed: resetDB,
               child: const Text('Reset Database'),
             ),
             Text('Database Size: ${databaseSize}kb'),
-            Text('Last updated: $lastBackupDateTime'),
+            Text('App Documents Size: ${documentsFileSize.toStringAsFixed(2)}kb'),
+            Text('Last backup: $lastBackupDateTime'),
           ],
         ),
       ),

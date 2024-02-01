@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/database/database_helper.dart';
 import 'package:open_cloud_health/models/profile.dart';
@@ -9,16 +7,14 @@ import 'package:path_provider/path_provider.dart';
 class ProfilesNotifier extends StateNotifier<List<Profile>> {
   ProfilesNotifier() : super(const []);
 
-  Future<String> getProfileImagePath(Uint8List imageData, String id) async {
-    var tempDir = await getTemporaryDirectory();
-    final filePath = '${tempDir.path}/$id.png';
+  Future<String> getProfileImagePath(String id) async {
+    var appDir = await getApplicationDocumentsDirectory();
+    final filePath = '${appDir.path}/$id.jpg';
     if (await File(filePath).exists()) {
       return filePath;
     }
 
-    File file = await File('${tempDir.path}/$id.png').create();
-    file.writeAsBytesSync(imageData);
-    return file.path;
+    return '';
   }
 
   Future<List<Profile>> _fetchProfiles() async {
@@ -36,8 +32,7 @@ class ProfilesNotifier extends StateNotifier<List<Profile>> {
               dateOfBirth: DateTime.parse(row['dateOfBirth'] as String),
               bloodType: row['bloodType'] as String,
               gender: Gender.values.byName(row['gender'] as String),
-              isOrganDonor: bool.parse(row['isOrganDonor'] as String),
-              image: row['image'] as Uint8List
+              isOrganDonor: bool.parse(row['isOrganDonor'] as String)
             ),
           )
           .toList();
@@ -70,8 +65,7 @@ class ProfilesNotifier extends StateNotifier<List<Profile>> {
           'dateOfBirth': profile.formattedDate,
           'bloodType': profile.bloodType,
           'gender': profile.gender.name,
-          'isOrganDonor': profile.isOrganDonor.toString(),
-          'image': profile.image
+          'isOrganDonor': profile.isOrganDonor.toString()
         },
         where: 'id = ?',
         whereArgs: [profile.id]);
@@ -87,15 +81,14 @@ class ProfilesNotifier extends StateNotifier<List<Profile>> {
     state = updatedProfiles;
   }
 
-  void addProfile(
+  Future<String> addProfile(
       String name,
       String middleNames,
       String surname,
       DateTime dateOfBirth,
       Gender gender,
       String bloodType,
-      bool isOrganDonor,
-      Uint8List image) async {
+      bool isOrganDonor) async {
     final newProfile = Profile(
         name: name,
         middleNames: middleNames,
@@ -103,8 +96,7 @@ class ProfilesNotifier extends StateNotifier<List<Profile>> {
         dateOfBirth: dateOfBirth,
         bloodType: bloodType,
         gender: gender,
-        isOrganDonor: isOrganDonor,
-        image: image);
+        isOrganDonor: isOrganDonor);
 
     final db = await getDatabase();
 
@@ -116,11 +108,11 @@ class ProfilesNotifier extends StateNotifier<List<Profile>> {
       'dateOfBirth': newProfile.formattedDate,
       'bloodType': newProfile.bloodType,
       'gender': newProfile.gender.name,
-      'isOrganDonor': newProfile.isOrganDonor.toString(),
-      'image': newProfile.image
+      'isOrganDonor': newProfile.isOrganDonor.toString()
     });
 
     state = [...state, newProfile];
+    return newProfile.id;
   }
 }
 

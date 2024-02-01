@@ -19,13 +19,14 @@ class ProfilesList extends ConsumerStatefulWidget {
 
 class _ProfilesListState extends ConsumerState<ProfilesList> {
   Future<ImageProvider> getProfileImage(Profile profile) async {
-    if (profile.image.isEmpty) {
+    String filepath = await ref
+        .read(profilesProvider.notifier)
+        .getProfileImagePath(profile.id);
+
+    if (filepath.isEmpty) {
       return AssetImage(
           'assets/images/${profile.gender.name.toString()}_placeholder.png');
     } else {
-      String filepath = await ref
-          .read(profilesProvider.notifier)
-          .getProfileImagePath(profile.image, profile.id);
       return FileImage(File(filepath));
     }
   }
@@ -126,29 +127,24 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
               const SizedBox(
                 height: 16,
               ),
-              Row(
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: restoreBackup,
-                    icon: const Icon(Icons.restore),
-                    label: const Text('Restore backup'),
-                  ),
-                  const Spacer(),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (ctx) => const ProfileDetailScreen(
-                            profile: null,
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Create a Profile'),
-                  ),
-                ],
-              )
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (ctx) => const ProfileDetailScreen(
+                        profile: null,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Create a Profile'),
+              ),
+              ElevatedButton.icon(
+                onPressed: restoreBackup,
+                icon: const Icon(Icons.restore),
+                label: const Text('Restore backup'),
+              ),
             ],
           ),
         ),
