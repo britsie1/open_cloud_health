@@ -33,15 +33,41 @@ class HistoryEventCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(
-                historyEvent.title,
-                style: Theme.of(context).textTheme.titleMedium,
+              Row(
+                children: [
+                  Flexible(
+                    fit: FlexFit.tight,
+                    flex: 1,
+                    child: Text(
+                      historyEvent.title,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  if (historyEvent.attachmentCount > 0)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      const Icon(Icons.attach_file, size: 18),
+                      Text(
+                        historyEvent.attachmentCount.toString(),
+                      ),
+                    ],
+                  )
+                ],
               ),
               Text(historyEvent.formattedDate),
               const SizedBox(
                 height: 10,
               ),
-              Text(historyEvent.description)
+              SizedBox(
+                height: 35,
+                child: Text(
+                  historyEvent.description,
+                  overflow: TextOverflow.fade,
+                ),
+              ),
             ]),
           ),
         ),

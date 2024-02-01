@@ -22,17 +22,17 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
   File? _profileImageFile;
 
   void _navigateTo(String page, Profile profile) {
-    if (page == 'about'){
+    if (page == 'about') {
       showAboutDialog(context: context);
       return;
     }
 
     Navigator.of(context).pop();
 
-    if (page == widget.currentRouteName){
+    if (page == widget.currentRouteName) {
       return;
     }
-    
+
     Widget pageToNavigateTo = const ProfilesScreen();
 
     switch (page) {
@@ -59,16 +59,14 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
     var profile =
         ref.read(profilesProvider.notifier).getProfile(widget.profileId);
 
-    if (profile.image.isNotEmpty) {
-      ref
-          .read(profilesProvider.notifier)
-          .getProfileImagePath(profile.image, profile.id)
-          .then((value) {
-        setState(() {
-          _profileImageFile = File.fromUri(Uri(path: value));
-        });
+    ref
+        .read(profilesProvider.notifier)
+        .getProfileImagePath(profile.id)
+        .then((value) {
+      setState(() {
+        _profileImageFile = File.fromUri(Uri(path: value));
       });
-    }
+    });
   }
 
   @override

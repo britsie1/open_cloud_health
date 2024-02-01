@@ -6,12 +6,13 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
   HistoryNotifier() : super(const []);
 
   Future<String> addEvent(
-      String profileId, String title, String description, DateTime date) async {
+      String profileId, String title, String description, DateTime date, int attachmentCount) async {
     final newEvent = HistoryEvent(
         profileId: profileId,
         title: title,
         description: description,
-        date: date);
+        date: date,
+        attachmentCount: attachmentCount);
 
     final db = await getDatabase();
 
@@ -24,26 +25,27 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
     });
 
     state = [...state, newEvent];
+    state.sort((a, b) => b.date.compareTo(a.date));
 
     return newEvent.id;
   }
 
   Future<void> updateEvent(HistoryEvent event) async {
     final db = await getDatabase();
-    await db.update('history', {
-      'title': event.title,
-      'date': event.formattedDate,
-      'description': event.description
-    },
-    where: 'id = ? AND profileId = ?',
-    whereArgs: [event.id, event.profileId]);
+    await db.update(
+        'history',
+        {
+          'title': event.title,
+          'date': event.formattedDate,
+          'description': event.description
+        },
+        where: 'id = ? AND profileId = ?',
+        whereArgs: [event.id, event.profileId]);
 
     final updatedEvents = state.map((oldEvent) {
-      if (oldEvent.id == event.id)
-      {
+      if (oldEvent.id == event.id) {
         return event;
-      }
-      else {
+      } else {
         return oldEvent;
       }
     }).toList();
@@ -53,7 +55,22 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
 
   Future<List<HistoryEvent>> _fetchEvents() async {
     final db = await getDatabase();
-    final data = await db.query('history');
+    //final data = await db.query('history');
+
+    final data = await db.rawQuery('''
+      SELECT
+        history.id,
+        history.profileId,
+        history.title,
+        history.description,
+        history.date,
+        COUNT(attachments.id) as attachmentCount
+      FROM
+        history LEFT OUTER JOIN
+        attachments ON (history.id = attachments.historyId)
+      GROUP BY
+        attachments.historyId
+    ''');
 
     try {
       final historyEvents = data
@@ -63,11 +80,12 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
                 profileId: row['profileId'] as String,
                 title: row['title'] as String,
                 description: row['description'] as String,
-                date: DateTime.parse(row['date'] as String)),
+                date: DateTime.parse(row['date'] as String),
+                attachmentCount: row['attachmentCount'] as int),
           )
           .toList();
 
-      historyEvents.sort((a,b) => b.date.compareTo(a.date));
+      historyEvents.sort((a, b) => b.date.compareTo(a.date));
 
       return historyEvents;
     } catch (error) {
@@ -76,25 +94,9 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
     }
   }
 
-  Future<HistoryEvent?> _fetchEvent(String id) async {
-    final db = await getDatabase();
-    final data = await db.query('history', where: 'id = ?', whereArgs: [id]);
-    return data.map((row) => HistoryEvent(
-      id: row['id'] as String,
-      profileId: row['profileId'] as String,
-      title: row['title'] as String,
-      description: row['description'] as String,
-      date: DateTime.parse(row['date'] as String))).firstOrNull;
-  }
-
   Future<void> loadEvents() async {
     final events = await _fetchEvents();
     state = events;
-  }
-
-  Future<HistoryEvent?> loadEvent(String id) async {
-    final event = await _fetchEvent(id);
-    return event;
   }
 }
 

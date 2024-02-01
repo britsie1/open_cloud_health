@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_cupertino_datetime_picker/flutter_cupertino_datetime_picker.dart';
@@ -40,8 +39,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
   void _pickImage(ImageSource imageSource) async {
     final pickedImage = await ImagePicker().pickImage(
       source: imageSource,
-      imageQuality: 75,
-      maxWidth: 150,
+      maxWidth: 300,
     );
 
     if (pickedImage == null) {
@@ -67,16 +65,14 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
       _selectedBloodType = widget.profile!.bloodType;
       _isOrganDonor = widget.profile!.isOrganDonor;
 
-      if (widget.profile!.image.isNotEmpty) {
-        ref
-            .read(profilesProvider.notifier)
-            .getProfileImagePath(widget.profile!.image, widget.profile!.id)
-            .then((value) {
-          setState(() {
-            _pickImageFile = File.fromUri(Uri(path: value));
-          });
+      ref
+          .read(profilesProvider.notifier)
+          .getProfileImagePath(widget.profile!.id)
+          .then((value) {
+        setState(() {
+          _pickImageFile = File.fromUri(Uri(path: value));
         });
-      }
+      });
     }
   }
 
@@ -87,20 +83,16 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
     }
     _form.currentState!.save();
 
-    Uint8List profileImage = _pickImageFile != null
-        ? _pickImageFile!.readAsBytesSync()
-        : Uint8List(0);
-
+    String profileId = '';
     if (widget.profile == null) {
-      ref.read(profilesProvider.notifier).addProfile(
+      profileId = await ref.read(profilesProvider.notifier).addProfile(
           _enteredName,
           _enteredMiddleNames,
           _enteredSurname,
           DateTime.parse(_selectedDateController.text),
           _selectedGender!,
           _selectedBloodType,
-          _isOrganDonor,
-          profileImage);
+          _isOrganDonor);
     } else {
       ref.read(profilesProvider.notifier).updateProfile(
             Profile(
@@ -111,15 +103,20 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                 dateOfBirth: DateTime.parse(_selectedDateController.text),
                 gender: _selectedGender!,
                 bloodType: _selectedBloodType,
-                isOrganDonor: _isOrganDonor,
-                image: profileImage),
+                isOrganDonor: _isOrganDonor),
           );
+      profileId = widget.profile!.id;
     }
 
-    Directory tempDir = await getTemporaryDirectory();
-    final filePath = '${tempDir.path}/$_enteredName.jpg';
-    if (await File(filePath).exists()) {
-      File(filePath).delete();
+    if (_pickImageFile != null) {
+      Directory appDir = await getApplicationDocumentsDirectory();
+      final filePath = '${appDir.path}/$profileId.jpg';
+      if (await File(filePath).exists()) {
+        File(filePath).delete();
+      }
+
+      var newImage = await File(filePath).create();
+      newImage.writeAsBytes(_pickImageFile!.readAsBytesSync());
     }
 
     if (!mounted) {

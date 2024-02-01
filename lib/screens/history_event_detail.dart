@@ -98,7 +98,8 @@ class _HistoryEventDetailScreenState
             widget.profileId,
             _enteredTitle,
             _enteredDescription,
-            DateTime.parse(_selectedDateController.text));
+            DateTime.parse(_selectedDateController.text),
+            selectedFiles.length);
 
         //update the historyId
         selectedFiles = selectedFiles
@@ -118,7 +119,8 @@ class _HistoryEventDetailScreenState
                 profileId: widget.historyEvent!.profileId,
                 title: _enteredTitle,
                 description: _enteredDescription,
-                date: DateTime.parse(_selectedDateController.text)));
+                date: DateTime.parse(_selectedDateController.text),
+                attachmentCount: selectedFiles.length));
 
         //get all missing attachments and delete them
         var dbAttachments = await fetchAttachments(widget.historyEvent!.id);

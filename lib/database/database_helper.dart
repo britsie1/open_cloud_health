@@ -40,8 +40,7 @@ String createProfilesTable = '''
     dateOfBirth TEXT,
     bloodType TEXT, 
     gender TEXT,
-    isOrganDonor TEXT,
-    image BLOB
+    isOrganDonor TEXT
   )''';
 
 String createHistoryTable = '''
