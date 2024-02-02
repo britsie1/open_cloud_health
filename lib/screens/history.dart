@@ -22,7 +22,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   @override
   void initState() {
     super.initState();
-    ref.read(historyProvider.notifier).loadEvents();
+    ref.read(historyProvider.notifier).loadEvents(widget.profile.id);
   }
 
   @override

@@ -53,7 +53,7 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
     state = updatedEvents;
   }
 
-  Future<List<HistoryEvent>> _fetchEvents() async {
+  Future<List<HistoryEvent>> _fetchEvents(String profileId) async {
     final db = await getDatabase();
     //final data = await db.query('history');
 
@@ -68,6 +68,8 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
       FROM
         history LEFT OUTER JOIN
         attachments ON (history.id = attachments.historyId)
+      WHERE
+        history.profileId = '$profileId'
       GROUP BY
         attachments.historyId
     ''');
@@ -94,8 +96,8 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
     }
   }
 
-  Future<void> loadEvents() async {
-    final events = await _fetchEvents();
+  Future<void> loadEvents(String profileId) async {
+    final events = await _fetchEvents(profileId);
     state = events;
   }
 }

@@ -63,9 +63,11 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
         .read(profilesProvider.notifier)
         .getProfileImagePath(profile.id)
         .then((value) {
-      setState(() {
-        _profileImageFile = File.fromUri(Uri(path: value));
-      });
+      if (value.isNotEmpty) {
+        setState(() {
+          _profileImageFile = File.fromUri(Uri(path: value));
+        });
+      }
     });
   }
 

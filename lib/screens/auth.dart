@@ -51,13 +51,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   void _authenticate() async {
+    bool isAuthenticated = false;
     try {
       setState(() {
         _isAuthenticating = true;
       });
 
       if (_supportState == _SupportState.supported && _canCheckBiometrics!) {
-        await auth.authenticate(
+        isAuthenticated = await auth.authenticate(
           localizedReason: 'Let OS determine authentication method',
           options: const AuthenticationOptions(
             stickyAuth: true,
@@ -78,37 +79,41 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       });
     }
 
-    await ref.read(profilesProvider.notifier).loadProfiles();
 
-    if (!mounted) {
-      return;
-    }
 
-    var profiles = ref.read(profilesProvider);
+    if (isAuthenticated || _supportState == _SupportState.unsupported) {
+      await ref.read(profilesProvider.notifier).loadProfiles();
 
-    if (profiles.isEmpty) {
+      if (!mounted) {
+        return;
+      }
+
+      var profiles = ref.read(profilesProvider);
+
+      if (profiles.isEmpty) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (ctx) => const ProfilesScreen(),
+          ),
+        );
+        return;
+      }
+
+      if (profiles.length == 1) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (ctx) => HistoryScreen(profile: profiles[0]),
+          ),
+        );
+        return;
+      }
+
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (ctx) => const ProfilesScreen(),
         ),
       );
-      return;
     }
-
-    if (profiles.length == 1) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (ctx) => HistoryScreen(profile: profiles[0]),
-        ),
-      );
-      return;
-    }
-
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (ctx) => const ProfilesScreen(),
-      ),
-    );
   }
 
   @override
