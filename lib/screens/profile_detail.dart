@@ -69,9 +69,11 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
           .read(profilesProvider.notifier)
           .getProfileImagePath(widget.profile!.id)
           .then((value) {
-        setState(() {
-          _pickImageFile = File.fromUri(Uri(path: value));
-        });
+        if (value.isNotEmpty) {
+          setState(() {
+            _pickImageFile = File.fromUri(Uri(path: value));
+          });
+        }
       });
     }
   }
