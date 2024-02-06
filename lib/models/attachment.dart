@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
@@ -12,31 +11,33 @@ class Attachment {
       {required this.historyId,
       required this.filename,
       required this.uploadDate,
-      required this.content,
-      String? id})
-      : id = id ?? uuid.v4();
+      required this.byteLength,
+      String? id,
+      String? tempPath})
+      : id = id ?? uuid.v4(), tempPath = tempPath ?? '';
 
   final String id;
   final String historyId;
   final String filename;
   final DateTime uploadDate;
-  final Uint8List content;
+  final int byteLength;
+  final String tempPath;
 
   String get formattedDate {
     return formatter.format(uploadDate);
   }
 
   String get fileSize {
-    if (content.length > 1024 * 1024)
+    if (byteLength > 1024 * 1024)
     {
-      return '${(content.length / (1024 * 1024)).toStringAsFixed(2)}MB';
+      return '${(byteLength / (1024 * 1024)).toStringAsFixed(2)}MB';
     }
-    if (content.length > 1024)
+    if (byteLength > 1024)
     {
-      return '${(content.length / 1024).toStringAsFixed(2)}kB';
+      return '${(byteLength / 1024).toStringAsFixed(2)}kB';
     }
 
-    return '${content.length}bytes';
+    return '${byteLength}bytes';
   }
 
   IconData get fileIcon {
@@ -44,6 +45,7 @@ class Attachment {
     var icon = Icons.insert_drive_file_outlined;
     switch (extension){
       case '.jpg':
+      case '.jpeg':
       case '.png':
         icon = Icons.image_outlined;
         break;

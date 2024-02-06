@@ -3,13 +3,14 @@ import 'package:open_cloud_health/database/database_helper.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 class ProfilesNotifier extends StateNotifier<List<Profile>> {
   ProfilesNotifier() : super(const []);
 
   Future<String> getProfileImagePath(String id) async {
     var appDir = await getApplicationDocumentsDirectory();
-    final filePath = '${appDir.path}/$id.jpg';
+    final filePath = path.join(appDir.path, 'profileImages/$id.jpg');
     if (await File(filePath).exists()) {
       return filePath;
     }

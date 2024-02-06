@@ -58,7 +58,7 @@ String createAttachementsTable = '''
     historyId TEXT,
     filename TEXT,
     uploadDate TEXT,
-    content BLOB
+    byteLength INTEGER
   )''';
 
 String createAllergyTable = '''

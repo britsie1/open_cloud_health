@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:googleapis/cloudresourcemanager/v2.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:intl/intl.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
@@ -26,23 +27,19 @@ Future<drive.DriveApi?> _getDriveApi() async {
   return driveApi;
 }
 
-Future<void> _uploadFile(File file) async {
+Future<void> _uploadFile(
+    File file, String parentDirId, drive.DriveApi driveApi) async {
   try {
-    final driveApi = await _getDriveApi();
-    if (driveApi == null) {
-      return;
-    }
-
     final Stream<List<int>> mediaStream = file.openRead().asBroadcastStream();
     final media = drive.Media(mediaStream, file.lengthSync());
     final driveFile = drive.File();
     driveFile.name = path.basename(file.path);
     driveFile.modifiedTime = DateTime.now().toUtc();
-    driveFile.parents = ["appDataFolder"];
+    driveFile.parents = [parentDirId];
 
     String? oldFileId;
     final fileList = await driveApi.files
-        .list(spaces: 'appDataFolder', $fields: 'files(id, name)');
+        .list(spaces: parentDirId, $fields: 'files(id, name)');
 
     if (fileList.files != null) {
       final oldFile = fileList.files!
@@ -65,21 +62,65 @@ Future<void> _uploadFile(File file) async {
   }
 }
 
-Future<String> backupToGoogleDrive() async {
-  //upload addDocuments folder
-  Directory appDir = await getApplicationDocumentsDirectory();
-  var files = appDir.listSync();
-  for (int i = 0; i < files.length; i++) {
-    if (files[i] is File) {
-      await _uploadFile(File(files[i].path));
-    }
+Future<String?> _createBackupFolder (
+    String name, String parentId, drive.DriveApi driveApi) async {
+  final folder = drive.File();
+  folder.name = name;
+  folder.mimeType = 'application/vnd.google-apps.folder';
+  if (parentId.isNotEmpty) {
+    folder.parents = [parentId];
   }
 
-  final dbPath = await sql.getDatabasesPath();
-  final dbFilePath = path.join(dbPath, 'opencloudhealth.db');
-  final dbFile = File(dbFilePath);
+  final file = await driveApi.files.create(folder);
+  return file.id;
+}
 
-  await _uploadFile(dbFile);
+Future<String> backupToGoogleDrive() async {
+  final driveApi = await _getDriveApi();
+  if (driveApi == null) {
+    return '';
+  }
+  Directory appDir = await getApplicationDocumentsDirectory();
+  
+  final attachmentDir = Directory(path.join(appDir.path, 'attachments'));
+  final profileImagesDir = Directory(path.join(appDir.path, 'profileImages'));
+
+  if (attachmentDir.existsSync()){
+    final attachmentFiles = attachmentDir.listSync(recursive: true);
+    List<Map<String, String>> folders = [];
+    final attachmentsFolderId = await _createBackupFolder('attachments', '', driveApi);
+    for (int i = 0; i < attachmentFiles.length; i++) {
+      final file = attachmentFiles[i];
+      //final parentname = path.basename(file.parent.path);
+      final filename = path.basename(file.path);
+      if (file is Directory) {
+          final folderId = await _createBackupFolder(filename, attachmentsFolderId!, driveApi);
+          if (folderId != null){
+            Map<String, String> folder = {'name': filename, 'id': folderId};
+            folders.add(folder);
+          }
+        } else if (file is File) {
+          final folder = folders.where((folder) => folder['name'] == path.basename(file.parent.path)).firstOrNull;
+          if (folder != null){
+            await _uploadFile(File(file.path), folder['id']!, driveApi);
+          }
+        }
+    }
+  }
+  
+  // if (profileImagesDir.existsSync()){
+  //   final profileImageFiles = profileImagesDir.listSync();
+  //   for (int i = 0; i < profileImageFiles.length; i++) {
+  //     final file = profileImageFiles[i];
+  //     await _uploadFile(File(file.path), file.parent, driveApi);
+  //   }
+  // }
+
+  // final dbPath = await sql.getDatabasesPath();
+  // final dbFilePath = path.join(dbPath, 'opencloudhealth.db');
+  // final dbFile = File(dbFilePath);
+
+  // await _uploadFile(dbFile, dbFile.parent, driveApi);
 
   return DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
 }

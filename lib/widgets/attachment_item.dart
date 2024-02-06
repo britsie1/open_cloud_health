@@ -2,8 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:open_cloud_health/models/attachment.dart';
-import 'package:open_file/open_file.dart';
+import 'package:open_file_plus/open_file_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 class AttachmentItem extends StatelessWidget {
   const AttachmentItem(
@@ -15,15 +16,17 @@ class AttachmentItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Future<void> openFile(Attachment attachment) async {
-      var tempDir = await getTemporaryDirectory();
-      final filePath = '${tempDir.path}/${attachment.filename}';
-      bool fileExists = await File(filePath).exists();
-      if (!fileExists) {
-        File file = await File(filePath).create();
-        file.writeAsBytes(attachment.content);
-      }
+      var appDir = await getApplicationDocumentsDirectory();
+      final attachmentDir = 'attachments/${attachment.historyId}';
+      final filePath = path.join(appDir.path,attachmentDir,attachment.filename);
 
-      OpenFile.open(filePath);
+      if (File(filePath).existsSync()){
+        OpenFile.open(filePath);
+      }
+      else if (attachment.tempPath.isNotEmpty){
+        OpenFile.open(attachment.tempPath);
+      }
+      //TODO: else, show snackbar, file not found
     }
 
     return Dismissible(
