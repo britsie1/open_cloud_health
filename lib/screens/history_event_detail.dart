@@ -11,6 +11,7 @@ import 'package:open_cloud_health/providers/attachment_provider.dart';
 import 'package:open_cloud_health/providers/history_provider.dart';
 import 'package:open_cloud_health/widgets/attachment_item.dart';
 import 'package:path/path.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class HistoryEventDetailScreen extends ConsumerStatefulWidget {
   const HistoryEventDetailScreen(
@@ -61,6 +62,14 @@ class _HistoryEventDetailScreenState
   }
 
   void _attachFiles() async {
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.photos,
+      Permission.videos,
+      Permission.audio
+    ].request();
+
+    //TODO: show snackbar if permission is not granted.
+
     FilePickerResult? result =
         await FilePicker.platform.pickFiles(allowMultiple: true);
 
@@ -68,12 +77,12 @@ class _HistoryEventDetailScreenState
       final newFiles = result.paths
           .map(
             (path) => attachment.Attachment(
-              historyId:
-                  widget.historyEvent != null ? widget.historyEvent!.id : '',
-              filename: basename(path!),
-              uploadDate: DateTime.now(),
-              content: File(path).readAsBytesSync(),
-            ),
+                historyId:
+                    widget.historyEvent != null ? widget.historyEvent!.id : '',
+                filename: basename(path!),
+                uploadDate: DateTime.now(),
+                byteLength: File(path).readAsBytesSync().length,
+                tempPath: path),
           )
           .toList();
 
@@ -108,7 +117,7 @@ class _HistoryEventDetailScreenState
                 historyId: historyId,
                 filename: attachment.filename,
                 uploadDate: attachment.uploadDate,
-                content: attachment.content))
+                byteLength: attachment.byteLength))
             .toList();
 
         ref.read(attachmentProvider.notifier).addAttachments(selectedFiles);
@@ -204,7 +213,8 @@ class _HistoryEventDetailScreenState
                       },
                     ),
                     TextFormField(
-                      decoration: const InputDecoration(labelText: 'Event Date'),
+                      decoration:
+                          const InputDecoration(labelText: 'Event Date'),
                       readOnly: true,
                       controller: _selectedDateController,
                       onTap: () {
@@ -281,7 +291,8 @@ class _HistoryEventDetailScreenState
             if (selectedFiles.isNotEmpty)
               Column(
                 children: selectedFiles.map((item) {
-                  return AttachmentItem(attachment: item, onRemoveAttachment: removeAttachment);
+                  return AttachmentItem(
+                      attachment: item, onRemoveAttachment: removeAttachment);
                 }).toList(),
               )
           ],

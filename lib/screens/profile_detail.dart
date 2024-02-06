@@ -8,6 +8,8 @@ import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:open_cloud_health/screens/profiles.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
+import 'package:permission_handler/permission_handler.dart';
 
 class ProfileDetailScreen extends ConsumerStatefulWidget {
   const ProfileDetailScreen({super.key, required this.profile});
@@ -37,6 +39,23 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
   }
 
   void _pickImage(ImageSource imageSource) async {
+    PermissionStatus cameraPermission = PermissionStatus.denied;
+    PermissionStatus photoPermission = PermissionStatus.denied;
+
+    if (imageSource == ImageSource.camera){
+      cameraPermission = await Permission.camera.request();
+      if (cameraPermission != PermissionStatus.granted){
+        //TODO: show a snackbar to say the permission is denied
+        return;
+      }
+    } else if (imageSource == ImageSource.gallery){
+      photoPermission = await Permission.photos.request();
+      if (photoPermission != PermissionStatus.granted){
+        //TODO: show a snackbar to say the permission is denied
+        return;
+      }
+    }
+
     final pickedImage = await ImagePicker().pickImage(
       source: imageSource,
       maxWidth: 300,
@@ -112,7 +131,12 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
 
     if (_pickImageFile != null) {
       Directory appDir = await getApplicationDocumentsDirectory();
-      final filePath = '${appDir.path}/$profileId.jpg';
+      final profileImagesDir = Directory(path.join(appDir.path, 'profileImages'));
+      if (!profileImagesDir.existsSync()){
+        profileImagesDir.create();
+      }
+
+      final filePath = path.join(appDir.path, 'profileImages/$profileId.jpg');
       if (await File(filePath).exists()) {
         File(filePath).delete();
       }

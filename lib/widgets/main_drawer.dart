@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
+import 'package:open_cloud_health/screens/medication_tracker.dart';
 import 'package:open_cloud_health/screens/profile_detail.dart';
 import 'package:open_cloud_health/screens/history.dart';
 import 'package:open_cloud_health/screens/profiles.dart';
@@ -44,6 +45,9 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
         break;
       case 'profile_detail':
         pageToNavigateTo = ProfileDetailScreen(profile: profile);
+        break;
+      case 'medication_tracker':
+        pageToNavigateTo = MedicationTrackerScreen(profileId: profile.id);
         break;
     }
 
@@ -114,6 +118,11 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
             leading: const Icon(Icons.history),
             title: const Text('Medical History'),
             onTap: () => _navigateTo('history', profile),
+          ),
+          ListTile(
+            leading: const Icon(Icons.medication_liquid_sharp),
+            title: const Text('Medication Tracker'),
+            onTap: () => _navigateTo('medication_tracker', profile),
           ),
           ListTile(
             leading: const Icon(Icons.share),

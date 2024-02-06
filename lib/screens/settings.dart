@@ -36,7 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         .then((value) => {setState(() => databaseSize = value / 1024)});
 
     getApplicationDocumentsDirectory().then((appDir) {
-      var files = appDir.listSync();
+      var files = appDir.listSync(recursive: true);
       var size = files
           .where((file) => basename(file.path) != 'opencloudhealth.db')
           .map((file) {
