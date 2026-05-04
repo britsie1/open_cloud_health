@@ -9,6 +9,7 @@ import 'package:open_cloud_health/screens/profile_detail.dart';
 import 'package:open_cloud_health/screens/history.dart';
 import 'package:open_cloud_health/screens/profiles.dart';
 import 'package:open_cloud_health/screens/checkups.dart';
+import 'package:open_cloud_health/screens/measurements.dart';
 
 class MainDrawer extends ConsumerStatefulWidget {
   const MainDrawer(
@@ -52,6 +53,9 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
         break;
       case 'checkups':
         pageToNavigateTo = CheckupsScreen(profileId: profile.id);
+        break;
+      case 'measurements':
+        pageToNavigateTo = MeasurementsScreen(profileId: profile.id);
         break;
     }
 
@@ -132,6 +136,11 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
             leading: const Icon(Icons.medical_services),
             title: const Text('Medical Checkups'),
             onTap: () => _navigateTo('checkups', profile),
+          ),
+          ListTile(
+            leading: const Icon(Icons.monitor_heart),
+            title: const Text('Vitals & Measurements'),
+            onTap: () => _navigateTo('measurements', profile),
           ),
           ListTile(
             leading: const Icon(Icons.share),
