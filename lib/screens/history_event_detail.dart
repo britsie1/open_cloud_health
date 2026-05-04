@@ -184,6 +184,34 @@ class _HistoryEventDetailScreenState
       appBar: AppBar(
         title: Text(widget.historyEvent == null ? 'New Event' : 'Edit Event'),
         actions: [
+          if (widget.historyEvent != null)
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Delete Event'),
+                    content: const Text('Are you sure you want to delete this event?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                        onPressed: () {
+                          ref.read(historyProvider.notifier).deleteEvent(widget.historyEvent!.id);
+                          Navigator.of(context).pop(); // Close dialog
+                          Navigator.of(context).pop(); // Close detail screen
+                        },
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           IconButton(
             onPressed: saveEvent,
             icon: const Icon(Icons.check),

@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/models/history_event.dart';
 import 'package:open_cloud_health/models/attachment.dart';
+import 'package:open_cloud_health/models/medication.dart';
+import 'package:open_cloud_health/models/medication_log.dart';
 
 void main() {
   group('Profile Model Tests', () {
@@ -104,6 +106,34 @@ void main() {
 
       var unknownAtt = Attachment(historyId: '1', filename: 'data.txt', uploadDate: DateTime.now(), byteLength: 10);
       expect(unknownAtt.fileIcon, Icons.insert_drive_file_outlined);
+    });
+  });
+
+  group('Medication Model Tests', () {
+    test('Medication timeFormatted returns correct HH:mm string', () {
+      final med1 = Medication(
+        profileId: 'p1',
+        name: 'Aspirin',
+        dosage: '100mg',
+        timeOfDay: const TimeOfDay(hour: 8, minute: 5),
+      );
+      expect(med1.timeFormatted, '08:05');
+
+      final med2 = Medication(
+        profileId: 'p1',
+        name: 'Aspirin',
+        dosage: '100mg',
+        timeOfDay: const TimeOfDay(hour: 14, minute: 30),
+      );
+      expect(med2.timeFormatted, '14:30');
+    });
+  });
+
+  group('MedicationLog Model Tests', () {
+    test('MedicationLog defaults to isTaken=true', () {
+      final log = MedicationLog(medicationId: 'm1', timestamp: DateTime.now());
+      expect(log.isTaken, true);
+      expect(log.id, isNotEmpty);
     });
   });
 }

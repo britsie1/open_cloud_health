@@ -13,8 +13,16 @@ Future<Database> getDatabase() async {
       await db.execute(createHistoryTable);
       await db.execute(createAttachementsTable);
       await db.execute(createAllergyTable);
+      await db.execute(createMedicationsTable);
+      await db.execute(createMedicationLogsTable);
     },
-    version: 1,
+    onUpgrade: (db, oldVersion, newVersion) async {
+      if (oldVersion < 2) {
+        await db.execute(createMedicationsTable);
+        await db.execute(createMedicationLogsTable);
+      }
+    },
+    version: 2,
   );
 
   return db;
@@ -67,4 +75,22 @@ String createAllergyTable = '''
     profileId TEXT,
     name TEXT,
     note TEXT
+  )''';
+
+String createMedicationsTable = '''
+  CREATE TABLE medications(
+    id TEXT PRIMARY KEY,
+    profileId TEXT,
+    name TEXT,
+    dosage TEXT,
+    timeOfDay TEXT,
+    isActive TEXT
+  )''';
+
+String createMedicationLogsTable = '''
+  CREATE TABLE medication_logs(
+    id TEXT PRIMARY KEY,
+    medicationId TEXT,
+    timestamp TEXT,
+    isTaken TEXT
   )''';

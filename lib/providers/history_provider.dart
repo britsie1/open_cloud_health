@@ -17,7 +17,7 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
 
     final db = await getDatabase();
 
-    db.insert('history', {
+    await db.insert('history', {
       'id': newEvent.id,
       'profileId': newEvent.profileId,
       'title': newEvent.title,
@@ -70,10 +70,10 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
         history LEFT OUTER JOIN
         attachments ON (history.id = attachments.historyId)
       WHERE
-        history.profileId = '$profileId'
+        history.profileId = ?
       GROUP BY
-        attachments.historyId
-    ''');
+        history.id
+    ''', [profileId]);
 
     try {
       final historyEvents = data
@@ -95,6 +95,14 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
       debugPrint('Error: $error');
       return [];
     }
+  }
+
+  Future<void> deleteEvent(String id) async {
+    final db = await getDatabase();
+    await db.delete('history', where: 'id = ?', whereArgs: [id]);
+    await db.delete('attachments', where: 'historyId = ?', whereArgs: [id]);
+
+    state = state.where((event) => event.id != id).toList();
   }
 
   Future<void> loadEvents(String profileId) async {
