@@ -10,6 +10,8 @@ import 'package:open_cloud_health/screens/profiles.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:open_cloud_health/models/allergy.dart';
+import 'package:open_cloud_health/providers/allergies_provider.dart';
 
 class ProfileDetailScreen extends ConsumerStatefulWidget {
   const ProfileDetailScreen({super.key, required this.profile});
@@ -93,6 +95,10 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
             _pickImageFile = File.fromUri(Uri(path: value));
           });
         }
+      });
+
+      Future.microtask(() {
+        ref.read(allergiesProvider.notifier).loadAllergies(widget.profile!.id);
       });
     }
   }
@@ -461,9 +467,151 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                 ),
               ),
             ),
+            if (widget.profile != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Divider(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Allergies',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => _AddAllergyDialog(profileId: widget.profile!.id),
+                            );
+                          },
+                          icon: const Icon(Icons.add),
+                        )
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Consumer(builder: (context, ref, child) {
+                       final allergies = ref.watch(allergiesProvider);
+                       if (allergies.isEmpty) {
+                         return const Padding(
+                           padding: EdgeInsets.only(top: 8.0),
+                           child: Text('No allergies added.'),
+                         );
+                       }
+                       return Column(
+                         children: allergies.map((allergy) {
+                           return ListTile(
+                             contentPadding: EdgeInsets.zero,
+                             title: Text(allergy.name),
+                             subtitle: allergy.note.isNotEmpty ? Text(allergy.note) : null,
+                             trailing: IconButton(
+                               icon: const Icon(Icons.delete, color: Colors.red),
+                               onPressed: () {
+                                 showDialog(
+                                   context: context,
+                                   builder: (ctx) => AlertDialog(
+                                     title: const Text('Delete Allergy'),
+                                     content: const Text('Are you sure you want to delete this allergy?'),
+                                     actions: [
+                                       TextButton(
+                                         onPressed: () => Navigator.of(context).pop(),
+                                         child: const Text('Cancel'),
+                                       ),
+                                       ElevatedButton(
+                                         style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                                         onPressed: () {
+                                           ref.read(allergiesProvider.notifier).deleteAllergy(allergy.id);
+                                           Navigator.of(context).pop();
+                                         },
+                                         child: const Text('Delete'),
+                                       ),
+                                     ],
+                                   ),
+                                 );
+                               },
+                             ),
+                           );
+                         }).toList(),
+                       );
+                    }),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AddAllergyDialog extends ConsumerStatefulWidget {
+  const _AddAllergyDialog({required this.profileId});
+  final String profileId;
+
+  @override
+  ConsumerState<_AddAllergyDialog> createState() => _AddAllergyDialogState();
+}
+
+class _AddAllergyDialogState extends ConsumerState<_AddAllergyDialog> {
+  final _nameController = TextEditingController();
+  final _noteController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_nameController.text.trim().isEmpty) {
+      return;
+    }
+    
+    final newAllergy = Allergy(
+      profileId: widget.profileId,
+      name: _nameController.text.trim(),
+      note: _noteController.text.trim(),
+    );
+
+    ref.read(allergiesProvider.notifier).addAllergy(newAllergy);
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add Allergy'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Allergy Name'),
+            ),
+            TextField(
+              controller: _noteController,
+              decoration: const InputDecoration(labelText: 'Notes (optional)'),
+              maxLines: 3,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _submit,
+          child: const Text('Add'),
+        ),
+      ],
     );
   }
 }
