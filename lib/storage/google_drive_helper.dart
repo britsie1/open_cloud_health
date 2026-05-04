@@ -1,8 +1,8 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:googleapis/cloudresourcemanager/v2.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:intl/intl.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
@@ -57,7 +57,7 @@ Future<void> _uploadFile(
     if (oldFileId != null) {
       driveApi.files.delete(oldFileId);
     }
-  } on PlatformException catch (exception) {
+  } on PlatformException {
     return;
   }
 }
@@ -83,7 +83,6 @@ Future<String> backupToGoogleDrive() async {
   Directory appDir = await getApplicationDocumentsDirectory();
   
   final attachmentDir = Directory(path.join(appDir.path, 'attachments'));
-  final profileImagesDir = Directory(path.join(appDir.path, 'profileImages'));
 
   if (attachmentDir.existsSync()){
     final attachmentFiles = attachmentDir.listSync(recursive: true);
@@ -172,7 +171,7 @@ Future<void> _downloadFromGoogleDrive(
       final fileLocation = await File(filePath).create();
       await fileLocation.writeAsBytes(dataStore);
     }, onError: (error) {
-      print("Some Error");
+      debugPrint("Some Error");
     });
   }
 }

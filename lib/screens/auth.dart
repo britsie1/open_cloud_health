@@ -22,7 +22,6 @@ class AuthScreen extends ConsumerStatefulWidget {
 class _AuthScreenState extends ConsumerState<AuthScreen> {
   final LocalAuthentication auth = LocalAuthentication();
   _SupportState _supportState = _SupportState.unknown;
-  var _isAuthenticating = false;
   bool? _canCheckBiometrics;
 
   @override
@@ -42,7 +41,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       canCheckBiometrics = await auth.canCheckBiometrics;
     } on PlatformException catch (e) {
       canCheckBiometrics = false;
-      print(e);
+      debugPrint(e.toString());
     }
     if (!mounted) {
       return;
@@ -53,10 +52,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   void _authenticate() async {
     bool isAuthenticated = false;
     try {
-      setState(() {
-        _isAuthenticating = true;
-      });
-
       if (_supportState == _SupportState.supported && _canCheckBiometrics!) {
         isAuthenticated = await auth.authenticate(
           localizedReason: 'Let OS determine authentication method',
@@ -74,9 +69,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           ),
         );
       }
-      setState(() {
-        _isAuthenticating = false;
-      });
     }
 
 

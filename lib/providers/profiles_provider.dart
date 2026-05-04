@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/database/database_helper.dart';
 import 'package:open_cloud_health/models/profile.dart';
@@ -40,7 +41,7 @@ class ProfilesNotifier extends StateNotifier<List<Profile>> {
 
       return profiles;
     } catch (error) {
-      print('Error: $error');
+      debugPrint('Error: $error');
       return [];
     }
   }

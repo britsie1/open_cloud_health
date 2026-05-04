@@ -62,7 +62,7 @@ class _HistoryEventDetailScreenState
   }
 
   void _attachFiles() async {
-    Map<Permission, PermissionStatus> statuses = await [
+    await [
       Permission.photos,
       Permission.videos,
       Permission.audio
@@ -152,7 +152,7 @@ class _HistoryEventDetailScreenState
         }
       }
 
-      if (!mounted) {
+      if (!context.mounted) {
         return;
       }
       Navigator.of(context).pop();

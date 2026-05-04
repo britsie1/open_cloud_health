@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/database/database_helper.dart';
 import 'package:open_cloud_health/models/attachment.dart';
@@ -37,7 +38,7 @@ class AttachmentNotifier extends StateNotifier<List<Attachment>> {
            final filePath =
                path.join(dir.path, attachments.elementAt(i).filename);
           File copiedFile = await File(attachments.elementAt(i).tempPath).copy(filePath);
-          print(copiedFile.path);
+          debugPrint(copiedFile.path);
         }
       }
     }

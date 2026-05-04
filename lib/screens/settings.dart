@@ -62,7 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       dir.deleteSync(recursive: true);
       dir.create();
 
-      if (!mounted) {
+      if (!context.mounted) {
         return;
       }
 
@@ -92,7 +92,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               '${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())} UTC';
         });
       } finally {
-        if (mounted) {
+        if (context.mounted) {
           Navigator.pop(context);
         }
       }

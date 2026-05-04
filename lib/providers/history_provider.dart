@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/database/database_helper.dart';
 import 'package:open_cloud_health/models/history_event.dart';
@@ -91,7 +92,7 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
 
       return historyEvents;
     } catch (error) {
-      print('Error: $error');
+      debugPrint('Error: $error');
       return [];
     }
   }
