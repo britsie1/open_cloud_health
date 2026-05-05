@@ -7,6 +7,7 @@ import 'package:open_cloud_health/screens/history.dart';
 import 'package:open_cloud_health/screens/history_event_detail.dart';
 import 'package:open_cloud_health/screens/measurements.dart';
 import 'package:open_cloud_health/screens/medication_tracker.dart';
+import 'package:open_cloud_health/screens/period_tracker.dart';
 import 'package:open_cloud_health/screens/profile_detail.dart';
 import 'package:open_cloud_health/screens/profiles.dart';
 import 'package:open_cloud_health/screens/settings.dart';
@@ -65,6 +66,13 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final profileId = state.pathParameters['profileId']!;
         return MeasurementsScreen(profileId: profileId);
+      },
+    ),
+    GoRoute(
+      path: '${AppRoutes.periodTracker}/:profileId',
+      builder: (context, state) {
+        final profileId = state.pathParameters['profileId']!;
+        return PeriodTrackerScreen(profileId: profileId);
       },
     ),
     GoRoute(

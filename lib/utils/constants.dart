@@ -18,4 +18,5 @@ class AppRoutes {
   static const String checkups = '/checkups';
   static const String measurements = '/measurements';
   static const String settings = '/settings';
+  static const String periodTracker = '/period-tracker';
 }

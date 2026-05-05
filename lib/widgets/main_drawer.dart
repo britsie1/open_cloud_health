@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/profile.dart';
+import 'package:open_cloud_health/providers/checkups_provider.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 
@@ -83,6 +84,7 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
   @override
   Widget build(BuildContext context) {
     final profilesAsync = ref.watch(profilesProvider);
+    final checkupsAsync = ref.watch(checkupsProvider(widget.profileId));
 
     ImageProvider getProfileImage(Profile profile) {
       if (_profileImageFile != null) {
@@ -92,10 +94,16 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
       }
     }
 
+    int getDueCheckupsCount() {
+      if (!checkupsAsync.hasValue || checkupsAsync.value == null) return 0;
+      return checkupsAsync.value!.where((c) => c.status == CheckupStatus.dueNow).length;
+    }
+
     return Drawer(
       child: profilesAsync.when(
         data: (profiles) {
           final profile = profiles.firstWhere((p) => p.id == widget.profileId);
+          final dueCheckupsCount = getDueCheckupsCount();
 
           return ListView(
             children: [
@@ -134,6 +142,23 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
               ListTile(
                 leading: const Icon(Icons.medical_services),
                 title: const Text('Medical Checkups'),
+                trailing: dueCheckupsCount > 0
+                    ? Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.error,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          dueCheckupsCount.toString(),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onError,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )
+                    : null,
                 onTap: () => _navigateTo(AppRoutes.checkups, profile),
               ),
               ListTile(

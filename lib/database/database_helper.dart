@@ -17,14 +17,26 @@ class DatabaseHelper {
         await db.execute(createAllergyTable);
         await db.execute(createMedicationsTable);
         await db.execute(createMedicationLogsTable);
+        await db.execute(createCheckupsTable);
+        await db.execute(createCheckupLogsTable);
+        await db.execute(createPeriodCyclesTable);
+        await db.execute(createPeriodLogsTable);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await db.execute(createMedicationsTable);
           await db.execute(createMedicationLogsTable);
         }
+        if (oldVersion < 3) {
+          await db.execute(createCheckupsTable);
+          await db.execute(createCheckupLogsTable);
+        }
+        if (oldVersion < 4) {
+          await db.execute(createPeriodCyclesTable);
+          await db.execute(createPeriodLogsTable);
+        }
       },
-      version: 2,
+      version: 4,
     );
 
     return db;
@@ -105,3 +117,39 @@ String createMedicationLogsTable = '''
     timestamp TEXT,
     isTaken TEXT
   )''';
+
+String createCheckupsTable = '''
+  CREATE TABLE checkups(
+    id TEXT PRIMARY KEY,
+    profileId TEXT,
+    name TEXT,
+    frequencyInMonths INTEGER,
+    iconName TEXT
+  )''';
+
+String createCheckupLogsTable = '''
+  CREATE TABLE checkup_logs(
+    id TEXT PRIMARY KEY,
+    checkupId TEXT,
+    dateCompleted TEXT
+  )''';
+
+String createPeriodCyclesTable = '''
+  CREATE TABLE period_cycles(
+    id TEXT PRIMARY KEY,
+    profileId TEXT,
+    startDate TEXT,
+    endDate TEXT
+  )''';
+
+String createPeriodLogsTable = '''
+  CREATE TABLE period_logs(
+    id TEXT PRIMARY KEY,
+    cycleId TEXT,
+    date TEXT,
+    flowLevel TEXT,
+    moods TEXT,
+    physicalSymptoms TEXT
+  )''';
+
+
