@@ -42,10 +42,10 @@ To ensure the codebase remains maintainable and scalable as new features are add
 1.  ~~**Introduce the Repository Pattern**~~
     *   *Current State:* Riverpod Notifiers (e.g., `HistoryNotifier`, `MedicationsNotifier`) contain raw SQL strings and interact directly with the `sqflite` database helper.
     *   *Recommendation:* Abstract database logic into dedicated classes (e.g., `MedicationRepository`). Notifiers should only call repository methods. This separates business logic from data access, making unit testing easier and allowing for future database migrations (e.g., to Isar or Hive) without rewriting the UI state.
-2.  **Componentize Large UI Screens**
+2.  ~~**Componentize Large UI Screens**~~
     *   *Current State:* Screens like `profile_detail.dart` and `medication_tracker.dart` are monolithic (500+ lines), handling layout, form validation, and complex dialogs.
     *   *Recommendation:* Extract complex form sections, image pickers, and dialogs into their own dedicated, reusable widget files in the `lib/widgets/` directory.
-3.  **Transition to Riverpod `AsyncValue`**
+3.  ~~**Transition to Riverpod `AsyncValue`**~~
     *   *Current State:* StateNotifiers hold raw Lists (e.g., `List<HistoryEvent>`). Database fetches fail silently, and the UI has no concept of a "loading" state.
     *   *Recommendation:* Refactor providers to use Riverpod's `AsyncValue` (or migrate to the newer Riverpod `Notifier`/`AsyncNotifier` classes). This allows the UI to explicitly handle `.data`, `.loading`, and `.error` states, improving the user experience during slow database operations.
 4.  **Centralize Routing and Constants**
