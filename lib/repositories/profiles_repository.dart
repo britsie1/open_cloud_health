@@ -3,24 +3,28 @@ import 'package:open_cloud_health/database/database_helper.dart';
 import 'package:open_cloud_health/models/profile.dart';
 
 class ProfilesRepository {
+  final DatabaseHelper _dbHelper;
+  ProfilesRepository(this._dbHelper);
+
   Future<List<Profile>> fetchProfiles() async {
-    final db = await getDatabase();
+    final db = await _dbHelper.getDatabase();
     final data = await db.query('profiles');
 
-    return data.map((row) => Profile(
-      id: row['id'] as String,
-      name: row['name'] as String,
-      middleNames: row['middleNames'] as String,
-      surname: row['surname'] as String,
-      dateOfBirth: DateTime.parse(row['dateOfBirth'] as String),
-      bloodType: row['bloodType'] as String,
-      gender: Gender.values.byName(row['gender'] as String),
-      isOrganDonor: bool.parse(row['isOrganDonor'] as String)
-    )).toList();
+    return data
+        .map((row) => Profile(
+            id: row['id'] as String,
+            name: row['name'] as String,
+            middleNames: row['middleNames'] as String,
+            surname: row['surname'] as String,
+            dateOfBirth: DateTime.parse(row['dateOfBirth'] as String),
+            bloodType: row['bloodType'] as String,
+            gender: Gender.values.byName(row['gender'] as String),
+            isOrganDonor: bool.parse(row['isOrganDonor'] as String)))
+        .toList();
   }
 
   Future<void> updateProfile(Profile profile) async {
-    final db = await getDatabase();
+    final db = await _dbHelper.getDatabase();
     await db.update(
         'profiles',
         {
@@ -37,7 +41,7 @@ class ProfilesRepository {
   }
 
   Future<void> addProfile(Profile profile) async {
-    final db = await getDatabase();
+    final db = await _dbHelper.getDatabase();
     await db.insert('profiles', {
       'id': profile.id,
       'name': profile.name,
@@ -52,5 +56,6 @@ class ProfilesRepository {
 }
 
 final profilesRepositoryProvider = Provider<ProfilesRepository>((ref) {
-  return ProfilesRepository();
+  final dbHelper = ref.watch(databaseHelperProvider);
+  return ProfilesRepository(dbHelper);
 });

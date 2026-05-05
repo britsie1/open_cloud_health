@@ -17,7 +17,8 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
   Future<String> getProfileImagePath(String id) async {
     var appDir = await getApplicationDocumentsDirectory();
     final filePath = path.join(appDir.path, 'profileImages/$id.jpg');
-    if (await File(filePath).exists()) {
+    final file = File(filePath);
+    if (await file.exists() && await file.length() > 0) {
       return filePath;
     }
 
@@ -43,7 +44,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
         orElse: () => throw Exception('Profile not found'));
   }
 
-  void updateProfile(Profile profile) async {
+  Future<void> updateProfile(Profile profile) async {
     await _repository.updateProfile(profile);
 
     if (state.hasValue) {

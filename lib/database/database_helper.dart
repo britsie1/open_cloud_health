@@ -1,43 +1,54 @@
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart' as sql;
 import 'package:path/path.dart' as path;
 import 'package:sqflite/sqlite_api.dart';
 
-Future<Database> getDatabase() async {
-  final dbPath = await sql.getDatabasesPath();
-  final db = await sql.openDatabase(
-    path.join(dbPath, 'opencloudhealth.db'),
-    onCreate: (db, version) async {
-      await db.execute(createProfilesTable);
-      await db.execute(createHistoryTable);
-      await db.execute(createAttachementsTable);
-      await db.execute(createAllergyTable);
-      await db.execute(createMedicationsTable);
-      await db.execute(createMedicationLogsTable);
-    },
-    onUpgrade: (db, oldVersion, newVersion) async {
-      if (oldVersion < 2) {
+class DatabaseHelper {
+  Future<Database> getDatabase() async {
+    final dbPath = await sql.getDatabasesPath();
+    final db = await sql.openDatabase(
+      path.join(dbPath, 'opencloudhealth.db'),
+      onCreate: (db, version) async {
+        await db.execute(createProfilesTable);
+        await db.execute(createHistoryTable);
+        await db.execute(createAttachementsTable);
+        await db.execute(createAllergyTable);
         await db.execute(createMedicationsTable);
         await db.execute(createMedicationLogsTable);
-      }
-    },
-    version: 2,
-  );
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(createMedicationsTable);
+          await db.execute(createMedicationLogsTable);
+        }
+      },
+      version: 2,
+    );
 
-  return db;
+    return db;
+  }
+
+  Future<void> resetDatabase() async {
+    final dbPath = await sql.getDatabasesPath();
+    await sql.deleteDatabase(path.join(dbPath, 'opencloudhealth.db'));
+  }
+
+  Future<int> getDatabaseSize() async {
+    final dbPath = await sql.getDatabasesPath();
+    final dbFilePath = path.join(dbPath, 'opencloudhealth.db');
+    return File(dbFilePath).lengthSync();
+  }
 }
 
-Future<void> resetDatabase() async {
-  final dbPath = await sql.getDatabasesPath();
-  await sql.deleteDatabase(path.join(dbPath, 'opencloudhealth.db'));
-}
+final databaseHelperProvider = Provider<DatabaseHelper>((ref) {
+  return DatabaseHelper();
+});
 
-Future<int> getDatabaseSize() async {
-  final dbPath = await sql.getDatabasesPath();
-  final dbFilePath = path.join(dbPath, 'opencloudhealth.db');
-  return File(dbFilePath).lengthSync();
-}
+// Keep these as global functions for backward compatibility if needed, 
+// but we should migrate to using the provider.
+Future<Database> getDatabase() async => DatabaseHelper().getDatabase();
 
 String createProfilesTable = '''
   CREATE TABLE profiles(

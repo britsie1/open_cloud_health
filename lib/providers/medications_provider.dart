@@ -5,7 +5,10 @@ import 'package:open_cloud_health/repositories/medications_repository.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
 
 class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> {
-  MedicationsRepository get _repository => ref.read(medicationsRepositoryProvider);
+  MedicationsRepository get _repository =>
+      ref.read(medicationsRepositoryProvider);
+  NotificationService get _notificationService =>
+      ref.read(notificationServiceProvider);
 
   @override
   Future<List<Medication>> build(String arg) async {
@@ -20,7 +23,7 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
 
     // Schedule notification using hash of ID for integer ID
     final notificationId = medication.id.hashCode;
-    await NotificationService().scheduleDailyNotification(
+    await _notificationService.scheduleDailyNotification(
       notificationId,
       'Medication Reminder',
       'Time to take your medication: ${medication.name} (${medication.dosage})',
@@ -41,9 +44,9 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
     }
 
     // Cancel old notification and reschedule with updated details
-    await NotificationService().cancelNotification(medication.id.hashCode);
+    await _notificationService.cancelNotification(medication.id.hashCode);
     if (medication.isActive) {
-      await NotificationService().scheduleDailyNotification(
+      await _notificationService.scheduleDailyNotification(
         medication.id.hashCode,
         'Medication Reminder',
         'Time to take your medication: ${medication.name} (${medication.dosage})',
@@ -59,13 +62,13 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
     }
 
     // Cancel notification
-    await NotificationService().cancelNotification(id.hashCode);
+    await _notificationService.cancelNotification(id.hashCode);
   }
-  
+
   Future<void> toggleIsActive(Medication medication) async {
     final newIsActive = !medication.isActive;
     await _repository.toggleIsActive(medication.id, newIsActive);
-        
+
     if (state.hasValue) {
       state = AsyncValue.data(state.value!.map((m) {
         if (m.id == medication.id) {
@@ -82,14 +85,14 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
     }
 
     if (newIsActive) {
-      await NotificationService().scheduleDailyNotification(
+      await _notificationService.scheduleDailyNotification(
         medication.id.hashCode,
         'Medication Reminder',
         'Time to take your medication: ${medication.name} (${medication.dosage})',
         medication.timeOfDay,
       );
     } else {
-      await NotificationService().cancelNotification(medication.id.hashCode);
+      await _notificationService.cancelNotification(medication.id.hashCode);
     }
   }
 

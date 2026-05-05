@@ -6,7 +6,23 @@ import 'package:open_cloud_health/models/attachment.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
 
+import 'package:open_cloud_health/models/allergy.dart';
+
 void main() {
+  group('Allergy Model Tests', () {
+    test('Allergy generates a unique ID if none provided', () {
+      final allergy = Allergy(profileId: 'p1', name: 'Peanuts', note: 'Severe');
+      expect(allergy.id, isNotEmpty);
+      expect(allergy.id, isA<String>());
+    });
+
+    test('Allergy uses provided ID', () {
+      final allergy = Allergy(
+          id: 'custom-id', profileId: 'p1', name: 'Dust', note: 'Mild');
+      expect(allergy.id, 'custom-id');
+    });
+  });
+
   group('Profile Model Tests', () {
     test('Profile formattedDate returns correct format', () {
       final date = DateTime(1990, 5, 20);

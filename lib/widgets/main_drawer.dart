@@ -41,22 +41,22 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
 
     switch (route) {
       case AppRoutes.profiles:
-        context.go(AppRoutes.profiles);
+        context.push(AppRoutes.profiles);
         break;
       case AppRoutes.history:
-        context.go('${AppRoutes.history}/${profile.id}', extra: profile);
+        context.push('${AppRoutes.history}/${profile.id}', extra: profile);
         break;
       case AppRoutes.profileDetail:
-        context.go(AppRoutes.profileDetail, extra: profile);
+        context.push(AppRoutes.profileDetail, extra: profile);
         break;
       case AppRoutes.medicationTracker:
-        context.go('${AppRoutes.medicationTracker}/${profile.id}');
+        context.push('${AppRoutes.medicationTracker}/${profile.id}');
         break;
       case AppRoutes.checkups:
-        context.go('${AppRoutes.checkups}/${profile.id}');
+        context.push('${AppRoutes.checkups}/${profile.id}');
         break;
       case AppRoutes.measurements:
-        context.go('${AppRoutes.measurements}/${profile.id}');
+        context.push('${AppRoutes.measurements}/${profile.id}');
         break;
     }
   }

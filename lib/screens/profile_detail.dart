@@ -32,6 +32,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
   Gender? _selectedGender;
   var _selectedBloodType = 'Unknown';
   File? _pickImageFile;
+  bool _isNewImagePicked = false;
 
   @override
   void dispose() {
@@ -60,6 +61,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
         if (value.isNotEmpty) {
           setState(() {
             _pickImageFile = File.fromUri(Uri(path: value));
+            _isNewImagePicked = false;
           });
         }
       });
@@ -84,7 +86,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
           _selectedBloodType,
           _isOrganDonor);
     } else {
-      ref.read(profilesProvider.notifier).updateProfile(
+      await ref.read(profilesProvider.notifier).updateProfile(
             Profile(
                 id: widget.profile!.id,
                 name: _enteredName,
@@ -98,21 +100,21 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
       profileId = widget.profile!.id;
     }
 
-    if (_pickImageFile != null) {
+    if (_pickImageFile != null && _isNewImagePicked) {
       Directory appDir = await getApplicationDocumentsDirectory();
       final profileImagesDir =
           Directory(path.join(appDir.path, 'profileImages'));
       if (!profileImagesDir.existsSync()) {
-        profileImagesDir.create();
+        await profileImagesDir.create(recursive: true);
       }
 
       final filePath = path.join(appDir.path, 'profileImages/$profileId.jpg');
-      if (await File(filePath).exists()) {
-        File(filePath).delete();
+      final file = File(filePath);
+      if (await file.exists()) {
+        await file.delete();
       }
 
-      var newImage = await File(filePath).create();
-      newImage.writeAsBytes(_pickImageFile!.readAsBytesSync());
+      await file.writeAsBytes(await _pickImageFile!.readAsBytes());
     }
 
     if (!mounted) {
@@ -167,6 +169,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
               onPickImage: (pickedImage) {
                 setState(() {
                   _pickImageFile = pickedImage;
+                  _isNewImagePicked = true;
                 });
               },
             ),
