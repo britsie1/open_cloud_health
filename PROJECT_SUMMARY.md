@@ -39,7 +39,7 @@ Before considering a 1.0 launch, the following major features are recommended:
 
 To ensure the codebase remains maintainable and scalable as new features are added, the following technical refactoring is highly recommended:
 
-1.  **Introduce the Repository Pattern**
+1.  ~~**Introduce the Repository Pattern**~~
     *   *Current State:* Riverpod Notifiers (e.g., `HistoryNotifier`, `MedicationsNotifier`) contain raw SQL strings and interact directly with the `sqflite` database helper.
     *   *Recommendation:* Abstract database logic into dedicated classes (e.g., `MedicationRepository`). Notifiers should only call repository methods. This separates business logic from data access, making unit testing easier and allowing for future database migrations (e.g., to Isar or Hive) without rewriting the UI state.
 2.  **Componentize Large UI Screens**

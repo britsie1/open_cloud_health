@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_cloud_health/database/database_helper.dart';
 import 'package:open_cloud_health/models/history_event.dart';
+import 'package:open_cloud_health/repositories/history_repository.dart';
 
 class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
-  HistoryNotifier() : super(const []);
+  final HistoryRepository _repository;
+
+  HistoryNotifier(this._repository) : super(const []);
 
   Future<String> addEvent(
       String profileId, String title, String description, DateTime date, int attachmentCount) async {
@@ -15,15 +17,7 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
         date: date,
         attachmentCount: attachmentCount);
 
-    final db = await getDatabase();
-
-    await db.insert('history', {
-      'id': newEvent.id,
-      'profileId': newEvent.profileId,
-      'title': newEvent.title,
-      'description': newEvent.description,
-      'date': newEvent.formattedDate,
-    });
+    await _repository.addEvent(newEvent);
 
     state = [...state, newEvent];
     state.sort((a, b) => b.date.compareTo(a.date));
@@ -32,16 +26,7 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
   }
 
   Future<void> updateEvent(HistoryEvent event) async {
-    final db = await getDatabase();
-    await db.update(
-        'history',
-        {
-          'title': event.title,
-          'date': event.formattedDate,
-          'description': event.description
-        },
-        where: 'id = ? AND profileId = ?',
-        whereArgs: [event.id, event.profileId]);
+    await _repository.updateEvent(event);
 
     final updatedEvents = state.map((oldEvent) {
       if (oldEvent.id == event.id) {
@@ -55,41 +40,9 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
   }
 
   Future<List<HistoryEvent>> _fetchEvents(String profileId) async {
-    final db = await getDatabase();
-    //final data = await db.query('history');
-
-    final data = await db.rawQuery('''
-      SELECT
-        history.id,
-        history.profileId,
-        history.title,
-        history.description,
-        history.date,
-        COUNT(attachments.id) as attachmentCount
-      FROM
-        history LEFT OUTER JOIN
-        attachments ON (history.id = attachments.historyId)
-      WHERE
-        history.profileId = ?
-      GROUP BY
-        history.id
-    ''', [profileId]);
-
     try {
-      final historyEvents = data
-          .map(
-            (row) => HistoryEvent(
-                id: row['id'] as String,
-                profileId: row['profileId'] as String,
-                title: row['title'] as String,
-                description: row['description'] as String,
-                date: DateTime.parse(row['date'] as String),
-                attachmentCount: row['attachmentCount'] as int),
-          )
-          .toList();
-
+      final historyEvents = await _repository.fetchEvents(profileId);
       historyEvents.sort((a, b) => b.date.compareTo(a.date));
-
       return historyEvents;
     } catch (error) {
       debugPrint('Error: $error');
@@ -98,10 +51,7 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
   }
 
   Future<void> deleteEvent(String id) async {
-    final db = await getDatabase();
-    await db.delete('history', where: 'id = ?', whereArgs: [id]);
-    await db.delete('attachments', where: 'historyId = ?', whereArgs: [id]);
-
+    await _repository.deleteEvent(id);
     state = state.where((event) => event.id != id).toList();
   }
 
@@ -113,5 +63,6 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
 
 final historyProvider =
     StateNotifierProvider<HistoryNotifier, List<HistoryEvent>>((ref) {
-  return HistoryNotifier();
+  final repository = ref.watch(historyRepositoryProvider);
+  return HistoryNotifier(repository);
 });

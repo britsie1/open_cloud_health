@@ -1,48 +1,21 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_cloud_health/database/database_helper.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
+import 'package:open_cloud_health/repositories/medications_repository.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
 
 class MedicationsNotifier extends StateNotifier<List<Medication>> {
-  MedicationsNotifier() : super(const []);
+  final MedicationsRepository _repository;
+
+  MedicationsNotifier(this._repository) : super(const []);
 
   Future<void> loadMedications(String profileId) async {
-    final db = await getDatabase();
-    final data = await db.query(
-      'medications',
-      where: 'profileId = ?',
-      whereArgs: [profileId],
-    );
-
-    final medications = data.map((row) {
-      final timeParts = (row['timeOfDay'] as String).split(':');
-      return Medication(
-        id: row['id'] as String,
-        profileId: row['profileId'] as String,
-        name: row['name'] as String,
-        dosage: row['dosage'] as String,
-        timeOfDay: TimeOfDay(
-            hour: int.parse(timeParts[0]), minute: int.parse(timeParts[1])),
-        isActive: row['isActive'] == 'true',
-      );
-    }).toList();
-
+    final medications = await _repository.loadMedications(profileId);
     state = medications;
   }
 
   Future<void> addMedication(Medication medication) async {
-    final db = await getDatabase();
-    await db.insert('medications', {
-      'id': medication.id,
-      'profileId': medication.profileId,
-      'name': medication.name,
-      'dosage': medication.dosage,
-      'timeOfDay': medication.timeFormatted,
-      'isActive': medication.isActive.toString(),
-    });
-
+    await _repository.addMedication(medication);
     state = [...state, medication];
 
     // Schedule notification using hash of ID for integer ID
@@ -56,18 +29,7 @@ class MedicationsNotifier extends StateNotifier<List<Medication>> {
   }
 
   Future<void> updateMedication(Medication medication) async {
-    final db = await getDatabase();
-    await db.update(
-      'medications',
-      {
-        'name': medication.name,
-        'dosage': medication.dosage,
-        'timeOfDay': medication.timeFormatted,
-        'isActive': medication.isActive.toString(),
-      },
-      where: 'id = ?',
-      whereArgs: [medication.id],
-    );
+    await _repository.updateMedication(medication);
 
     state = state.map((m) {
       if (m.id == medication.id) {
@@ -89,10 +51,7 @@ class MedicationsNotifier extends StateNotifier<List<Medication>> {
   }
 
   Future<void> deleteMedication(String id) async {
-    final db = await getDatabase();
-    await db.delete('medications', where: 'id = ?', whereArgs: [id]);
-    await db.delete('medication_logs', where: 'medicationId = ?', whereArgs: [id]);
-
+    await _repository.deleteMedication(id);
     state = state.where((m) => m.id != id).toList();
 
     // Cancel notification
@@ -101,12 +60,7 @@ class MedicationsNotifier extends StateNotifier<List<Medication>> {
   
   Future<void> toggleIsActive(Medication medication) async {
     final newIsActive = !medication.isActive;
-    final db = await getDatabase();
-    await db.update(
-        'medications',
-        {'isActive': newIsActive.toString()},
-        where: 'id = ?',
-        whereArgs: [medication.id]);
+    await _repository.toggleIsActive(medication.id, newIsActive);
         
     state = state.map((m) {
       if (m.id == medication.id) {
@@ -136,62 +90,35 @@ class MedicationsNotifier extends StateNotifier<List<Medication>> {
 
 final medicationsProvider =
     StateNotifierProvider<MedicationsNotifier, List<Medication>>((ref) {
-  return MedicationsNotifier();
+  final repository = ref.watch(medicationsRepositoryProvider);
+  return MedicationsNotifier(repository);
 });
 
 class MedicationLogsNotifier extends StateNotifier<List<MedicationLog>> {
-  MedicationLogsNotifier() : super(const []);
+  final MedicationsRepository _repository;
+
+  MedicationLogsNotifier(this._repository) : super(const []);
 
   Future<void> loadLogsForDate(DateTime date, String profileId) async {
-    final db = await getDatabase();
-    
-    // For simplicity, we just fetch logs for medications that belong to the profile
-    final dateStr = date.toIso8601String().split('T')[0]; // simple matching
-    
-    final data = await db.rawQuery('''
-      SELECT l.* FROM medication_logs l
-      JOIN medications m ON l.medicationId = m.id
-      WHERE m.profileId = ? AND l.timestamp LIKE ?
-    ''', [profileId, '$dateStr%']);
-
-    final logs = data.map((row) {
-      return MedicationLog(
-        id: row['id'] as String,
-        medicationId: row['medicationId'] as String,
-        timestamp: DateTime.parse(row['timestamp'] as String),
-        isTaken: row['isTaken'] == 'true',
-      );
-    }).toList();
-
+    final logs = await _repository.loadLogsForDate(date, profileId);
     state = logs;
   }
 
   Future<void> addLog(MedicationLog log) async {
-    final db = await getDatabase();
-    await db.insert('medication_logs', {
-      'id': log.id,
-      'medicationId': log.medicationId,
-      'timestamp': log.timestamp.toIso8601String(),
-      'isTaken': log.isTaken.toString(),
-    });
-
+    await _repository.addLog(log);
     state = [...state, log];
   }
 
   Future<void> removeLog(String medicationId, DateTime date) async {
-    final db = await getDatabase();
-    final dateStr = date.toIso8601String().split('T')[0];
-    
-    await db.rawDelete('''
-      DELETE FROM medication_logs 
-      WHERE medicationId = ? AND timestamp LIKE ?
-    ''', [medicationId, '$dateStr%']);
+    await _repository.removeLog(medicationId, date);
 
+    final dateStr = date.toIso8601String().split('T')[0];
     state = state.where((log) => !(log.medicationId == medicationId && log.timestamp.toIso8601String().startsWith(dateStr))).toList();
   }
 }
 
 final medicationLogsProvider =
     StateNotifierProvider<MedicationLogsNotifier, List<MedicationLog>>((ref) {
-  return MedicationLogsNotifier();
+  final repository = ref.watch(medicationsRepositoryProvider);
+  return MedicationLogsNotifier(repository);
 });
