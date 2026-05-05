@@ -6,10 +6,13 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
-class ProfilesNotifier extends StateNotifier<List<Profile>> {
-  final ProfilesRepository _repository;
+class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
+  ProfilesRepository get _repository => ref.read(profilesRepositoryProvider);
 
-  ProfilesNotifier(this._repository) : super(const []);
+  @override
+  Future<List<Profile>> build() async {
+    return _fetchProfiles();
+  }
 
   Future<String> getProfileImagePath(String id) async {
     var appDir = await getApplicationDocumentsDirectory();
@@ -26,32 +29,34 @@ class ProfilesNotifier extends StateNotifier<List<Profile>> {
       return await _repository.fetchProfiles();
     } catch (error) {
       debugPrint('Error: $error');
-      return [];
+      rethrow;
     }
   }
 
   Future<void> loadProfiles() async {
-    final profiles = await _fetchProfiles();
-    state = profiles;
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => _fetchProfiles());
   }
 
   Profile getProfile(String id) {
-    return state.firstWhere((profile) => profile.id == id,
+    return state.value!.firstWhere((profile) => profile.id == id,
         orElse: () => throw Exception('Profile not found'));
   }
 
   void updateProfile(Profile profile) async {
     await _repository.updateProfile(profile);
 
-    final updatedProfiles = state.map((oldProfile) {
-      if (oldProfile.id == profile.id) {
-        return profile;
-      } else {
-        return oldProfile;
-      }
-    }).toList();
+    if (state.hasValue) {
+      final updatedProfiles = state.value!.map((oldProfile) {
+        if (oldProfile.id == profile.id) {
+          return profile;
+        } else {
+          return oldProfile;
+        }
+      }).toList();
 
-    state = updatedProfiles;
+      state = AsyncValue.data(updatedProfiles);
+    }
   }
 
   Future<String> addProfile(
@@ -73,13 +78,15 @@ class ProfilesNotifier extends StateNotifier<List<Profile>> {
 
     await _repository.addProfile(newProfile);
 
-    state = [...state, newProfile];
+    if (state.hasValue) {
+      state = AsyncValue.data([...state.value!, newProfile]);
+    } else {
+      await loadProfiles();
+    }
+    
     return newProfile.id;
   }
 }
 
 final profilesProvider =
-    StateNotifierProvider<ProfilesNotifier, List<Profile>>((ref) {
-  final repository = ref.watch(profilesRepositoryProvider);
-  return ProfilesNotifier(repository);
-});
+    AsyncNotifierProvider<ProfilesNotifier, List<Profile>>(ProfilesNotifier.new);

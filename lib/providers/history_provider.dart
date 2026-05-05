@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/history_event.dart';
 import 'package:open_cloud_health/repositories/history_repository.dart';
 
-class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
-  final HistoryRepository _repository;
+class HistoryNotifier extends FamilyAsyncNotifier<List<HistoryEvent>, String> {
+  HistoryRepository get _repository => ref.read(historyRepositoryProvider);
 
-  HistoryNotifier(this._repository) : super(const []);
+  @override
+  Future<List<HistoryEvent>> build(String arg) async {
+    return _fetchEvents(arg);
+  }
 
   Future<String> addEvent(
       String profileId, String title, String description, DateTime date, int attachmentCount) async {
@@ -19,8 +22,11 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
 
     await _repository.addEvent(newEvent);
 
-    state = [...state, newEvent];
-    state.sort((a, b) => b.date.compareTo(a.date));
+    if (state.hasValue) {
+      final updatedList = [...state.value!, newEvent];
+      updatedList.sort((a, b) => b.date.compareTo(a.date));
+      state = AsyncValue.data(updatedList);
+    }
 
     return newEvent.id;
   }
@@ -28,15 +34,17 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
   Future<void> updateEvent(HistoryEvent event) async {
     await _repository.updateEvent(event);
 
-    final updatedEvents = state.map((oldEvent) {
-      if (oldEvent.id == event.id) {
-        return event;
-      } else {
-        return oldEvent;
-      }
-    }).toList();
+    if (state.hasValue) {
+      final updatedEvents = state.value!.map((oldEvent) {
+        if (oldEvent.id == event.id) {
+          return event;
+        } else {
+          return oldEvent;
+        }
+      }).toList();
 
-    state = updatedEvents;
+      state = AsyncValue.data(updatedEvents);
+    }
   }
 
   Future<List<HistoryEvent>> _fetchEvents(String profileId) async {
@@ -46,23 +54,23 @@ class HistoryNotifier extends StateNotifier<List<HistoryEvent>> {
       return historyEvents;
     } catch (error) {
       debugPrint('Error: $error');
-      return [];
+      rethrow;
     }
   }
 
   Future<void> deleteEvent(String id) async {
     await _repository.deleteEvent(id);
-    state = state.where((event) => event.id != id).toList();
+    if (state.hasValue) {
+      state = AsyncValue.data(state.value!.where((event) => event.id != id).toList());
+    }
   }
 
-  Future<void> loadEvents(String profileId) async {
-    final events = await _fetchEvents(profileId);
-    state = events;
+  Future<void> refreshEvents() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => _fetchEvents(arg));
   }
 }
 
 final historyProvider =
-    StateNotifierProvider<HistoryNotifier, List<HistoryEvent>>((ref) {
-  final repository = ref.watch(historyRepositoryProvider);
-  return HistoryNotifier(repository);
-});
+    AsyncNotifierProvider.family<HistoryNotifier, List<HistoryEvent>, String>(
+        HistoryNotifier.new);

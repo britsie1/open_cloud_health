@@ -19,10 +19,6 @@ class _MedicationTrackerScreenState extends ConsumerState<MedicationTrackerScree
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      ref.read(medicationsProvider.notifier).loadMedications(widget.profileId);
-      ref.read(medicationLogsProvider.notifier).loadLogsForDate(DateTime.now(), widget.profileId);
-    });
   }
 
   void _openAddMedicationDialog() {
@@ -48,7 +44,9 @@ class _MedicationTrackerScreenState extends ConsumerState<MedicationTrackerScree
             ],
           ),
         ),
-        drawer: MainDrawer(profileId: widget.profileId, currentRouteName: 'medication_tracker'),
+        drawer: MainDrawer(
+            profileId: widget.profileId,
+            currentRouteName: 'medication_tracker'),
         body: TabBarView(
           children: [
             _TodayTab(profileId: widget.profileId),
@@ -70,40 +68,54 @@ class _TodayTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final medications = ref.watch(medicationsProvider).where((m) => m.isActive).toList();
-    final logs = ref.watch(medicationLogsProvider);
+    final medicationsAsync = ref.watch(medicationsProvider(profileId));
+    final logsAsync = ref.watch(medicationLogsProvider(profileId));
 
-    if (medications.isEmpty) {
-      return const Center(child: Text("No active medications for today."));
-    }
+    return medicationsAsync.when(
+      data: (medications) {
+        final activeMedications =
+            medications.where((m) => m.isActive).toList();
+        if (activeMedications.isEmpty) {
+          return const Center(child: Text("No active medications for today."));
+        }
 
-    return ListView.builder(
-      itemCount: medications.length,
-      itemBuilder: (ctx, index) {
-        final med = medications[index];
-        final isTaken = logs.any((log) => log.medicationId == med.id);
+        return logsAsync.when(
+          data: (logs) {
+            return ListView.builder(
+              itemCount: activeMedications.length,
+              itemBuilder: (ctx, index) {
+                final med = activeMedications[index];
+                final isTaken = logs.any((log) => log.medicationId == med.id);
 
-        return CheckboxListTile(
-          title: Text(med.name),
-          subtitle: Text('${med.dosage} at ${med.timeFormatted}'),
-          value: isTaken,
-          onChanged: (val) {
-            if (val == true) {
-              ref.read(medicationLogsProvider.notifier).addLog(
-                    MedicationLog(
-                      medicationId: med.id,
-                      timestamp: DateTime.now(),
-                    ),
-                  );
-            } else if (val == false) {
-              ref.read(medicationLogsProvider.notifier).removeLog(
-                    med.id, 
-                    DateTime.now()
-                  );
-            }
+                return CheckboxListTile(
+                  title: Text(med.name),
+                  subtitle: Text('${med.dosage} at ${med.timeFormatted}'),
+                  value: isTaken,
+                  onChanged: (val) {
+                    if (val == true) {
+                      ref.read(medicationLogsProvider(profileId).notifier).addLog(
+                            MedicationLog(
+                              medicationId: med.id,
+                              timestamp: DateTime.now(),
+                            ),
+                          );
+                    } else if (val == false) {
+                      ref.read(medicationLogsProvider(profileId).notifier).removeLog(
+                            med.id,
+                            DateTime.now(),
+                          );
+                    }
+                  },
+                );
+              },
+            );
           },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Center(child: Text('Error: $error')),
         );
       },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(child: Text('Error: $error')),
     );
   }
 }
@@ -114,74 +126,90 @@ class _AllMedicationsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final medications = ref.watch(medicationsProvider);
+    final medicationsAsync = ref.watch(medicationsProvider(profileId));
 
-    if (medications.isEmpty) {
-      return const Center(child: Text("No medications added yet."));
-    }
+    return medicationsAsync.when(
+      data: (medications) {
+        if (medications.isEmpty) {
+          return const Center(child: Text("No medications added yet."));
+        }
 
-    return ListView.builder(
-      itemCount: medications.length,
-      itemBuilder: (ctx, index) {
-        final med = medications[index];
-        return ListTile(
-          title: Text(med.name),
-          subtitle: Text('${med.dosage} - ${med.timeFormatted}'),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Switch(
-                value: med.isActive,
-                onChanged: (val) {
-                  ref.read(medicationsProvider.notifier).toggleIsActive(med);
-                },
-              ),
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  if (value == 'edit') {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => _EditMedicationDialog(medication: med),
-                    );
-                  } else if (value == 'delete') {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Delete Medication'),
-                        content: const Text('Are you sure you want to delete this medication? This will also remove its daily logs.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('Cancel'),
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-                            onPressed: () {
-                              ref.read(medicationsProvider.notifier).deleteMedication(med.id);
-                              Navigator.of(context).pop();
-                            },
-                            child: const Text('Delete'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                },
-                itemBuilder: (ctx) => [
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Text('Edit'),
+        return ListView.builder(
+          itemCount: medications.length,
+          itemBuilder: (ctx, index) {
+            final med = medications[index];
+            return ListTile(
+              title: Text(med.name),
+              subtitle: Text('${med.dosage} - ${med.timeFormatted}'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Switch(
+                    value: med.isActive,
+                    onChanged: (val) {
+                      ref
+                          .read(medicationsProvider(profileId).notifier)
+                          .toggleIsActive(med);
+                    },
                   ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Text('Delete', style: TextStyle(color: Colors.red)),
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) =>
+                              _EditMedicationDialog(medication: med),
+                        );
+                      } else if (value == 'delete') {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Delete Medication'),
+                            content: const Text(
+                                'Are you sure you want to delete this medication? This will also remove its daily logs.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: const Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    foregroundColor: Colors.white),
+                                onPressed: () {
+                                  ref
+                                      .read(medicationsProvider(profileId)
+                                          .notifier)
+                                      .deleteMedication(med.id);
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    },
+                    itemBuilder: (ctx) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Text('Edit'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Delete',
+                            style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(child: Text('Error: $error')),
     );
   }
 }
@@ -218,7 +246,9 @@ class _AddMedicationDialogState extends ConsumerState<_AddMedicationDialog> {
       timeOfDay: _selectedTime,
     );
 
-    ref.read(medicationsProvider.notifier).addMedication(newMed);
+    ref
+        .read(medicationsProvider(widget.profileId).notifier)
+        .addMedication(newMed);
     Navigator.of(context).pop();
   }
 
@@ -318,7 +348,9 @@ class _EditMedicationDialogState extends ConsumerState<_EditMedicationDialog> {
       isActive: widget.medication.isActive,
     );
 
-    ref.read(medicationsProvider.notifier).updateMedication(updatedMed);
+    ref
+        .read(medicationsProvider(widget.medication.profileId).notifier)
+        .updateMedication(updatedMed);
     Navigator.of(context).pop();
   }
 

@@ -6,10 +6,13 @@ import 'package:open_cloud_health/repositories/attachment_repository.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
-class AttachmentNotifier extends StateNotifier<List<Attachment>> {
-  final AttachmentRepository _repository;
+class AttachmentNotifier extends AsyncNotifier<List<Attachment>> {
+  AttachmentRepository get _repository => ref.read(attachmentRepositoryProvider);
 
-  AttachmentNotifier(this._repository) : super(const []);
+  @override
+  Future<List<Attachment>> build() async {
+    return const [];
+  }
 
   Future<void> addAttachments(Iterable<Attachment> attachments) async {
     if (attachments.isNotEmpty) {
@@ -74,7 +77,4 @@ class AttachmentNotifier extends StateNotifier<List<Attachment>> {
 }
 
 final attachmentProvider =
-    StateNotifierProvider<AttachmentNotifier, List<Attachment>>((ref) {
-  final repository = ref.watch(attachmentRepositoryProvider);
-  return AttachmentNotifier(repository);
-});
+    AsyncNotifierProvider<AttachmentNotifier, List<Attachment>>(AttachmentNotifier.new);

@@ -37,7 +37,7 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
 
   @override
   Widget build(BuildContext context) {
-    final profiles = ref.watch(profilesProvider);
+    final profiles = widget.profiles;
 
     void selectProfile(Profile profile) {
       Navigator.of(context).push(

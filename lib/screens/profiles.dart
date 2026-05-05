@@ -12,36 +12,20 @@ class ProfilesScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfilesScreenState extends ConsumerState<ProfilesScreen> {
-  late Future<void> _profilesFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _profilesFuture = ref.read(profilesProvider.notifier).loadProfiles();
-  }
 
   @override
   Widget build(BuildContext context) {
-    final profiles = ref.watch(profilesProvider);
+    final profilesAsync = ref.watch(profilesProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profiles'),
         actions: const [AccountAppBarActions()],
       ),
-      body: FutureBuilder(
-        future: _profilesFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
-
-          return ProfilesList(
-            profiles: profiles,
-          );
-        },
+      body: profilesAsync.when(
+        data: (profiles) => ProfilesList(profiles: profiles),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text('Error: $error')),
       ),
     );
   }

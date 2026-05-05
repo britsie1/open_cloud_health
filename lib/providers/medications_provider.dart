@@ -4,19 +4,19 @@ import 'package:open_cloud_health/models/medication_log.dart';
 import 'package:open_cloud_health/repositories/medications_repository.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
 
-class MedicationsNotifier extends StateNotifier<List<Medication>> {
-  final MedicationsRepository _repository;
+class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> {
+  MedicationsRepository get _repository => ref.read(medicationsRepositoryProvider);
 
-  MedicationsNotifier(this._repository) : super(const []);
-
-  Future<void> loadMedications(String profileId) async {
-    final medications = await _repository.loadMedications(profileId);
-    state = medications;
+  @override
+  Future<List<Medication>> build(String arg) async {
+    return _repository.loadMedications(arg);
   }
 
   Future<void> addMedication(Medication medication) async {
     await _repository.addMedication(medication);
-    state = [...state, medication];
+    if (state.hasValue) {
+      state = AsyncValue.data([...state.value!, medication]);
+    }
 
     // Schedule notification using hash of ID for integer ID
     final notificationId = medication.id.hashCode;
@@ -31,12 +31,14 @@ class MedicationsNotifier extends StateNotifier<List<Medication>> {
   Future<void> updateMedication(Medication medication) async {
     await _repository.updateMedication(medication);
 
-    state = state.map((m) {
-      if (m.id == medication.id) {
-        return medication;
-      }
-      return m;
-    }).toList();
+    if (state.hasValue) {
+      state = AsyncValue.data(state.value!.map((m) {
+        if (m.id == medication.id) {
+          return medication;
+        }
+        return m;
+      }).toList());
+    }
 
     // Cancel old notification and reschedule with updated details
     await NotificationService().cancelNotification(medication.id.hashCode);
@@ -52,7 +54,9 @@ class MedicationsNotifier extends StateNotifier<List<Medication>> {
 
   Future<void> deleteMedication(String id) async {
     await _repository.deleteMedication(id);
-    state = state.where((m) => m.id != id).toList();
+    if (state.hasValue) {
+      state = AsyncValue.data(state.value!.where((m) => m.id != id).toList());
+    }
 
     // Cancel notification
     await NotificationService().cancelNotification(id.hashCode);
@@ -62,18 +66,20 @@ class MedicationsNotifier extends StateNotifier<List<Medication>> {
     final newIsActive = !medication.isActive;
     await _repository.toggleIsActive(medication.id, newIsActive);
         
-    state = state.map((m) {
-      if (m.id == medication.id) {
-        return Medication(
-            id: m.id,
-            profileId: m.profileId,
-            name: m.name,
-            dosage: m.dosage,
-            timeOfDay: m.timeOfDay,
-            isActive: newIsActive);
-      }
-      return m;
-    }).toList();
+    if (state.hasValue) {
+      state = AsyncValue.data(state.value!.map((m) {
+        if (m.id == medication.id) {
+          return Medication(
+              id: m.id,
+              profileId: m.profileId,
+              name: m.name,
+              dosage: m.dosage,
+              timeOfDay: m.timeOfDay,
+              isActive: newIsActive);
+        }
+        return m;
+      }).toList());
+    }
 
     if (newIsActive) {
       await NotificationService().scheduleDailyNotification(
@@ -86,39 +92,50 @@ class MedicationsNotifier extends StateNotifier<List<Medication>> {
       await NotificationService().cancelNotification(medication.id.hashCode);
     }
   }
+
+  Future<void> refreshMedications() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => _repository.loadMedications(arg));
+  }
 }
 
 final medicationsProvider =
-    StateNotifierProvider<MedicationsNotifier, List<Medication>>((ref) {
-  final repository = ref.watch(medicationsRepositoryProvider);
-  return MedicationsNotifier(repository);
-});
+    AsyncNotifierProvider.family<MedicationsNotifier, List<Medication>, String>(
+        MedicationsNotifier.new);
 
-class MedicationLogsNotifier extends StateNotifier<List<MedicationLog>> {
-  final MedicationsRepository _repository;
+class MedicationLogsNotifier
+    extends FamilyAsyncNotifier<List<MedicationLog>, String> {
+  MedicationsRepository get _repository =>
+      ref.read(medicationsRepositoryProvider);
 
-  MedicationLogsNotifier(this._repository) : super(const []);
+  @override
+  Future<List<MedicationLog>> build(String arg) async {
+    // Default to today for the initial build
+    return _repository.loadLogsForDate(DateTime.now(), arg);
+  }
 
-  Future<void> loadLogsForDate(DateTime date, String profileId) async {
-    final logs = await _repository.loadLogsForDate(date, profileId);
-    state = logs;
+  Future<void> loadLogsForDate(DateTime date) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => _repository.loadLogsForDate(date, arg));
   }
 
   Future<void> addLog(MedicationLog log) async {
     await _repository.addLog(log);
-    state = [...state, log];
+    if (state.hasValue) {
+      state = AsyncValue.data([...state.value!, log]);
+    }
   }
 
   Future<void> removeLog(String medicationId, DateTime date) async {
     await _repository.removeLog(medicationId, date);
 
-    final dateStr = date.toIso8601String().split('T')[0];
-    state = state.where((log) => !(log.medicationId == medicationId && log.timestamp.toIso8601String().startsWith(dateStr))).toList();
+    if (state.hasValue) {
+      final dateStr = date.toIso8601String().split('T')[0];
+      state = AsyncValue.data(state.value!.where((log) => !(log.medicationId == medicationId && log.timestamp.toIso8601String().startsWith(dateStr))).toList());
+    }
   }
 }
 
 final medicationLogsProvider =
-    StateNotifierProvider<MedicationLogsNotifier, List<MedicationLog>>((ref) {
-  final repository = ref.watch(medicationsRepositoryProvider);
-  return MedicationLogsNotifier(repository);
-});
+    AsyncNotifierProvider.family<MedicationLogsNotifier, List<MedicationLog>, String>(
+        MedicationLogsNotifier.new);

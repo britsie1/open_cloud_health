@@ -103,12 +103,14 @@ class _HistoryEventDetailScreenState
       }
       _form.currentState!.save();
       if (widget.historyEvent == null) {
-        var historyId = await ref.read(historyProvider.notifier).addEvent(
-            widget.profileId,
-            _enteredTitle,
-            _enteredDescription,
-            DateTime.parse(_selectedDateController.text),
-            selectedFiles.length);
+        var historyId = await ref
+            .read(historyProvider(widget.profileId).notifier)
+            .addEvent(
+                widget.profileId,
+                _enteredTitle,
+                _enteredDescription,
+                DateTime.parse(_selectedDateController.text),
+                selectedFiles.length);
 
         //update the historyId
         selectedFiles = selectedFiles
@@ -122,7 +124,7 @@ class _HistoryEventDetailScreenState
 
         ref.read(attachmentProvider.notifier).addAttachments(selectedFiles);
       } else {
-        await ref.read(historyProvider.notifier).updateEvent(
+        await ref.read(historyProvider(widget.profileId).notifier).updateEvent(
             history.HistoryEvent(
                 id: widget.historyEvent!.id,
                 profileId: widget.historyEvent!.profileId,
@@ -199,9 +201,13 @@ class _HistoryEventDetailScreenState
                         child: const Text('Cancel'),
                       ),
                       ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white),
                         onPressed: () {
-                          ref.read(historyProvider.notifier).deleteEvent(widget.historyEvent!.id);
+                          ref
+                              .read(historyProvider(widget.profileId).notifier)
+                              .deleteEvent(widget.historyEvent!.id);
                           Navigator.of(context).pop(); // Close dialog
                           Navigator.of(context).pop(); // Close detail screen
                         },

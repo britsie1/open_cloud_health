@@ -20,29 +20,8 @@ class HistoryScreen extends ConsumerStatefulWidget {
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   @override
-  void initState() {
-    super.initState();
-    ref.read(historyProvider.notifier).loadEvents(widget.profile.id);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final events = ref.watch(historyProvider);
-    Widget content = const Center(child: Text('No events to display'),);
-
-    if (events.isNotEmpty) {
-      content = Timeline.tileBuilder(
-        theme: TimelineTheme.of(context).copyWith(
-          nodePosition: 0,
-        ),
-        builder: TimelineTileBuilder.fromStyle(
-          indicatorStyle: IndicatorStyle.outlined,
-          contentsAlign: ContentsAlign.basic,
-          contentsBuilder: (context, index) => HistoryEventCard(historyEvent: events[index]),
-          itemCount: events.length,
-        ),
-      );
-    }
+    final historyAsync = ref.watch(historyProvider(widget.profile.id));
 
     return Scaffold(
       appBar: AppBar(
@@ -53,28 +32,54 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         profileId: widget.profile.id,
         currentRouteName: 'history',
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: content),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (ctx) => HistoryEventDetailScreen(profileId: widget.profile.id),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Create event'),
-            ),
-          ),
-        ],
+      body: historyAsync.when(
+        data: (events) {
+          Widget content = const Center(
+            child: Text('No events to display'),
+          );
+
+          if (events.isNotEmpty) {
+            content = Timeline.tileBuilder(
+              theme: TimelineTheme.of(context).copyWith(
+                nodePosition: 0,
+              ),
+              builder: TimelineTileBuilder.fromStyle(
+                indicatorStyle: IndicatorStyle.outlined,
+                contentsAlign: ContentsAlign.basic,
+                contentsBuilder: (context, index) =>
+                    HistoryEventCard(historyEvent: events[index]),
+                itemCount: events.length,
+              ),
+            );
+          }
+
+          return Column(
+            children: [
+              Expanded(
+                child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: content),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (ctx) =>
+                            HistoryEventDetailScreen(profileId: widget.profile.id),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Create event'),
+                ),
+              ),
+            ],
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text('Error: $error')),
       ),
     );
   }

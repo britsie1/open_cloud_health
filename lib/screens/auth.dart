@@ -80,7 +80,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         return;
       }
 
-      var profiles = ref.read(profilesProvider);
+      final profiles = ref.read(profilesProvider).value ?? [];
 
       if (profiles.isEmpty) {
         Navigator.of(context).pushReplacement(

@@ -85,8 +85,7 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
 
   @override
   Widget build(BuildContext context) {
-    var profile =
-        ref.watch(profilesProvider.notifier).getProfile(widget.profileId);
+    final profilesAsync = ref.watch(profilesProvider);
 
     ImageProvider getProfileImage(Profile profile) {
       if (_profileImageFile != null) {
@@ -98,61 +97,69 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
     }
 
     return Drawer(
-      child: ListView(
-        children: [
-          DrawerHeader(
-            child: Column(
-              children: [
-                CircleAvatar(
-                    radius: 40, backgroundImage: getProfileImage(profile)),
-                const SizedBox(
-                  height: 16,
+      child: profilesAsync.when(
+        data: (profiles) {
+          final profile = profiles.firstWhere((p) => p.id == widget.profileId);
+
+          return ListView(
+            children: [
+              DrawerHeader(
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                        radius: 40, backgroundImage: getProfileImage(profile)),
+                    const SizedBox(
+                      height: 16,
+                    ),
+                    Text('${profile.name} ${profile.surname}'),
+                  ],
                 ),
-                Text('${profile.name} ${profile.surname}'),
-              ],
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.supervised_user_circle_outlined),
-            title: const Text('Switch Profile'),
-            onTap: () => _navigateTo('profiles', profile),
-          ),
-          ListTile(
-            leading: const Icon(Icons.medical_information_outlined),
-            title: const Text('Profile Information'),
-            onTap: () => _navigateTo('profile_detail', profile),
-          ),
-          ListTile(
-            leading: const Icon(Icons.history),
-            title: const Text('Medical History'),
-            onTap: () => _navigateTo('history', profile),
-          ),
-          ListTile(
-            leading: const Icon(Icons.medication_liquid_sharp),
-            title: const Text('Medication Tracker'),
-            onTap: () => _navigateTo('medication_tracker', profile),
-          ),
-          ListTile(
-            leading: const Icon(Icons.medical_services),
-            title: const Text('Medical Checkups'),
-            onTap: () => _navigateTo('checkups', profile),
-          ),
-          ListTile(
-            leading: const Icon(Icons.monitor_heart),
-            title: const Text('Vitals & Measurements'),
-            onTap: () => _navigateTo('measurements', profile),
-          ),
-          ListTile(
-            leading: const Icon(Icons.share),
-            title: const Text('Share Profile'),
-            onTap: () => _navigateTo('share', profile),
-          ),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('About OpenCloudHealth'),
-            onTap: () => _navigateTo('about', profile),
-          )
-        ],
+              ),
+              ListTile(
+                leading: const Icon(Icons.supervised_user_circle_outlined),
+                title: const Text('Switch Profile'),
+                onTap: () => _navigateTo('profiles', profile),
+              ),
+              ListTile(
+                leading: const Icon(Icons.medical_information_outlined),
+                title: const Text('Profile Information'),
+                onTap: () => _navigateTo('profile_detail', profile),
+              ),
+              ListTile(
+                leading: const Icon(Icons.history),
+                title: const Text('Medical History'),
+                onTap: () => _navigateTo('history', profile),
+              ),
+              ListTile(
+                leading: const Icon(Icons.medication_liquid_sharp),
+                title: const Text('Medication Tracker'),
+                onTap: () => _navigateTo('medication_tracker', profile),
+              ),
+              ListTile(
+                leading: const Icon(Icons.medical_services),
+                title: const Text('Medical Checkups'),
+                onTap: () => _navigateTo('checkups', profile),
+              ),
+              ListTile(
+                leading: const Icon(Icons.monitor_heart),
+                title: const Text('Vitals & Measurements'),
+                onTap: () => _navigateTo('measurements', profile),
+              ),
+              ListTile(
+                leading: const Icon(Icons.share),
+                title: const Text('Share Profile'),
+                onTap: () => _navigateTo('share', profile),
+              ),
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('About OpenCloudHealth'),
+                onTap: () => _navigateTo('about', profile),
+              )
+            ],
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text('Error: $error')),
       ),
     );
   }

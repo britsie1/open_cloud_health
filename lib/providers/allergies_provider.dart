@@ -2,28 +2,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/allergy.dart';
 import 'package:open_cloud_health/repositories/allergies_repository.dart';
 
-class AllergiesNotifier extends StateNotifier<List<Allergy>> {
-  final AllergiesRepository _repository;
+class AllergiesNotifier extends FamilyAsyncNotifier<List<Allergy>, String> {
+  AllergiesRepository get _repository => ref.read(allergiesRepositoryProvider);
 
-  AllergiesNotifier(this._repository) : super(const []);
-
-  Future<void> loadAllergies(String profileId) async {
-    final allergies = await _repository.getAllergies(profileId);
-    state = allergies;
+  @override
+  Future<List<Allergy>> build(String arg) async {
+    return _repository.getAllergies(arg);
   }
 
   Future<void> addAllergy(Allergy allergy) async {
     await _repository.addAllergy(allergy);
-    state = [...state, allergy];
+    if (state.hasValue) {
+      state = AsyncValue.data([...state.value!, allergy]);
+    }
   }
 
   Future<void> deleteAllergy(String id) async {
     await _repository.deleteAllergy(id);
-    state = state.where((a) => a.id != id).toList();
+    if (state.hasValue) {
+      state = AsyncValue.data(state.value!.where((a) => a.id != id).toList());
+    }
+  }
+
+  Future<void> refreshAllergies() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => _repository.getAllergies(arg));
   }
 }
 
-final allergiesProvider = StateNotifierProvider<AllergiesNotifier, List<Allergy>>((ref) {
-  final repository = ref.watch(allergiesRepositoryProvider);
-  return AllergiesNotifier(repository);
-});
+final allergiesProvider =
+    AsyncNotifierProvider.family<AllergiesNotifier, List<Allergy>, String>(
+        AllergiesNotifier.new);
