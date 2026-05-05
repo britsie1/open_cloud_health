@@ -12,10 +12,13 @@ import 'package:open_cloud_health/providers/history_provider.dart';
 import 'package:open_cloud_health/providers/medications_provider.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/repositories/allergies_repository.dart';
+import 'package:open_cloud_health/repositories/attachment_repository.dart';
 import 'package:open_cloud_health/repositories/history_repository.dart';
 import 'package:open_cloud_health/repositories/medications_repository.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
+import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
+import 'package:open_cloud_health/utils/result.dart';
 
 class MockProfilesRepository extends Mock implements ProfilesRepository {}
 
@@ -35,12 +38,18 @@ class MockAllergiesRepository extends Mock implements AllergiesRepository {}
 
 class FakeAllergy extends Fake implements Allergy {}
 
+class MockAttachmentRepository extends Mock implements AttachmentRepository {}
+
+class MockFileService extends Mock implements FileService {}
+
 void main() {
   late MockProfilesRepository mockProfilesRepository;
   late MockHistoryRepository mockHistoryRepository;
   late MockMedicationsRepository mockMedicationsRepository;
   late MockNotificationService mockNotificationService;
   late MockAllergiesRepository mockAllergiesRepository;
+  late MockAttachmentRepository mockAttachmentRepository;
+  late MockFileService mockFileService;
   late ProviderContainer container;
 
   setUpAll(() {
@@ -57,6 +66,8 @@ void main() {
     mockMedicationsRepository = MockMedicationsRepository();
     mockNotificationService = MockNotificationService();
     mockAllergiesRepository = MockAllergiesRepository();
+    mockAttachmentRepository = MockAttachmentRepository();
+    mockFileService = MockFileService();
 
     when(() => mockNotificationService.cancelNotification(any()))
         .thenAnswer((_) async => {});
@@ -72,6 +83,8 @@ void main() {
             .overrideWithValue(mockMedicationsRepository),
         notificationServiceProvider.overrideWithValue(mockNotificationService),
         allergiesRepositoryProvider.overrideWithValue(mockAllergiesRepository),
+        attachmentRepositoryProvider.overrideWithValue(mockAttachmentRepository),
+        fileServiceProvider.overrideWithValue(mockFileService),
       ],
     );
   });
@@ -113,10 +126,25 @@ void main() {
       await container.read(profilesProvider.future);
 
       final notifier = container.read(profilesProvider.notifier);
-      final newId = await notifier.addProfile(
+      
+      // Update mock for the refresh call
+      final profileAdded = Profile(
+        name: 'Jane',
+        middleNames: '',
+        surname: 'Doe',
+        dateOfBirth: DateTime(1995),
+        gender: Gender.female,
+        bloodType: 'A-',
+        isOrganDonor: false,
+      );
+      when(() => mockProfilesRepository.fetchProfiles())
+          .thenAnswer((_) async => [profileAdded]);
+
+      final result = await notifier.addProfile(
           'Jane', '', 'Doe', DateTime(1995), Gender.female, 'A-', false);
 
-      expect(newId, isNotEmpty);
+      expect(result, isA<Success<String, Exception>>());
+
       expect(container.read(profilesProvider).value!.length, 1);
       expect(container.read(profilesProvider).value!.first.name, 'Jane');
       verify(() => mockProfilesRepository.addProfile(any())).called(1);
@@ -140,11 +168,16 @@ void main() {
         bloodType: 'O+',
         isOrganDonor: true,
       );
+      
+      // Update mock for the refresh call
+      when(() => mockProfilesRepository.fetchProfiles())
+          .thenAnswer((_) async => [updatedProfile]);
 
-      await container
+      final result = await container
           .read(profilesProvider.notifier)
           .updateProfile(updatedProfile);
 
+      expect(result, isA<Success<void, Exception>>());
       verify(() => mockProfilesRepository.updateProfile(any())).called(1);
       expect(container.read(profilesProvider).value!.first.name, 'John Updated');
     });
@@ -176,14 +209,32 @@ void main() {
           .thenAnswer((_) async => []);
       when(() => mockHistoryRepository.addEvent(any()))
           .thenAnswer((_) async => {});
+      when(() => mockAttachmentRepository.getAttachments(any()))
+          .thenAnswer((_) async => []);
 
       await container.read(historyProvider('p1').future);
 
       final notifier = container.read(historyProvider('p1').notifier);
-      final newId = await notifier.addEvent(
-          'p1', 'Cough', 'Dry cough', DateTime(2023, 10, 11), 0);
+      
+      // Update mock for the refresh call
+      final eventAdded = HistoryEvent(
+        profileId: 'p1',
+        title: 'Cough',
+        description: 'Dry cough',
+        date: DateTime(2023, 10, 11),
+      );
+      when(() => mockHistoryRepository.fetchEvents('p1'))
+          .thenAnswer((_) async => [eventAdded]);
 
-      expect(newId, isNotEmpty);
+      final result = await notifier.saveEventWithAttachments(
+        profileId: 'p1',
+        title: 'Cough',
+        description: 'Dry cough',
+        date: DateTime(2023, 10, 11),
+        attachments: [],
+      );
+
+      expect(result, isA<Success<String, Exception>>());
       expect(container.read(historyProvider('p1')).value!.length, 1);
       expect(container.read(historyProvider('p1')).value!.first.title, 'Cough');
       verify(() => mockHistoryRepository.addEvent(any())).called(1);
@@ -194,8 +245,16 @@ void main() {
           .thenAnswer((_) async => List.from(tEvents));
       when(() => mockHistoryRepository.deleteEvent('e1'))
           .thenAnswer((_) async => {});
+      when(() => mockAttachmentRepository.getAttachments('e1'))
+          .thenAnswer((_) async => []);
+      when(() => mockAttachmentRepository.deleteAttachments(any()))
+          .thenAnswer((_) async => {});
 
       await container.read(historyProvider('p1').future);
+      
+      // Update mock for the refresh call
+      when(() => mockHistoryRepository.fetchEvents('p1'))
+          .thenAnswer((_) async => []);
 
       await container.read(historyProvider('p1').notifier).deleteEvent('e1');
 
@@ -234,6 +293,18 @@ void main() {
           .thenAnswer((_) async => {});
 
       await container.read(medicationsProvider('p1').future);
+
+      final medToggled = Medication(
+        id: 'm1',
+        profileId: 'p1',
+        name: 'Aspirin',
+        dosage: '100mg',
+        timeOfDay: const TimeOfDay(hour: 8, minute: 0),
+        isActive: false,
+      );
+      // Update mock for the refresh call
+      when(() => mockMedicationsRepository.loadMedications('p1'))
+          .thenAnswer((_) async => [medToggled]);
 
       await container
           .read(medicationsProvider('p1').notifier)
@@ -286,11 +357,16 @@ void main() {
 
       await container.read(allergiesProvider('p1').future);
 
-      final newAllergy = Allergy(profileId: 'p1', name: 'Dust', note: '');
-      await container
+      final newAllergy = Allergy(id: 'a2', profileId: 'p1', name: 'Dust', note: '');
+      // Update mock for the refresh call
+      when(() => mockAllergiesRepository.getAllergies('p1'))
+          .thenAnswer((_) async => [newAllergy]);
+
+      final result = await container
           .read(allergiesProvider('p1').notifier)
           .addAllergy(newAllergy);
 
+      expect(result, isA<Success<void, Exception>>());
       expect(container.read(allergiesProvider('p1')).value!.length, 1);
       expect(container.read(allergiesProvider('p1')).value!.first.name, 'Dust');
       verify(() => mockAllergiesRepository.addAllergy(any())).called(1);

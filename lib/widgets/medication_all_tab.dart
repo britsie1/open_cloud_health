@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/providers/medications_provider.dart';
+import 'package:open_cloud_health/utils/result.dart';
 import 'package:open_cloud_health/widgets/medication_dialog.dart';
 
 class MedicationAllTab extends ConsumerWidget {
@@ -29,10 +30,18 @@ class MedicationAllTab extends ConsumerWidget {
                 children: [
                   Switch(
                     value: med.isActive,
-                    onChanged: (val) {
-                      ref
+                    onChanged: (val) async {
+                      final result = await ref
                           .read(medicationsProvider(profileId).notifier)
                           .toggleIsActive(med);
+
+                      if (result is Failure && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text(
+                                  'Failed to update: ${result.exception}')),
+                        );
+                      }
                     },
                   ),
                   PopupMenuButton<String>(
@@ -61,12 +70,23 @@ class MedicationAllTab extends ConsumerWidget {
                                 style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.red,
                                     foregroundColor: Colors.white),
-                                onPressed: () {
-                                  ref
+                                onPressed: () async {
+                                  final result = await ref
                                       .read(medicationsProvider(profileId)
                                           .notifier)
                                       .deleteMedication(med.id);
-                                  Navigator.of(context).pop();
+
+                                  if (context.mounted) {
+                                    Navigator.of(context).pop();
+
+                                    if (result is Failure) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                            content: Text(
+                                                'Failed to delete: ${result.exception}')),
+                                      );
+                                    }
+                                  }
                                 },
                                 child: const Text('Delete'),
                               ),

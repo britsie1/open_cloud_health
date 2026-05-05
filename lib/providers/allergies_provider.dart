@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/allergy.dart';
 import 'package:open_cloud_health/repositories/allergies_repository.dart';
+import 'package:open_cloud_health/utils/result.dart';
 
 class AllergiesNotifier extends FamilyAsyncNotifier<List<Allergy>, String> {
   AllergiesRepository get _repository => ref.read(allergiesRepositoryProvider);
@@ -10,17 +11,23 @@ class AllergiesNotifier extends FamilyAsyncNotifier<List<Allergy>, String> {
     return _repository.getAllergies(arg);
   }
 
-  Future<void> addAllergy(Allergy allergy) async {
-    await _repository.addAllergy(allergy);
-    if (state.hasValue) {
-      state = AsyncValue.data([...state.value!, allergy]);
+  Future<Result<void, Exception>> addAllergy(Allergy allergy) async {
+    try {
+      await _repository.addAllergy(allergy);
+      await refreshAllergies();
+      return const Success(null);
+    } catch (e) {
+      return Failure(e is Exception ? e : Exception(e.toString()));
     }
   }
 
-  Future<void> deleteAllergy(String id) async {
-    await _repository.deleteAllergy(id);
-    if (state.hasValue) {
-      state = AsyncValue.data(state.value!.where((a) => a.id != id).toList());
+  Future<Result<void, Exception>> deleteAllergy(String id) async {
+    try {
+      await _repository.deleteAllergy(id);
+      await refreshAllergies();
+      return const Success(null);
+    } catch (e) {
+      return Failure(e is Exception ? e : Exception(e.toString()));
     }
   }
 

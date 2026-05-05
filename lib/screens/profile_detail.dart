@@ -6,8 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
-import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/utils/constants.dart';
+import 'package:open_cloud_health/utils/result.dart';
 import 'package:open_cloud_health/widgets/allergy_list_section.dart';
 import 'package:open_cloud_health/widgets/profile_image_picker.dart';
 
@@ -74,43 +74,33 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
     }
     _form.currentState!.save();
 
-    String profileId = '';
-    if (widget.profile == null) {
-      profileId = await ref.read(profilesProvider.notifier).addProfile(
-          _enteredName,
-          _enteredMiddleNames,
-          _enteredSurname,
-          DateTime.parse(_selectedDateController.text),
-          _selectedGender!,
-          _selectedBloodType,
-          _isOrganDonor);
-    } else {
-      await ref.read(profilesProvider.notifier).updateProfile(
-            Profile(
-                id: widget.profile!.id,
-                name: _enteredName,
-                middleNames: _enteredMiddleNames,
-                surname: _enteredSurname,
-                dateOfBirth: DateTime.parse(_selectedDateController.text),
-                gender: _selectedGender!,
-                bloodType: _selectedBloodType,
-                isOrganDonor: _isOrganDonor),
-          );
-      profileId = widget.profile!.id;
-    }
+    final result = await ref.read(profilesProvider.notifier).saveProfile(
+          id: widget.profile?.id,
+          name: _enteredName,
+          middleNames: _enteredMiddleNames,
+          surname: _enteredSurname,
+          dateOfBirth: DateTime.parse(_selectedDateController.text),
+          gender: _selectedGender!,
+          bloodType: _selectedBloodType,
+          isOrganDonor: _isOrganDonor,
+          imageFile: _isNewImagePicked ? _pickImageFile : null,
+        );
 
-    if (_pickImageFile != null && _isNewImagePicked) {
-      await ref.read(fileServiceProvider).saveProfileImage(profileId, _pickImageFile!);
-    }
+    if (!mounted) return;
 
-    if (!mounted) {
-      return;
-    }
-
-    if (context.canPop()) {
-      context.pop();
-    } else {
-      context.go(AppRoutes.profiles);
+    switch (result) {
+      case Success():
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go(AppRoutes.profiles);
+        }
+        break;
+      case Failure(:final exception):
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save profile: $exception')),
+        );
+        break;
     }
   }
 

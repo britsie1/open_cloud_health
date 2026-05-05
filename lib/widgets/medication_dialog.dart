@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/providers/medications_provider.dart';
+import 'package:open_cloud_health/utils/result.dart';
 
 class MedicationDialog extends ConsumerStatefulWidget {
   const MedicationDialog({
@@ -39,11 +40,13 @@ class _MedicationDialogState extends ConsumerState<MedicationDialog> {
     super.dispose();
   }
 
-  void _submit() {
+  void _submit() async {
     if (_nameController.text.trim().isEmpty ||
         _dosageController.text.trim().isEmpty) {
       return;
     }
+
+    Result<void, Exception> result;
 
     if (widget.medication == null) {
       final newMed = Medication(
@@ -53,7 +56,7 @@ class _MedicationDialogState extends ConsumerState<MedicationDialog> {
         timeOfDay: _selectedTime,
       );
 
-      ref
+      result = await ref
           .read(medicationsProvider(widget.profileId).notifier)
           .addMedication(newMed);
     } else {
@@ -66,12 +69,21 @@ class _MedicationDialogState extends ConsumerState<MedicationDialog> {
         isActive: widget.medication!.isActive,
       );
 
-      ref
+      result = await ref
           .read(medicationsProvider(widget.profileId).notifier)
           .updateMedication(updatedMed);
     }
 
+    if (!mounted) return;
     context.pop();
+
+    if (result is Failure) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                'Failed to save medication: ${result.exception}')),
+      );
+    }
   }
 
   @override

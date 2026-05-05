@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/allergy.dart';
 import 'package:open_cloud_health/providers/allergies_provider.dart';
 
+import 'package:open_cloud_health/utils/result.dart';
+
 class AllergyListSection extends ConsumerWidget {
   const AllergyListSection({super.key, required this.profileId});
 
@@ -68,11 +70,21 @@ class AllergyListSection extends ConsumerWidget {
                               style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.red,
                                   foregroundColor: Colors.white),
-                              onPressed: () {
-                                ref
+                              onPressed: () async {
+                                final result = await ref
                                     .read(allergiesProvider(profileId).notifier)
                                     .deleteAllergy(allergy.id);
+
+                                if (!context.mounted) return;
                                 context.pop();
+
+                                if (result is Failure) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text(
+                                            'Failed to delete allergy: ${result.exception}')),
+                                  );
+                                }
                               },
                               child: const Text('Delete'),
                             ),
@@ -112,7 +124,7 @@ class _AddAllergyDialogState extends ConsumerState<AddAllergyDialog> {
     super.dispose();
   }
 
-  void _submit() {
+  void _submit() async {
     if (_nameController.text.trim().isEmpty) {
       return;
     }
@@ -123,10 +135,20 @@ class _AddAllergyDialogState extends ConsumerState<AddAllergyDialog> {
       note: _noteController.text.trim(),
     );
 
-    ref
+    final result = await ref
         .read(allergiesProvider(widget.profileId).notifier)
         .addAllergy(newAllergy);
+
+    if (!mounted) return;
     context.pop();
+
+    if (result is Failure) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                'Failed to add allergy: ${result.exception}')),
+      );
+    }
   }
 
   @override

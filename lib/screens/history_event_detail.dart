@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_cupertino_datetime_picker/flutter_cupertino_datetime_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:open_cloud_health/models/attachment.dart' as attachment;
 import 'package:open_cloud_health/models/attachment.dart';
 import 'package:open_cloud_health/models/history_event.dart' as history;
 import 'package:open_cloud_health/providers/attachment_provider.dart';
 import 'package:open_cloud_health/providers/history_provider.dart';
+import 'package:open_cloud_health/utils/result.dart';
 import 'package:open_cloud_health/widgets/attachment_item.dart';
 import 'package:path/path.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -73,7 +73,7 @@ class _HistoryEventDetailScreenState
     if (result != null) {
       final newFiles = result.paths
           .map(
-            (path) => attachment.Attachment(
+            (path) => Attachment(
                 historyId:
                     widget.historyEvent != null ? widget.historyEvent!.id : '',
                 filename: basename(path!),
@@ -99,79 +99,36 @@ class _HistoryEventDetailScreenState
         return;
       }
       _form.currentState!.save();
-      if (widget.historyEvent == null) {
-        var historyId = await ref
-            .read(historyProvider(widget.profileId).notifier)
-            .addEvent(
-                widget.profileId,
-                _enteredTitle,
-                _enteredDescription,
-                DateTime.parse(_selectedDateController.text),
-                selectedFiles.length);
 
-        //update the historyId
-        selectedFiles = selectedFiles
-            .map((attachment) => attachment.copyWith(historyId: historyId))
-            .toList();
+      final messenger = ScaffoldMessenger.of(context);
+      final router = GoRouter.of(context);
 
-        await ref.read(attachmentProvider.notifier).addAttachments(selectedFiles);
-      } else {
-        await ref.read(historyProvider(widget.profileId).notifier).updateEvent(
-            history.HistoryEvent(
-                id: widget.historyEvent!.id,
-                profileId: widget.historyEvent!.profileId,
-                title: _enteredTitle,
-                description: _enteredDescription,
-                date: DateTime.parse(_selectedDateController.text),
-                attachmentCount: selectedFiles.length));
+      final result = await ref
+          .read(historyProvider(widget.profileId).notifier)
+          .saveEventWithAttachments(
+            id: widget.historyEvent?.id,
+            profileId: widget.profileId,
+            title: _enteredTitle,
+            description: _enteredDescription,
+            date: DateTime.parse(_selectedDateController.text),
+            attachments: selectedFiles,
+          );
 
-        //get all missing attachments and delete them
-        var dbAttachments = await fetchAttachments(widget.historyEvent!.id);
-        var attachmentsToRemove = dbAttachments.where((attachment) =>
-            selectedFiles.where((file) => file.id == attachment.id).isEmpty);
-        var attachmentsToAdd = selectedFiles.where((file) => dbAttachments
-            .where((attachment) => attachment.id == file.id)
-            .isEmpty);
+      if (!mounted) return;
 
-        if (attachmentsToRemove.isNotEmpty) {
-          await ref
-              .read(attachmentProvider.notifier)
-              .removeAttachments(attachmentsToRemove);
-        }
-
-        if (attachmentsToAdd.isNotEmpty) {
-          await ref
-              .read(attachmentProvider.notifier)
-              .addAttachments(attachmentsToAdd);
-        }
+      if (result is Success<String, Exception>) {
+        router.pop();
+      } else if (result is Failure<String, Exception>) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Failed to save event: ${result.exception}')),
+        );
       }
-
-      if (!context.mounted) {
-        return;
-      }
-      context.pop();
     }
 
-    void removeAttachment(attachment.Attachment attachment) {
-      final attachmentIndex = selectedFiles.indexOf(attachment);
+    void removeAttachment(Attachment attachment) {
       setState(() {
         selectedFiles.remove(attachment);
       });
-
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 5),
-          content: const Text('Attachment deleted'),
-          action: SnackBarAction(
-              label: 'Undo',
-              onPressed: () {
-                setState(() {
-                  selectedFiles.insert(attachmentIndex, attachment);
-                });
-              }),
-        ),
-      );
     }
 
     return Scaffold(
@@ -197,12 +154,27 @@ class _HistoryEventDetailScreenState
                         style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white),
-                        onPressed: () {
-                          ref
+                        onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final router = GoRouter.of(context);
+
+                          final result = await ref
                               .read(historyProvider(widget.profileId).notifier)
                               .deleteEvent(widget.historyEvent!.id);
-                          context.pop(); // Close dialog
-                          context.pop(); // Close detail screen
+                          
+                          if (!mounted) return;
+                          
+                          router.pop(); // Close dialog
+
+                          if (result is Success<void, Exception>) {
+                            router.pop(); // Close detail screen
+                          } else if (result is Failure<void, Exception>) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                  content: Text(
+                                      'Failed to delete event: ${result.exception}')),
+                            );
+                          }
                         },
                         child: const Text('Delete'),
                       ),

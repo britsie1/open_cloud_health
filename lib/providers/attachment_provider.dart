@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/attachment.dart';
 import 'package:open_cloud_health/repositories/attachment_repository.dart';
 import 'package:open_cloud_health/services/file_service.dart';
+import 'package:open_cloud_health/utils/result.dart';
 
 class AttachmentNotifier extends AsyncNotifier<List<Attachment>> {
   AttachmentRepository get _repository => ref.read(attachmentRepositoryProvider);
@@ -13,20 +14,25 @@ class AttachmentNotifier extends AsyncNotifier<List<Attachment>> {
     return const [];
   }
 
-  Future<void> addAttachments(Iterable<Attachment> attachments) async {
-    if (attachments.isNotEmpty) {
-      for (int i = 0; i < attachments.length; i++) {
-        final attachment = attachments.elementAt(i);
-        await _repository.insertAttachment(attachment);
+  Future<Result<void, Exception>> addAttachments(Iterable<Attachment> attachments) async {
+    try {
+      if (attachments.isNotEmpty) {
+        for (int i = 0; i < attachments.length; i++) {
+          final attachment = attachments.elementAt(i);
+          await _repository.insertAttachment(attachment);
 
-        if (attachment.tempPath.isNotEmpty) {
-          await _fileService.saveAttachment(
-            attachment.historyId,
-            File(attachment.tempPath),
-            attachment.filename,
-          );
+          if (attachment.tempPath.isNotEmpty) {
+            await _fileService.saveAttachment(
+              attachment.historyId,
+              File(attachment.tempPath),
+              attachment.filename,
+            );
+          }
         }
       }
+      return const Success(null);
+    } catch (e) {
+      return Failure(e is Exception ? e : Exception(e.toString()));
     }
   }
 
@@ -34,15 +40,20 @@ class AttachmentNotifier extends AsyncNotifier<List<Attachment>> {
     return await _repository.getAttachments(historyId);
   }
 
-  Future<void> removeAttachments(Iterable<Attachment> attachments) async {
-    if (attachments.isNotEmpty) {
-      List<String> ids = attachments.map((attachment) => attachment.id).toList();
-      await _repository.deleteAttachments(ids);
+  Future<Result<void, Exception>> removeAttachments(Iterable<Attachment> attachments) async {
+    try {
+      if (attachments.isNotEmpty) {
+        List<String> ids = attachments.map((attachment) => attachment.id).toList();
+        await _repository.deleteAttachments(ids);
 
-      for (int i = 0; i < attachments.length; i++) {
-        final attachment = attachments.elementAt(i);
-        await _fileService.deleteAttachment(attachment.historyId, attachment.filename);
+        for (int i = 0; i < attachments.length; i++) {
+          final attachment = attachments.elementAt(i);
+          await _fileService.deleteAttachment(attachment.historyId, attachment.filename);
+        }
       }
+      return const Success(null);
+    } catch (e) {
+      return Failure(e is Exception ? e : Exception(e.toString()));
     }
   }
 

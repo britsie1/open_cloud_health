@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
 import 'package:open_cloud_health/providers/medications_provider.dart';
+import 'package:open_cloud_health/utils/result.dart';
 
 class MedicationTodayTab extends ConsumerWidget {
   const MedicationTodayTab({super.key, required this.profileId});
@@ -32,9 +33,10 @@ class MedicationTodayTab extends ConsumerWidget {
                   title: Text(med.name),
                   subtitle: Text('${med.dosage} at ${med.timeFormatted}'),
                   value: isTaken,
-                  onChanged: (val) {
+                  onChanged: (val) async {
+                    Result<void, Exception> result;
                     if (val == true) {
-                      ref
+                      result = await ref
                           .read(medicationLogsProvider(profileId).notifier)
                           .addLog(
                             MedicationLog(
@@ -42,13 +44,21 @@ class MedicationTodayTab extends ConsumerWidget {
                               timestamp: DateTime.now(),
                             ),
                           );
-                    } else if (val == false) {
-                      ref
+                    } else {
+                      result = await ref
                           .read(medicationLogsProvider(profileId).notifier)
                           .removeLog(
                             med.id,
                             DateTime.now(),
                           );
+                    }
+
+                    if (result is Failure && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text(
+                                'Failed to update log: ${result.exception}')),
+                      );
                     }
                   },
                 );
