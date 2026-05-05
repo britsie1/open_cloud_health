@@ -90,6 +90,27 @@ class MedicationsRepository {
         .toList();
   }
 
+  Future<List<MedicationLog>> loadAllLogs(String profileId, {int limit = 20, int offset = 0}) async {
+    final db = await _dbHelper.getDatabase();
+
+    final data = await db.rawQuery('''
+      SELECT ml.* FROM medication_logs ml
+      JOIN medications m ON ml.medicationId = m.id
+      WHERE m.profileId = ?
+      ORDER BY ml.timestamp DESC
+      LIMIT ? OFFSET ?
+    ''', [profileId, limit, offset]);
+
+    return data
+        .map((row) => MedicationLog(
+              id: row['id'] as String,
+              medicationId: row['medicationId'] as String,
+              timestamp: DateTime.parse(row['timestamp'] as String),
+              isTaken: row['isTaken'] == 'true',
+            ))
+        .toList();
+  }
+
   Future<void> addLog(MedicationLog log) async {
     final db = await _dbHelper.getDatabase();
     await db.insert('medication_logs', {

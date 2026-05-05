@@ -105,6 +105,68 @@ final medicationsProvider =
     AsyncNotifierProvider.family<MedicationsNotifier, List<Medication>, String>(
         MedicationsNotifier.new);
 
+class AllMedicationLogsNotifier extends FamilyAsyncNotifier<List<MedicationLog>, String> {
+  MedicationsRepository get _repository => ref.read(medicationsRepositoryProvider);
+  
+  static const int _limit = 20;
+  int _offset = 0;
+  bool hasMore = true;
+  bool _isLoadingMore = false;
+
+  @override
+  Future<List<MedicationLog>> build(String arg) async {
+    _offset = 0;
+    hasMore = true;
+    final initialLogs = await _repository.loadAllLogs(arg, limit: _limit, offset: _offset);
+    if (initialLogs.length < _limit) {
+      hasMore = false;
+    }
+    return initialLogs;
+  }
+
+  Future<void> loadMore() async {
+    if (!hasMore || _isLoadingMore || state.isLoading || state.hasError) return;
+
+    _isLoadingMore = true;
+    _offset += _limit;
+
+    try {
+      final moreLogs = await _repository.loadAllLogs(arg, limit: _limit, offset: _offset);
+      
+      if (moreLogs.isEmpty) {
+        hasMore = false;
+      } else {
+        if (moreLogs.length < _limit) {
+          hasMore = false;
+        }
+        final currentLogs = state.value ?? [];
+        state = AsyncValue.data([...currentLogs, ...moreLogs]);
+      }
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    } finally {
+      _isLoadingMore = false;
+    }
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncValue.loading();
+    _offset = 0;
+    hasMore = true;
+    _isLoadingMore = false;
+    state = await AsyncValue.guard(() async {
+      final logs = await _repository.loadAllLogs(arg, limit: _limit, offset: _offset);
+      if (logs.length < _limit) {
+        hasMore = false;
+      }
+      return logs;
+    });
+  }
+}
+
+final allMedicationLogsProvider = AsyncNotifierProvider.family<AllMedicationLogsNotifier, List<MedicationLog>, String>(
+    AllMedicationLogsNotifier.new);
+
 class MedicationLogsNotifier
     extends FamilyAsyncNotifier<List<MedicationLog>, String> {
   MedicationsRepository get _repository =>

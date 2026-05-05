@@ -4,6 +4,7 @@ import 'package:open_cloud_health/widgets/account_appbar_actions.dart';
 import 'package:open_cloud_health/widgets/main_drawer.dart';
 import 'package:open_cloud_health/widgets/medication_all_tab.dart';
 import 'package:open_cloud_health/widgets/medication_dialog.dart';
+import 'package:open_cloud_health/widgets/medication_log_tab.dart';
 import 'package:open_cloud_health/widgets/medication_today_tab.dart';
 
 class MedicationTrackerScreen extends ConsumerStatefulWidget {
@@ -28,7 +29,7 @@ class _MedicationTrackerScreenState
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           actions: const [AccountAppBarActions()],
@@ -38,6 +39,7 @@ class _MedicationTrackerScreenState
             tabs: [
               Tab(icon: Icon(Icons.today), text: 'Today'),
               Tab(icon: Icon(Icons.list), text: 'All Medications'),
+              Tab(icon: Icon(Icons.history), text: 'Log'),
             ],
           ),
         ),
@@ -48,6 +50,7 @@ class _MedicationTrackerScreenState
           children: [
             MedicationTodayTab(profileId: widget.profileId),
             MedicationAllTab(profileId: widget.profileId),
+            MedicationLogTab(profileId: widget.profileId),
           ],
         ),
         floatingActionButton: FloatingActionButton(
