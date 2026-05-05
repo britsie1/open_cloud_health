@@ -111,15 +111,10 @@ class _HistoryEventDetailScreenState
 
         //update the historyId
         selectedFiles = selectedFiles
-            .map((attachment) => Attachment(
-                id: attachment.id,
-                historyId: historyId,
-                filename: attachment.filename,
-                uploadDate: attachment.uploadDate,
-                byteLength: attachment.byteLength))
+            .map((attachment) => attachment.copyWith(historyId: historyId))
             .toList();
 
-        ref.read(attachmentProvider.notifier).addAttachments(selectedFiles);
+        await ref.read(attachmentProvider.notifier).addAttachments(selectedFiles);
       } else {
         await ref.read(historyProvider(widget.profileId).notifier).updateEvent(
             history.HistoryEvent(
@@ -139,13 +134,13 @@ class _HistoryEventDetailScreenState
             .isEmpty);
 
         if (attachmentsToRemove.isNotEmpty) {
-          ref
+          await ref
               .read(attachmentProvider.notifier)
               .removeAttachments(attachmentsToRemove);
         }
 
         if (attachmentsToAdd.isNotEmpty) {
-          ref
+          await ref
               .read(attachmentProvider.notifier)
               .addAttachments(attachmentsToAdd);
         }

@@ -40,6 +40,24 @@ class Attachment {
     return '${byteLength}bytes';
   }
 
+  Attachment copyWith({
+    String? id,
+    String? historyId,
+    String? filename,
+    DateTime? uploadDate,
+    int? byteLength,
+    String? tempPath,
+  }) {
+    return Attachment(
+      id: id ?? this.id,
+      historyId: historyId ?? this.historyId,
+      filename: filename ?? this.filename,
+      uploadDate: uploadDate ?? this.uploadDate,
+      byteLength: byteLength ?? this.byteLength,
+      tempPath: tempPath ?? this.tempPath,
+    );
+  }
+
   IconData get fileIcon {
     final extension = path.extension(filename);
     var icon = Icons.insert_drive_file_outlined;

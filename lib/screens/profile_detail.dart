@@ -6,8 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
+import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/widgets/allergy_list_section.dart';
 import 'package:open_cloud_health/widgets/profile_image_picker.dart';
@@ -101,20 +100,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
     }
 
     if (_pickImageFile != null && _isNewImagePicked) {
-      Directory appDir = await getApplicationDocumentsDirectory();
-      final profileImagesDir =
-          Directory(path.join(appDir.path, 'profileImages'));
-      if (!profileImagesDir.existsSync()) {
-        await profileImagesDir.create(recursive: true);
-      }
-
-      final filePath = path.join(appDir.path, 'profileImages/$profileId.jpg');
-      final file = File(filePath);
-      if (await file.exists()) {
-        await file.delete();
-      }
-
-      await file.writeAsBytes(await _pickImageFile!.readAsBytes());
+      await ref.read(fileServiceProvider).saveProfileImage(profileId, _pickImageFile!);
     }
 
     if (!mounted) {

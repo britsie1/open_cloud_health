@@ -2,12 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
+import 'package:open_cloud_health/services/file_service.dart';
 
 class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
   ProfilesRepository get _repository => ref.read(profilesRepositoryProvider);
+  FileService get _fileService => ref.read(fileServiceProvider);
 
   @override
   Future<List<Profile>> build() async {
@@ -15,14 +14,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
   }
 
   Future<String> getProfileImagePath(String id) async {
-    var appDir = await getApplicationDocumentsDirectory();
-    final filePath = path.join(appDir.path, 'profileImages/$id.jpg');
-    final file = File(filePath);
-    if (await file.exists() && await file.length() > 0) {
-      return filePath;
-    }
-
-    return '';
+    return _fileService.getProfileImagePath(id);
   }
 
   Future<List<Profile>> _fetchProfiles() async {

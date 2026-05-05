@@ -1,12 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/attachment.dart';
+import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_file_plus/open_file_plus.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
 
-class AttachmentItem extends StatelessWidget {
+class AttachmentItem extends ConsumerWidget {
   const AttachmentItem(
       {super.key, required this.attachment, required this.onRemoveAttachment});
 
@@ -14,19 +14,23 @@ class AttachmentItem extends StatelessWidget {
   final void Function(Attachment attachment) onRemoveAttachment;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     Future<void> openFile(Attachment attachment) async {
-      var appDir = await getApplicationDocumentsDirectory();
-      final attachmentDir = 'attachments/${attachment.historyId}';
-      final filePath = path.join(appDir.path,attachmentDir,attachment.filename);
+      final fileService = ref.read(fileServiceProvider);
+      final filePath = await fileService.getAttachmentPath(
+          attachment.historyId, attachment.filename);
 
-      if (File(filePath).existsSync()){
+      if (await File(filePath).exists()) {
         OpenFile.open(filePath);
-      }
-      else if (attachment.tempPath.isNotEmpty){
+      } else if (attachment.tempPath.isNotEmpty) {
         OpenFile.open(attachment.tempPath);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('File not found')),
+          );
+        }
       }
-      //TODO: else, show snackbar, file not found
     }
 
     return Dismissible(
