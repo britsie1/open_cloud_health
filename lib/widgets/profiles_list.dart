@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/storage/google_drive_helper.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
-import 'package:open_cloud_health/screens/history.dart';
-import 'package:open_cloud_health/screens/profile_detail.dart';
+import 'package:open_cloud_health/utils/constants.dart';
 
 class ProfilesList extends ConsumerStatefulWidget {
   const ProfilesList({super.key, required this.profiles});
@@ -24,8 +24,7 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
         .getProfileImagePath(profile.id);
 
     if (filepath.isEmpty) {
-      return AssetImage(
-          'assets/images/${profile.gender.name.toString()}_placeholder.png');
+      return AssetImage(AppAssets.getGenderPlaceholder(profile.gender.name));
     } else {
       return FileImage(File(filepath));
     }
@@ -40,11 +39,7 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
     final profiles = widget.profiles;
 
     void selectProfile(Profile profile) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (ctx) => HistoryScreen(profile: profile),
-        ),
-      );
+      context.go('${AppRoutes.history}/${profile.id}', extra: profile);
     }
 
     Widget content = Column(
@@ -97,13 +92,7 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
               padding: const EdgeInsets.only(bottom: 24),
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (ctx) => const ProfileDetailScreen(
-                        profile: null,
-                      ),
-                    ),
-                  );
+                  context.push(AppRoutes.profileDetail);
                 },
                 icon: const Icon(Icons.add),
                 label: const Text('Add or import a profile'),
@@ -129,13 +118,7 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
               ),
               ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (ctx) => const ProfileDetailScreen(
-                        profile: null,
-                      ),
-                    ),
-                  );
+                  context.push(AppRoutes.profileDetail);
                 },
                 icon: const Icon(Icons.add),
                 label: const Text('Create a Profile'),

@@ -3,11 +3,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_cupertino_datetime_picker/flutter_cupertino_datetime_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
-import 'package:open_cloud_health/screens/profiles.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/widgets/allergy_list_section.dart';
 import 'package:open_cloud_health/widgets/profile_image_picker.dart';
 
@@ -118,14 +119,10 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
       return;
     }
 
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
+    if (context.canPop()) {
+      context.pop();
     } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (ctx) => const ProfilesScreen(),
-        ),
-      );
+      context.go(AppRoutes.profiles);
     }
   }
 
@@ -144,8 +141,8 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
   Widget build(BuildContext context) {
     ImageProvider imageToShow = AssetImage(
         _selectedGender == null || _selectedGender == Gender.male
-            ? 'assets/images/male_placeholder.png'
-            : 'assets/images/female_placeholder.png');
+            ? AppAssets.malePlaceholder
+            : AppAssets.femalePlaceholder);
 
     if (_pickImageFile != null) {
       imageToShow = FileImage(_pickImageFile!);

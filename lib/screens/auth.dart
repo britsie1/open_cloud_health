@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
-import 'package:open_cloud_health/screens/history.dart';
-import 'package:open_cloud_health/screens/profiles.dart';
+import 'package:open_cloud_health/utils/constants.dart';
 
 enum _SupportState {
   unknown,
@@ -71,8 +71,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       }
     }
 
-
-
     if (isAuthenticated || _supportState == _SupportState.unsupported) {
       await ref.read(profilesProvider.notifier).loadProfiles();
 
@@ -83,28 +81,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       final profiles = ref.read(profilesProvider).value ?? [];
 
       if (profiles.isEmpty) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (ctx) => const ProfilesScreen(),
-          ),
-        );
+        context.go(AppRoutes.profiles);
         return;
       }
 
       if (profiles.length == 1) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (ctx) => HistoryScreen(profile: profiles[0]),
-          ),
-        );
+        context.go('${AppRoutes.history}/${profiles[0].id}', extra: profiles[0]);
         return;
       }
 
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (ctx) => const ProfilesScreen(),
-        ),
-      );
+      context.go(AppRoutes.profiles);
     }
   }
 
@@ -122,7 +108,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 right: 20,
               ),
               width: 230,
-              child: Image.asset('assets/images/logo.png'),
+              child: Image.asset(AppAssets.logo),
             ),
             Text(
               'OpenCloudHealth',

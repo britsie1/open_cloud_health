@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:open_cloud_health/screens/auth.dart';
-import 'package:open_cloud_health/screens/settings.dart';
+import 'package:go_router/go_router.dart';
+import 'package:open_cloud_health/utils/constants.dart';
 
 class AccountAppBarActions extends StatefulWidget {
   const AccountAppBarActions({super.key});
@@ -17,14 +17,14 @@ class _AccountAppBarActionsState extends State<AccountAppBarActions> {
       icon: const Icon(Icons.account_circle),
       itemBuilder: (ctx) => const [
         PopupMenuItem(
-          value: 'settings',
+          value: AppRoutes.settings,
           child: ListTile(
             leading: Icon(Icons.settings),
             title: Text('Settings'),
           ),
         ),
         PopupMenuItem(
-          value: 'logout',
+          value: AppRoutes.auth,
           child: ListTile(
             leading: Icon(Icons.exit_to_app),
             title: Text('Logout'),
@@ -33,13 +33,11 @@ class _AccountAppBarActionsState extends State<AccountAppBarActions> {
       ],
       onSelected: (value) {
         switch (value) {
-          case 'settings':
-            Navigator.of(context).push(
-                MaterialPageRoute(builder: (ctx) => const SettingsScreen()));
+          case AppRoutes.settings:
+            context.push(AppRoutes.settings);
             break;
-          case 'logout':
-            Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (ctx) => const AuthScreen()));
+          case AppRoutes.auth:
+            context.go(AppRoutes.auth);
             break;
         }
       },

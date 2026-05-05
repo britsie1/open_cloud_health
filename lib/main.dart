@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_cloud_health/screens/auth.dart';
+import 'package:open_cloud_health/routing/app_router.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
 
 void main() async {
@@ -16,7 +16,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
+      routerConfig: appRouter,
       title: 'OpenCloudHealth',
       theme: ThemeData().copyWith(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
@@ -25,7 +26,6 @@ class MyApp extends StatelessWidget {
           foregroundColor: Colors.white,
         ),
       ),
-      home: const AuthScreen()
     );
   }
 }

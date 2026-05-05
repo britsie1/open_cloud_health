@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/providers/medications_provider.dart';
 
@@ -70,7 +71,7 @@ class _MedicationDialogState extends ConsumerState<MedicationDialog> {
           .updateMedication(updatedMed);
     }
 
-    Navigator.of(context).pop();
+    context.pop();
   }
 
   @override
@@ -116,7 +117,7 @@ class _MedicationDialogState extends ConsumerState<MedicationDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => context.pop(),
           child: const Text('Cancel'),
         ),
         ElevatedButton(

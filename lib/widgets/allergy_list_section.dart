@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/allergy.dart';
 import 'package:open_cloud_health/providers/allergies_provider.dart';
 
@@ -60,7 +61,7 @@ class AllergyListSection extends ConsumerWidget {
                               'Are you sure you want to delete this allergy?'),
                           actions: [
                             TextButton(
-                              onPressed: () => Navigator.of(context).pop(),
+                              onPressed: () => context.pop(),
                               child: const Text('Cancel'),
                             ),
                             ElevatedButton(
@@ -71,7 +72,7 @@ class AllergyListSection extends ConsumerWidget {
                                 ref
                                     .read(allergiesProvider(profileId).notifier)
                                     .deleteAllergy(allergy.id);
-                                Navigator.of(context).pop();
+                                context.pop();
                               },
                               child: const Text('Delete'),
                             ),
@@ -122,8 +123,10 @@ class _AddAllergyDialogState extends ConsumerState<AddAllergyDialog> {
       note: _noteController.text.trim(),
     );
 
-    ref.read(allergiesProvider(widget.profileId).notifier).addAllergy(newAllergy);
-    Navigator.of(context).pop();
+    ref
+        .read(allergiesProvider(widget.profileId).notifier)
+        .addAllergy(newAllergy);
+    context.pop();
   }
 
   @override
@@ -148,7 +151,7 @@ class _AddAllergyDialogState extends ConsumerState<AddAllergyDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => context.pop(),
           child: const Text('Cancel'),
         ),
         ElevatedButton(

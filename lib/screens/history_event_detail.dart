@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cupertino_datetime_picker/flutter_cupertino_datetime_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/attachment.dart' as attachment;
 import 'package:open_cloud_health/models/attachment.dart';
 import 'package:open_cloud_health/models/history_event.dart' as history;
@@ -62,11 +63,7 @@ class _HistoryEventDetailScreenState
   }
 
   void _attachFiles() async {
-    await [
-      Permission.photos,
-      Permission.videos,
-      Permission.audio
-    ].request();
+    await [Permission.photos, Permission.videos, Permission.audio].request();
 
     //TODO: show snackbar if permission is not granted.
 
@@ -157,7 +154,7 @@ class _HistoryEventDetailScreenState
       if (!context.mounted) {
         return;
       }
-      Navigator.of(context).pop();
+      context.pop();
     }
 
     void removeAttachment(attachment.Attachment attachment) {
@@ -194,10 +191,11 @@ class _HistoryEventDetailScreenState
                   context: context,
                   builder: (ctx) => AlertDialog(
                     title: const Text('Delete Event'),
-                    content: const Text('Are you sure you want to delete this event?'),
+                    content:
+                        const Text('Are you sure you want to delete this event?'),
                     actions: [
                       TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () => context.pop(),
                         child: const Text('Cancel'),
                       ),
                       ElevatedButton(
@@ -208,8 +206,8 @@ class _HistoryEventDetailScreenState
                           ref
                               .read(historyProvider(widget.profileId).notifier)
                               .deleteEvent(widget.historyEvent!.id);
-                          Navigator.of(context).pop(); // Close dialog
-                          Navigator.of(context).pop(); // Close detail screen
+                          context.pop(); // Close dialog
+                          context.pop(); // Close detail screen
                         },
                         child: const Text('Delete'),
                       ),

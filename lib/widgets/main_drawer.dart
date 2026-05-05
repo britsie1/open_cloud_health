@@ -2,14 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
-import 'package:open_cloud_health/screens/medication_tracker.dart';
-import 'package:open_cloud_health/screens/profile_detail.dart';
-import 'package:open_cloud_health/screens/history.dart';
-import 'package:open_cloud_health/screens/profiles.dart';
-import 'package:open_cloud_health/screens/checkups.dart';
-import 'package:open_cloud_health/screens/measurements.dart';
+import 'package:open_cloud_health/utils/constants.dart';
 
 class MainDrawer extends ConsumerStatefulWidget {
   const MainDrawer(
@@ -24,44 +20,45 @@ class MainDrawer extends ConsumerStatefulWidget {
 class _MainDrawerState extends ConsumerState<MainDrawer> {
   File? _profileImageFile;
 
-  void _navigateTo(String page, Profile profile) {
-    if (page == 'about') {
+  void _navigateTo(String route, Profile profile) {
+    if (route == 'about') {
       showAboutDialog(context: context);
       return;
     }
 
-    Navigator.of(context).pop();
-
-    if (page == widget.currentRouteName) {
+    if (route == 'share') {
+      // TODO: Implement share
+      context.pop();
       return;
     }
 
-    Widget pageToNavigateTo = const ProfilesScreen();
-
-    switch (page) {
-      case 'profiles':
-        pageToNavigateTo = const ProfilesScreen();
-        break;
-      case 'history':
-        pageToNavigateTo = HistoryScreen(profile: profile);
-        break;
-      case 'profile_detail':
-        pageToNavigateTo = ProfileDetailScreen(profile: profile);
-        break;
-      case 'medication_tracker':
-        pageToNavigateTo = MedicationTrackerScreen(profileId: profile.id);
-        break;
-      case 'checkups':
-        pageToNavigateTo = CheckupsScreen(profileId: profile.id);
-        break;
-      case 'measurements':
-        pageToNavigateTo = MeasurementsScreen(profileId: profile.id);
-        break;
+    if (route == widget.currentRouteName) {
+      context.pop();
+      return;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (ctx) => pageToNavigateTo),
-    );
+    context.pop(); // Close drawer
+
+    switch (route) {
+      case AppRoutes.profiles:
+        context.go(AppRoutes.profiles);
+        break;
+      case AppRoutes.history:
+        context.go('${AppRoutes.history}/${profile.id}', extra: profile);
+        break;
+      case AppRoutes.profileDetail:
+        context.go(AppRoutes.profileDetail, extra: profile);
+        break;
+      case AppRoutes.medicationTracker:
+        context.go('${AppRoutes.medicationTracker}/${profile.id}');
+        break;
+      case AppRoutes.checkups:
+        context.go('${AppRoutes.checkups}/${profile.id}');
+        break;
+      case AppRoutes.measurements:
+        context.go('${AppRoutes.measurements}/${profile.id}');
+        break;
+    }
   }
 
   @override
@@ -91,8 +88,7 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
       if (_profileImageFile != null) {
         return FileImage(_profileImageFile!);
       } else {
-        return AssetImage(
-            'assets/images/${profile.gender.name}_placeholder.png');
+        return AssetImage(AppAssets.getGenderPlaceholder(profile.gender.name));
       }
     }
 
@@ -118,32 +114,32 @@ class _MainDrawerState extends ConsumerState<MainDrawer> {
               ListTile(
                 leading: const Icon(Icons.supervised_user_circle_outlined),
                 title: const Text('Switch Profile'),
-                onTap: () => _navigateTo('profiles', profile),
+                onTap: () => _navigateTo(AppRoutes.profiles, profile),
               ),
               ListTile(
                 leading: const Icon(Icons.medical_information_outlined),
                 title: const Text('Profile Information'),
-                onTap: () => _navigateTo('profile_detail', profile),
+                onTap: () => _navigateTo(AppRoutes.profileDetail, profile),
               ),
               ListTile(
                 leading: const Icon(Icons.history),
                 title: const Text('Medical History'),
-                onTap: () => _navigateTo('history', profile),
+                onTap: () => _navigateTo(AppRoutes.history, profile),
               ),
               ListTile(
                 leading: const Icon(Icons.medication_liquid_sharp),
                 title: const Text('Medication Tracker'),
-                onTap: () => _navigateTo('medication_tracker', profile),
+                onTap: () => _navigateTo(AppRoutes.medicationTracker, profile),
               ),
               ListTile(
                 leading: const Icon(Icons.medical_services),
                 title: const Text('Medical Checkups'),
-                onTap: () => _navigateTo('checkups', profile),
+                onTap: () => _navigateTo(AppRoutes.checkups, profile),
               ),
               ListTile(
                 leading: const Icon(Icons.monitor_heart),
                 title: const Text('Vitals & Measurements'),
-                onTap: () => _navigateTo('measurements', profile),
+                onTap: () => _navigateTo(AppRoutes.measurements, profile),
               ),
               ListTile(
                 leading: const Icon(Icons.share),

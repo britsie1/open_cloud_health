@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/history_provider.dart';
-import 'package:open_cloud_health/screens/history_event_detail.dart';
+import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/widgets/history_event_card.dart';
 import 'package:open_cloud_health/widgets/main_drawer.dart';
 import 'package:open_cloud_health/widgets/account_appbar_actions.dart';
@@ -18,7 +19,6 @@ class HistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
-
   @override
   Widget build(BuildContext context) {
     final historyAsync = ref.watch(historyProvider(widget.profile.id));
@@ -64,12 +64,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (ctx) =>
-                            HistoryEventDetailScreen(profileId: widget.profile.id),
-                      ),
-                    );
+                    context.push('${AppRoutes.historyDetail}/${widget.profile.id}');
                   },
                   icon: const Icon(Icons.add),
                   label: const Text('Create event'),

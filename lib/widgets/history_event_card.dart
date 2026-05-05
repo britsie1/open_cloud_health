@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/history_event.dart';
-import 'package:open_cloud_health/screens/history_event_detail.dart';
+import 'package:open_cloud_health/utils/constants.dart';
 
 class HistoryEventCard extends StatelessWidget {
   const HistoryEventCard({super.key, required this.historyEvent});
@@ -8,13 +9,9 @@ class HistoryEventCard extends StatelessWidget {
   final HistoryEvent historyEvent;
 
   void _openEventDetail(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (ctx) => HistoryEventDetailScreen(
-          profileId: historyEvent.profileId,
-          historyEvent: historyEvent,
-        ),
-      ),
+    context.push(
+      '${AppRoutes.historyDetail}/${historyEvent.profileId}',
+      extra: historyEvent,
     );
   }
 
@@ -45,16 +42,16 @@ class HistoryEventCard extends StatelessWidget {
                     ),
                   ),
                   if (historyEvent.attachmentCount > 0)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      const Icon(Icons.attach_file, size: 18),
-                      Text(
-                        historyEvent.attachmentCount.toString(),
-                      ),
-                    ],
-                  )
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        const Icon(Icons.attach_file, size: 18),
+                        Text(
+                          historyEvent.attachmentCount.toString(),
+                        ),
+                      ],
+                    )
                 ],
               ),
               Text(historyEvent.formattedDate),
