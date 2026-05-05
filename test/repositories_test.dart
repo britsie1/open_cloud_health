@@ -43,6 +43,14 @@ void main() {
           date TEXT
         )''');
       await db.execute('''
+        CREATE TABLE attachments(
+          id TEXT PRIMARY KEY,
+          historyId TEXT,
+          filename TEXT,
+          uploadDate TEXT,
+          byteLength INTEGER
+        )''');
+      await db.execute('''
         CREATE TABLE allergy(
           id TEXT PRIMARY KEY,
           profileId TEXT,

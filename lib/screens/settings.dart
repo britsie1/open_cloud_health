@@ -5,10 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:open_cloud_health/database/database_helper.dart';
+import 'package:open_cloud_health/services/backup_service.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:open_cloud_health/storage/google_drive_helper.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -26,7 +26,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void initState() {
     super.initState();
 
-    getLastBackupDateTime().then(
+    ref.read(backupServiceProvider).getLastBackupDateTime().then(
       (value) {
         setState(() {
           lastBackupDateTime = '$value UTC';
@@ -89,7 +89,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         );
 
-        await backupToGoogleDrive();
+        await ref.read(backupServiceProvider).backupToGoogleDrive();
 
         setState(() {
           lastBackupDateTime =

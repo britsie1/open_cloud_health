@@ -4,16 +4,30 @@ import 'package:path/path.dart' as path;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class FileService {
+  FileService({this.baseDirectory});
+
+  final Directory? baseDirectory;
   static const String profileImagesSubdir = 'profileImages';
   static const String attachmentsSubdir = 'attachments';
 
-  Future<String> get _localPath async {
+  Future<String> get localPath async {
+    if (baseDirectory != null) {
+      return baseDirectory!.path;
+    }
     final directory = await getApplicationDocumentsDirectory();
     return directory.path;
   }
 
+  Future<Directory> getProfileImagesDirectory() async {
+    return _getDirectory(profileImagesSubdir);
+  }
+
+  Future<Directory> getAttachmentsDirectory() async {
+    return _getDirectory(attachmentsSubdir);
+  }
+
   Future<Directory> _getDirectory(String subdir, {String? nestedSubdir}) async {
-    final basePath = await _localPath;
+    final basePath = await localPath;
     String fullPath = path.join(basePath, subdir);
     if (nestedSubdir != null) {
       fullPath = path.join(fullPath, nestedSubdir);
