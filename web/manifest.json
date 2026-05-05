@@ -1,6 +1,6 @@
 {
-    "name": "open_cloud_health",
-    "short_name": "open_cloud_health",
+    "name": "Open Cloud Health",
+    "short_name": "Open Cloud Health",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

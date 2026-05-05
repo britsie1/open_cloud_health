@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       routerConfig: appRouter,
-      title: 'OpenCloudHealth',
+      title: 'Open Cloud Health',
       theme: ThemeData().copyWith(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         appBarTheme: const AppBarTheme(
