@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/history_event.dart' as history;
 import 'package:open_cloud_health/models/profile.dart';
+import 'package:open_cloud_health/models/vital_log.dart';
 import 'package:open_cloud_health/screens/auth.dart';
 import 'package:open_cloud_health/screens/checkups.dart';
 import 'package:open_cloud_health/screens/history.dart';
@@ -11,6 +12,7 @@ import 'package:open_cloud_health/screens/period_tracker.dart';
 import 'package:open_cloud_health/screens/profile_detail.dart';
 import 'package:open_cloud_health/screens/profiles.dart';
 import 'package:open_cloud_health/screens/settings.dart';
+import 'package:open_cloud_health/screens/vital_detail_screen.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 
 final appRouter = GoRouter(
@@ -73,6 +75,15 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final profileId = state.pathParameters['profileId']!;
         return PeriodTrackerScreen(profileId: profileId);
+      },
+    ),
+    GoRoute(
+      path: '${AppRoutes.vitalTracker}/:profileId/:vitalType',
+      builder: (context, state) {
+        final profileId = state.pathParameters['profileId']!;
+        final vitalTypeString = state.pathParameters['vitalType']!;
+        final vitalType = VitalType.values.byName(vitalTypeString);
+        return VitalDetailScreen(profileId: profileId, vitalType: vitalType);
       },
     ),
     GoRoute(

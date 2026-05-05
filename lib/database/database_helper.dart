@@ -21,6 +21,7 @@ class DatabaseHelper {
         await db.execute(createCheckupLogsTable);
         await db.execute(createPeriodCyclesTable);
         await db.execute(createPeriodLogsTable);
+        await db.execute(createVitalLogsTable);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -35,8 +36,11 @@ class DatabaseHelper {
           await db.execute(createPeriodCyclesTable);
           await db.execute(createPeriodLogsTable);
         }
+        if (oldVersion < 5) {
+          await db.execute(createVitalLogsTable);
+        }
       },
-      version: 4,
+      version: 5,
     );
 
     return db;
@@ -150,6 +154,18 @@ String createPeriodLogsTable = '''
     flowLevel TEXT,
     moods TEXT,
     physicalSymptoms TEXT
+  )''';
+
+String createVitalLogsTable = '''
+  CREATE TABLE vital_logs(
+    id TEXT PRIMARY KEY,
+    profileId TEXT,
+    type TEXT,
+    date TEXT,
+    value1 REAL,
+    value2 REAL,
+    unit TEXT,
+    note TEXT
   )''';
 
 

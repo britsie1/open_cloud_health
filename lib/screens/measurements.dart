@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/profile.dart';
+import 'package:open_cloud_health/models/vital_log.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/widgets/account_appbar_actions.dart';
@@ -49,6 +50,42 @@ class MeasurementsScreen extends ConsumerWidget {
                     context.push('${AppRoutes.periodTracker}/$profileId');
                   },
                 ),
+              ListTile(
+                leading: const Icon(Icons.favorite, color: Colors.deepPurple),
+                title: const Text('Blood Pressure'),
+                subtitle: const Text('Systolic & Diastolic tracking'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  context.push('${AppRoutes.vitalTracker}/$profileId/${VitalType.bloodPressure.name}');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.monitor_heart, color: Colors.red),
+                title: const Text('Heart Rate'),
+                subtitle: const Text('BPM tracking'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  context.push('${AppRoutes.vitalTracker}/$profileId/${VitalType.heartRate.name}');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.scale, color: Colors.blue),
+                title: const Text('Weight & BMI'),
+                subtitle: const Text('Body mass tracking'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  context.push('${AppRoutes.vitalTracker}/$profileId/${VitalType.weight.name}');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.bloodtype, color: Colors.orange),
+                title: const Text('Blood Sugar'),
+                subtitle: const Text('Glucose tracking'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  context.push('${AppRoutes.vitalTracker}/$profileId/${VitalType.bloodSugar.name}');
+                },
+              ),
             ],
           );
         },
