@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:googleapis_auth/auth_io.dart';
 
 class SecureStorage {
   final storage = const FlutterSecureStorage();
+
+  static const _lastProfileIdKey = 'lastProfileId';
 
   //Save Credentials
   Future saveCredentials(AccessToken token, String refreshToken) async {
@@ -25,4 +28,17 @@ class SecureStorage {
   Future clear() {
     return storage.deleteAll();
   }
+
+  // Last Profile ID
+  Future<void> saveLastProfileId(String id) async {
+    await storage.write(key: _lastProfileIdKey, value: id);
+  }
+
+  Future<String?> getLastProfileId() async {
+    return await storage.read(key: _lastProfileIdKey);
+  }
 }
+
+final secureStorageProvider = Provider<SecureStorage>((ref) {
+  return SecureStorage();
+});

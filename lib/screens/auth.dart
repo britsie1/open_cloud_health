@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
+import 'package:open_cloud_health/services/notification_service.dart';
+import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 
 enum _SupportState {
@@ -23,16 +25,39 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final LocalAuthentication auth = LocalAuthentication();
   _SupportState _supportState = _SupportState.unknown;
   bool? _canCheckBiometrics;
+  bool _isInitializing = true;
 
   @override
   void initState() {
     super.initState();
-    auth.isDeviceSupported().then(
-          (bool isSupported) => setState(() => _supportState = isSupported
-              ? _SupportState.supported
-              : _SupportState.unsupported),
-        );
-    _checkBiometrics();
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    // 1. Initialize Notifications in background
+    await NotificationService().init();
+
+    // 2. Check Biometric Support
+    final isSupported = await auth.isDeviceSupported();
+    if (!mounted) return;
+
+    setState(() {
+      _supportState =
+          isSupported ? _SupportState.supported : _SupportState.unsupported;
+    });
+
+    await _checkBiometrics();
+
+    if (!mounted) return;
+
+    setState(() {
+      _isInitializing = false;
+    });
+
+    // 3. Auto-authenticate if supported
+    if (_supportState == _SupportState.supported && (_canCheckBiometrics ?? false)) {
+      _authenticate();
+    }
   }
 
   Future<void> _checkBiometrics() async {
@@ -52,11 +77,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   void _authenticate() async {
     bool isAuthenticated = false;
     try {
-      if (_supportState == _SupportState.supported && _canCheckBiometrics!) {
+      if (_supportState == _SupportState.supported && (_canCheckBiometrics ?? false)) {
         isAuthenticated = await auth.authenticate(
-          localizedReason: 'Let OS determine authentication method',
+          localizedReason: 'Please authenticate to access your health data',
           options: const AuthenticationOptions(
             stickyAuth: true,
+            biometricOnly: false,
           ),
         );
       }
@@ -85,17 +111,45 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         return;
       }
 
+      final lastProfileId = await ref.read(secureStorageProvider).getLastProfileId();
+      if (lastProfileId != null) {
+        final lastProfile = profiles.where((p) => p.id == lastProfileId).firstOrNull;
+        if (lastProfile != null) {
+          if (!mounted) return;
+          context.go('${AppRoutes.history}/${lastProfile.id}', extra: lastProfile);
+          return;
+        }
+      }
+
       if (profiles.length == 1) {
+        await ref.read(secureStorageProvider).saveLastProfileId(profiles[0].id);
+        if (!mounted) return;
         context.go('${AppRoutes.history}/${profiles[0].id}', extra: profiles[0]);
         return;
       }
 
+      if (!mounted) return;
       context.go(AppRoutes.profiles);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isInitializing) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(AppAssets.logo, width: 200),
+              const SizedBox(height: 40),
+              const CircularProgressIndicator(),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -119,8 +173,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             const SizedBox(
               height: 20,
             ),
-            if (_supportState == _SupportState.unsupported &&
-                _canCheckBiometrics!)
+            if (_supportState == _SupportState.unsupported ||
+                (_canCheckBiometrics == false))
               Container(
                 margin: const EdgeInsets.all(20),
                 child: Card(
@@ -130,13 +184,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       padding: EdgeInsets.all(8.0),
                       child: Row(
                         children: [
-                          Icon(Icons.warning),
+                          Icon(Icons.warning, color: Colors.orange),
                           SizedBox(
                             width: 20,
                           ),
                           Flexible(
                             child: Text(
-                              'Your device does not have a lock screen enabled. Please set up a lock screen to protect your data.',
+                              'Biometric authentication is not available or not set up on this device.',
                             ),
                           ),
                         ],
@@ -148,8 +202,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             ElevatedButton.icon(
               onPressed: _authenticate,
               icon: const Icon(Icons.lock_open),
-              label: Text(_supportState == _SupportState.unsupported &&
-                      _canCheckBiometrics!
+              label: Text(_supportState == _SupportState.unsupported ||
+                      (_canCheckBiometrics == false)
                   ? 'Open anyway'
                   : 'Login'),
             ),

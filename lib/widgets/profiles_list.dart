@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/services/backup_service.dart';
+import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 
 class ProfilesList extends ConsumerStatefulWidget {
@@ -38,7 +39,9 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
   Widget build(BuildContext context) {
     final profiles = widget.profiles;
 
-    void selectProfile(Profile profile) {
+    void selectProfile(Profile profile) async {
+      await ref.read(secureStorageProvider).saveLastProfileId(profile.id);
+      if (!context.mounted) return;
       context.go('${AppRoutes.history}/${profile.id}', extra: profile);
     }
 
