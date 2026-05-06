@@ -116,7 +116,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         final lastProfile = profiles.where((p) => p.id == lastProfileId).firstOrNull;
         if (lastProfile != null) {
           if (!mounted) return;
-          context.go('${AppRoutes.history}/${lastProfile.id}', extra: lastProfile);
+          context.go('${AppRoutes.home}/${lastProfile.id}', extra: lastProfile);
           return;
         }
       }
@@ -124,7 +124,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       if (profiles.length == 1) {
         await ref.read(secureStorageProvider).saveLastProfileId(profiles[0].id);
         if (!mounted) return;
-        context.go('${AppRoutes.history}/${profiles[0].id}', extra: profiles[0]);
+        context.go('${AppRoutes.home}/${profiles[0].id}', extra: profiles[0]);
         return;
       }
 

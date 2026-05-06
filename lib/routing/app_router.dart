@@ -1,12 +1,13 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/history_event.dart' as history;
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/models/vital_log.dart';
 import 'package:open_cloud_health/screens/auth.dart';
+import 'package:open_cloud_health/screens/home.dart';
 import 'package:open_cloud_health/screens/checkups.dart';
 import 'package:open_cloud_health/screens/history.dart';
 import 'package:open_cloud_health/screens/history_event_detail.dart';
-import 'package:open_cloud_health/screens/measurements.dart';
 import 'package:open_cloud_health/screens/medication_tracker.dart';
 import 'package:open_cloud_health/screens/period_tracker.dart';
 import 'package:open_cloud_health/screens/profile_detail.dart';
@@ -14,9 +15,14 @@ import 'package:open_cloud_health/screens/profiles.dart';
 import 'package:open_cloud_health/screens/settings.dart';
 import 'package:open_cloud_health/screens/vital_detail_screen.dart';
 import 'package:open_cloud_health/utils/constants.dart';
+import 'package:open_cloud_health/widgets/scaffold_with_nav_bar.dart';
+import 'package:open_cloud_health/widgets/shell_route_redirector.dart';
+
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouter = GoRouter(
   initialLocation: AppRoutes.auth,
+  navigatorKey: _rootNavigatorKey,
   routes: [
     GoRoute(
       path: AppRoutes.auth,
@@ -26,18 +32,86 @@ final appRouter = GoRouter(
       path: AppRoutes.profiles,
       builder: (context, state) => const ProfilesScreen(),
     ),
+    // Shell route for the main app sections with bottom navigation
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) {
+        return ScaffoldWithNavBar(navigationShell: navigationShell);
+      },
+      branches: [
+        // Medication Branch
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: AppRoutes.medicationBase,
+              builder: (context, state) => const ShellRouteRedirector(targetRoute: AppRoutes.medicationTracker),
+            ),
+            GoRoute(
+              path: '${AppRoutes.medicationTracker}/:profileId',
+              builder: (context, state) {
+                final profileId = state.pathParameters['profileId']!;
+                return MedicationTrackerScreen(profileId: profileId);
+              },
+            ),
+          ],
+        ),
+        // Home Branch
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: AppRoutes.homeBase,
+              builder: (context, state) => const ShellRouteRedirector(targetRoute: AppRoutes.home),
+            ),
+            GoRoute(
+              path: '${AppRoutes.home}/:profileId',
+              builder: (context, state) {
+                final profile = state.extra as Profile?;
+                return HomeScreen(profileId: state.pathParameters['profileId']!, profile: profile);
+              },
+            ),
+          ],
+        ),
+        // History Branch
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: AppRoutes.historyBase,
+              builder: (context, state) => const ShellRouteRedirector(targetRoute: AppRoutes.history),
+            ),
+            GoRoute(
+              path: '${AppRoutes.history}/:profileId',
+              builder: (context, state) {
+                final profileId = state.pathParameters['profileId']!;
+                final profile = state.extra as Profile?;
+                return HistoryScreen(profileId: profileId, profile: profile);
+              },
+            ),
+          ],
+        ),
+        // Profile Branch
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: AppRoutes.profileBase,
+              builder: (context, state) => const ShellRouteRedirector(targetRoute: AppRoutes.profileDetail),
+            ),
+            GoRoute(
+              path: '${AppRoutes.profileDetail}/:profileId',
+              builder: (context, state) {
+                final profileId = state.pathParameters['profileId']!;
+                final profile = state.extra as Profile?;
+                return ProfileDetailScreen(profileId: profileId, profile: profile);
+              },
+            ),
+          ],
+        ),
+      ],
+    ),
+    // Routes that should NOT have the bottom nav (detail screens, etc.)
     GoRoute(
-      path: AppRoutes.profileDetail,
+      path: AppRoutes.profileDetail, // This is for the "Add Profile" case
       builder: (context, state) {
         final profile = state.extra as Profile?;
         return ProfileDetailScreen(profile: profile);
-      },
-    ),
-    GoRoute(
-      path: '${AppRoutes.history}/:profileId',
-      builder: (context, state) {
-        final profile = state.extra as Profile;
-        return HistoryScreen(profile: profile);
       },
     ),
     GoRoute(
@@ -50,24 +124,10 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(
-      path: '${AppRoutes.medicationTracker}/:profileId',
-      builder: (context, state) {
-        final profileId = state.pathParameters['profileId']!;
-        return MedicationTrackerScreen(profileId: profileId);
-      },
-    ),
-    GoRoute(
       path: '${AppRoutes.checkups}/:profileId',
       builder: (context, state) {
         final profileId = state.pathParameters['profileId']!;
         return CheckupsScreen(profileId: profileId);
-      },
-    ),
-    GoRoute(
-      path: '${AppRoutes.measurements}/:profileId',
-      builder: (context, state) {
-        final profileId = state.pathParameters['profileId']!;
-        return MeasurementsScreen(profileId: profileId);
       },
     ),
     GoRoute(

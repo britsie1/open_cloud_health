@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/widgets/account_appbar_actions.dart';
-import 'package:open_cloud_health/widgets/main_drawer.dart';
 import 'package:open_cloud_health/widgets/medication_all_tab.dart';
 import 'package:open_cloud_health/widgets/medication_dialog.dart';
 import 'package:open_cloud_health/widgets/medication_log_tab.dart';
@@ -43,9 +42,6 @@ class _MedicationTrackerScreenState
             ],
           ),
         ),
-        drawer: MainDrawer(
-            profileId: widget.profileId,
-            currentRouteName: 'medication_tracker'),
         body: TabBarView(
           children: [
             MedicationTodayTab(profileId: widget.profileId),

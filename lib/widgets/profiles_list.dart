@@ -42,7 +42,7 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
     void selectProfile(Profile profile) async {
       await ref.read(secureStorageProvider).saveLastProfileId(profile.id);
       if (!context.mounted) return;
-      context.go('${AppRoutes.history}/${profile.id}', extra: profile);
+      context.go('${AppRoutes.home}/${profile.id}', extra: profile);
     }
 
     Widget content = Column(

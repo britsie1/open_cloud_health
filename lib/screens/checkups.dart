@@ -5,7 +5,6 @@ import 'package:open_cloud_health/widgets/account_appbar_actions.dart';
 import 'package:open_cloud_health/widgets/add_custom_checkup_dialog.dart';
 import 'package:open_cloud_health/widgets/checkup_card.dart';
 import 'package:open_cloud_health/widgets/log_checkup_dialog.dart';
-import 'package:open_cloud_health/widgets/main_drawer.dart';
 
 class CheckupsScreen extends ConsumerWidget {
   const CheckupsScreen({super.key, required this.profileId});
@@ -39,7 +38,6 @@ class CheckupsScreen extends ConsumerWidget {
         actions: const [AccountAppBarActions()],
         title: const Text('Medical Checkups'),
       ),
-      drawer: MainDrawer(profileId: profileId, currentRouteName: 'checkups'),
       body: checkupsAsync.when(
         data: (checkups) {
           if (checkups.isEmpty) {

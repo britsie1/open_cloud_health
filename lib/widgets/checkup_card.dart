@@ -1,37 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:open_cloud_health/providers/checkups_provider.dart';
-
-IconData _getIconData(String? iconName) {
-  switch (iconName) {
-    case 'medical_services':
-      return Icons.medical_services;
-    case 'remove_red_eye':
-      return Icons.remove_red_eye;
-    case 'monitor_heart':
-      return Icons.monitor_heart;
-    case 'woman':
-      return Icons.woman;
-    case 'science':
-      return Icons.science;
-    case 'man':
-      return Icons.man;
-    case 'biotech':
-      return Icons.biotech;
-    case 'event':
-      return Icons.event;
-    case 'health_and_safety':
-      return Icons.health_and_safety;
-    case 'bloodtype':
-      return Icons.bloodtype;
-    case 'hearing':
-      return Icons.hearing;
-    case 'accessibility':
-      return Icons.accessibility;
-    default:
-      return Icons.health_and_safety;
-  }
-}
+import 'package:open_cloud_health/utils/icon_utils.dart';
 
 class CheckupCard extends StatelessWidget {
   const CheckupCard({
@@ -48,7 +18,7 @@ class CheckupCard extends StatelessWidget {
     final checkup = checkupWithStatus.checkup;
     final isOverdue = checkupWithStatus.isOverdue;
     final color = isOverdue ? Colors.red : Colors.blue;
-    final icon = _getIconData(checkup.iconName);
+    final icon = getCheckupIcon(checkup.iconName);
 
     return GestureDetector(
       onTap: onLogPressed,
@@ -130,32 +100,37 @@ class CheckupCard extends StatelessWidget {
             // Right side (status badge + arrow)
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 if (isOverdue)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 6),
+                        horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.red.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.warning_amber_rounded,
-                            size: 14, color: Colors.red),
+                            size: 12, color: Colors.red),
                         SizedBox(width: 4),
-                        Text(
-                          "Overdue",
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                        Flexible(
+                          child: Text(
+                            "Overdue",
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 const Icon(Icons.chevron_right, color: Colors.grey),
               ],
             ),

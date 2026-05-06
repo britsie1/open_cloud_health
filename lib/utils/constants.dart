@@ -10,13 +10,19 @@ class AppAssets {
 
 class AppRoutes {
   static const String auth = '/auth';
+  static const String home = '/home';
+  static const String homeBase = '/home-base';
   static const String profiles = '/profiles';
   static const String profileDetail = '/profile-detail';
+  static const String profileBase = '/profile-base';
   static const String history = '/history';
+  static const String historyBase = '/history-base';
   static const String historyDetail = '/history-detail';
   static const String medicationTracker = '/medication-tracker';
+  static const String medicationBase = '/medication-base';
   static const String checkups = '/checkups';
   static const String measurements = '/measurements';
+  static const String measurementsBase = '/measurements-base';
   static const String settings = '/settings';
   static const String periodTracker = '/period-tracker';
   static const String vitalTracker = '/vital-tracker';

@@ -6,7 +6,6 @@ import 'package:open_cloud_health/models/vital_log.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/widgets/account_appbar_actions.dart';
-import 'package:open_cloud_health/widgets/main_drawer.dart';
 
 class MeasurementsScreen extends ConsumerWidget {
   const MeasurementsScreen({super.key, required this.profileId});
@@ -32,7 +31,6 @@ class MeasurementsScreen extends ConsumerWidget {
         actions: const [AccountAppBarActions()],
         title: const Text('Vitals & Measurements'),
       ),
-      drawer: MainDrawer(profileId: profileId, currentRouteName: 'measurements'),
       body: profilesAsync.when(
         data: (profiles) {
           final profile = profiles.firstWhere((p) => p.id == profileId);

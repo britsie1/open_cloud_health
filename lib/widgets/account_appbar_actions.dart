@@ -17,10 +17,24 @@ class _AccountAppBarActionsState extends State<AccountAppBarActions> {
       icon: const Icon(Icons.account_circle),
       itemBuilder: (ctx) => const [
         PopupMenuItem(
+          value: 'switch_profile',
+          child: ListTile(
+            leading: Icon(Icons.supervised_user_circle_outlined),
+            title: Text('Switch Profile'),
+          ),
+        ),
+        PopupMenuItem(
           value: AppRoutes.settings,
           child: ListTile(
             leading: Icon(Icons.settings),
             title: Text('Settings'),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'about',
+          child: ListTile(
+            leading: Icon(Icons.info_outline),
+            title: Text('About'),
           ),
         ),
         PopupMenuItem(
@@ -33,8 +47,18 @@ class _AccountAppBarActionsState extends State<AccountAppBarActions> {
       ],
       onSelected: (value) {
         switch (value) {
+          case 'switch_profile':
+            context.go(AppRoutes.profiles);
+            break;
           case AppRoutes.settings:
             context.push(AppRoutes.settings);
+            break;
+          case 'about':
+            showAboutDialog(
+              context: context,
+              applicationName: 'Open Cloud Health',
+              applicationVersion: '1.0.0',
+            );
             break;
           case AppRoutes.auth:
             context.go(AppRoutes.auth);

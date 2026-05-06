@@ -12,9 +12,10 @@ import 'package:open_cloud_health/widgets/allergy_list_section.dart';
 import 'package:open_cloud_health/widgets/profile_image_picker.dart';
 
 class ProfileDetailScreen extends ConsumerStatefulWidget {
-  const ProfileDetailScreen({super.key, required this.profile});
+  const ProfileDetailScreen({super.key, this.profile, this.profileId});
 
   final Profile? profile;
+  final String? profileId;
 
   @override
   ConsumerState<ProfileDetailScreen> createState() =>
@@ -32,6 +33,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
   var _selectedBloodType = 'Unknown';
   File? _pickImageFile;
   bool _isNewImagePicked = false;
+  Profile? _activeProfile;
 
   @override
   void dispose() {
@@ -42,22 +44,32 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _initializeProfile();
+  }
 
-    if (widget.profile != null) {
-      _enteredName = widget.profile!.name;
-      _enteredMiddleNames = widget.profile!.middleNames;
-      _enteredSurname = widget.profile!.surname;
+  void _initializeProfile() {
+    Profile? profile = widget.profile;
+    if (profile == null && widget.profileId != null) {
+      profile = ref.read(profilesProvider.notifier).getProfile(widget.profileId!);
+    }
+    _activeProfile = profile;
+
+    if (_activeProfile != null) {
+      _enteredName = _activeProfile!.name;
+      _enteredMiddleNames = _activeProfile!.middleNames;
+      _enteredSurname = _activeProfile!.surname;
       _selectedDateController.text =
-          formatter.format(widget.profile!.dateOfBirth);
-      _selectedGender = widget.profile!.gender;
-      _selectedBloodType = widget.profile!.bloodType;
-      _isOrganDonor = widget.profile!.isOrganDonor;
+          formatter.format(_activeProfile!.dateOfBirth);
+      _selectedGender = _activeProfile!.gender;
+      _selectedBloodType = _activeProfile!.bloodType;
+      _isOrganDonor = _activeProfile!.isOrganDonor;
 
       ref
           .read(profilesProvider.notifier)
-          .getProfileImagePath(widget.profile!.id)
+          .getProfileImagePath(_activeProfile!.id)
           .then((value) {
         if (value.isNotEmpty) {
+          if (!mounted) return;
           setState(() {
             _pickImageFile = File.fromUri(Uri(path: value));
             _isNewImagePicked = false;
@@ -75,7 +87,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
     _form.currentState!.save();
 
     final result = await ref.read(profilesProvider.notifier).saveProfile(
-          id: widget.profile?.id,
+          id: _activeProfile?.id,
           name: _enteredName,
           middleNames: _enteredMiddleNames,
           surname: _enteredSurname,
@@ -93,7 +105,10 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
         if (context.canPop()) {
           context.pop();
         } else {
-          context.go(AppRoutes.profiles);
+          // If in tab, maybe show a success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile updated successfully')),
+          );
         }
         break;
       case Failure(:final exception):
