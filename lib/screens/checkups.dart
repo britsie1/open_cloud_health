@@ -30,29 +30,6 @@ class CheckupsScreen extends ConsumerWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, WidgetRef ref, String checkupId) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Checkup'),
-        content: const Text('Are you sure you want to delete this checkup? This will also delete all its logs. This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              ref.read(checkupsProvider(profileId).notifier).deleteCheckup(checkupId);
-              Navigator.of(context).pop();
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final checkupsAsync = ref.watch(checkupsProvider(profileId));
@@ -79,11 +56,6 @@ class CheckupsScreen extends ConsumerWidget {
                   context,
                   checkupWithStatus.checkup.id,
                   checkupWithStatus.checkup.name,
-                ),
-                onDeletePressed: () => _confirmDelete(
-                  context,
-                  ref,
-                  checkupWithStatus.checkup.id,
                 ),
               );
             },
