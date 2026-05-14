@@ -28,6 +28,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
     required Gender gender,
     required String bloodType,
     required bool isOrganDonor,
+    bool trackOvulation = true,
     File? imageFile,
   }) async {
     try {
@@ -41,6 +42,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
         gender: gender,
         bloodType: bloodType,
         isOrganDonor: isOrganDonor,
+        trackOvulation: trackOvulation,
       );
 
       if (id == null) {

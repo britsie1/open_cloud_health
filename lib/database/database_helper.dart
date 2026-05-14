@@ -75,7 +75,8 @@ String createProfilesTable = '''
     dateOfBirth TEXT,
     bloodType TEXT, 
     gender TEXT,
-    isOrganDonor TEXT
+    isOrganDonor TEXT,
+    trackOvulation TEXT
   )''';
 
 String createHistoryTable = '''

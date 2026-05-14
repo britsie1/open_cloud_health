@@ -32,7 +32,8 @@ void main() {
           dateOfBirth TEXT,
           bloodType TEXT, 
           gender TEXT,
-          isOrganDonor TEXT
+          isOrganDonor TEXT,
+          trackOvulation TEXT
         )''');
       await db.execute('''
         CREATE TABLE history(

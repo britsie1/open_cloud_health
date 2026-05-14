@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 class SymptomButton extends StatelessWidget {
   const SymptomButton({
     super.key,
-    required this.icon,
+    required this.iconBuilder,
     required this.label,
     required this.isSelected,
     required this.onTap,
   });
 
-  final IconData icon;
+  final Widget Function(Color color) iconBuilder;
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
@@ -36,10 +36,7 @@ class SymptomButton extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: isSelected ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant,
-            ),
+            iconBuilder(isSelected ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant),
             const SizedBox(height: 8),
             Text(
               label,

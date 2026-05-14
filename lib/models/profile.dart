@@ -16,6 +16,7 @@ class Profile {
       required this.gender,
       required this.bloodType,
       required this.isOrganDonor,
+      this.trackOvulation = true,
       String? id})
       : id = id ?? uuid.v4();
 
@@ -27,6 +28,7 @@ class Profile {
   final Gender gender;
   final String bloodType;
   final bool isOrganDonor;
+  final bool trackOvulation;
 
   String get formattedDate {
     return formatter.format(dateOfBirth);

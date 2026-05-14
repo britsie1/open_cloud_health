@@ -1,0 +1,283 @@
+Main screen:
+
+import 'package:flutter/material.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'package:healthicons/healthicons.dart';
+
+class CycleTrackerScreen extends StatefulWidget {
+  @override
+  _CycleTrackerScreenState createState() => _CycleTrackerScreenState();
+}
+
+class _CycleTrackerScreenState extends State<CycleTrackerScreen> {
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+
+  final Color primaryGreen = const Color(0xFF1F3D36);
+  final Color lightGray = const Color(0xFFE5E7EB);
+
+  bool isFertileDay(DateTime day) {
+    // Example logic (replace with real prediction)
+    return day.day >= 8 && day.day <= 14;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildCalendar(),
+            const SizedBox(height: 8),
+            _legend(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCalendar() {
+    return TableCalendar(
+      firstDay: DateTime.utc(2020, 1, 1),
+      lastDay: DateTime.utc(2030, 12, 31),
+      focusedDay: _focusedDay,
+      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+
+      onDaySelected: (selectedDay, focusedDay) {
+        setState(() {
+          _selectedDay = selectedDay;
+          _focusedDay = focusedDay;
+        });
+
+        _openEntrySheet(selectedDay);
+      },
+
+      calendarStyle: CalendarStyle(
+        todayDecoration: BoxDecoration(
+          color: primaryGreen,
+          shape: BoxShape.circle,
+        ),
+        selectedDecoration: BoxDecoration(
+          color: primaryGreen,
+          shape: BoxShape.circle,
+        ),
+        defaultTextStyle: const TextStyle(color: Colors.black87),
+      ),
+
+      calendarBuilders: CalendarBuilders(
+        defaultBuilder: (context, day, focusedDay) {
+          final isFertile = isFertileDay(day);
+
+          return Container(
+            margin: const EdgeInsets.all(6),
+            decoration: isFertile
+                ? BoxDecoration(
+                    border: Border.all(
+                      color: Colors.grey,
+                      style: BorderStyle.solid,
+                      width: 1,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  )
+                : null,
+            alignment: Alignment.center,
+            child: Text(
+              '${day.day}',
+              style: const TextStyle(color: Colors.black87),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _legend() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          _legendItem("Logged", Colors.green.shade200),
+          const SizedBox(width: 16),
+          _legendItem("Fertile window", Colors.transparent, isDashed: true),
+          const SizedBox(width: 16),
+          _legendItem("Today", primaryGreen),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendItem(String label, Color color, {bool isDashed = false}) {
+    return Row(
+      children: [
+        Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            color: color,
+            border: isDashed
+                ? Border.all(color: Colors.grey)
+                : null,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(label),
+      ],
+    );
+  }
+
+  void _openEntrySheet(DateTime date) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => EntrySheet(date: date),
+    );
+  }
+}
+
+Bottom Sheet:
+
+import 'package:flutter/material.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'package:healthicons/healthicons.dart';
+
+class CycleTrackerScreen extends StatefulWidget {
+  @override
+  _CycleTrackerScreenState createState() => _CycleTrackerScreenState();
+}
+
+class _CycleTrackerScreenState extends State<CycleTrackerScreen> {
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+
+  final Color primaryGreen = const Color(0xFF1F3D36);
+  final Color lightGray = const Color(0xFFE5E7EB);
+
+  bool isFertileDay(DateTime day) {
+    // Example logic (replace with real prediction)
+    return day.day >= 8 && day.day <= 14;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildCalendar(),
+            const SizedBox(height: 8),
+            _legend(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCalendar() {
+    return TableCalendar(
+      firstDay: DateTime.utc(2020, 1, 1),
+      lastDay: DateTime.utc(2030, 12, 31),
+      focusedDay: _focusedDay,
+      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+
+      onDaySelected: (selectedDay, focusedDay) {
+        setState(() {
+          _selectedDay = selectedDay;
+          _focusedDay = focusedDay;
+        });
+
+        _openEntrySheet(selectedDay);
+      },
+
+      calendarStyle: CalendarStyle(
+        todayDecoration: BoxDecoration(
+          color: primaryGreen,
+          shape: BoxShape.circle,
+        ),
+        selectedDecoration: BoxDecoration(
+          color: primaryGreen,
+          shape: BoxShape.circle,
+        ),
+        defaultTextStyle: const TextStyle(color: Colors.black87),
+      ),
+
+      calendarBuilders: CalendarBuilders(
+        defaultBuilder: (context, day, focusedDay) {
+          final isFertile = isFertileDay(day);
+
+          return Container(
+            margin: const EdgeInsets.all(6),
+            decoration: isFertile
+                ? BoxDecoration(
+                    border: Border.all(
+                      color: Colors.grey,
+                      style: BorderStyle.solid,
+                      width: 1,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  )
+                : null,
+            alignment: Alignment.center,
+            child: Text(
+              '${day.day}',
+              style: const TextStyle(color: Colors.black87),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _legend() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          _legendItem("Logged", Colors.green.shade200),
+          const SizedBox(width: 16),
+          _legendItem("Fertile window", Colors.transparent, isDashed: true),
+          const SizedBox(width: 16),
+          _legendItem("Today", primaryGreen),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendItem(String label, Color color, {bool isDashed = false}) {
+    return Row(
+      children: [
+        Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            color: color,
+            border: isDashed
+                ? Border.all(color: Colors.grey)
+                : null,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(label),
+      ],
+    );
+  }
+
+  void _openEntrySheet(DateTime date) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => EntrySheet(date: date),
+    );
+  }
+}

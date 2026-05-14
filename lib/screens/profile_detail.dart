@@ -29,6 +29,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
   var _enteredMiddleNames = '';
   var _enteredSurname = '';
   var _isOrganDonor = false;
+  var _trackOvulation = true;
   Gender? _selectedGender;
   var _selectedBloodType = 'Unknown';
   File? _pickImageFile;
@@ -364,6 +365,26 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                         ),
                       ],
                     ),
+                    if (_selectedGender == Gender.female)
+                      Row(
+                        children: [
+                          const Icon(Icons.child_care),
+                          const SizedBox(
+                            width: 16,
+                          ),
+                          Expanded(
+                            child: SwitchListTile(
+                              title: const Text('Track Ovulation/Pregnancy'),
+                              value: _trackOvulation,
+                              onChanged: (value) {
+                                setState(() {
+                                  _trackOvulation = value;
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     if (widget.profile != null)
                       AllergyListSection(profileId: widget.profile!.id),
                   ],

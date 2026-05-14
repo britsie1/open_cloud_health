@@ -50,7 +50,8 @@ class ProfilesRepository {
       'dateOfBirth': profile.formattedDate,
       'bloodType': profile.bloodType,
       'gender': profile.gender.name,
-      'isOrganDonor': profile.isOrganDonor.toString()
+      'isOrganDonor': profile.isOrganDonor.toString(),
+      'trackOvulation': profile.trackOvulation.toString()
     });
   }
 }
