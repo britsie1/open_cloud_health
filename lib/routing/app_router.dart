@@ -38,22 +38,6 @@ final appRouter = GoRouter(
         return ScaffoldWithNavBar(navigationShell: navigationShell);
       },
       branches: [
-        // Medication Branch
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: AppRoutes.medicationBase,
-              builder: (context, state) => const ShellRouteRedirector(targetRoute: AppRoutes.medicationTracker),
-            ),
-            GoRoute(
-              path: '${AppRoutes.medicationTracker}/:profileId',
-              builder: (context, state) {
-                final profileId = state.pathParameters['profileId']!;
-                return MedicationTrackerScreen(profileId: profileId);
-              },
-            ),
-          ],
-        ),
         // Home Branch
         StatefulShellBranch(
           routes: [
@@ -66,6 +50,22 @@ final appRouter = GoRouter(
               builder: (context, state) {
                 final profile = state.extra as Profile?;
                 return HomeScreen(profileId: state.pathParameters['profileId']!, profile: profile);
+              },
+            ),
+          ],
+        ),
+        // Medication Branch
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: AppRoutes.medicationBase,
+              builder: (context, state) => const ShellRouteRedirector(targetRoute: AppRoutes.medicationTracker),
+            ),
+            GoRoute(
+              path: '${AppRoutes.medicationTracker}/:profileId',
+              builder: (context, state) {
+                final profileId = state.pathParameters['profileId']!;
+                return MedicationTrackerScreen(profileId: profileId);
               },
             ),
           ],

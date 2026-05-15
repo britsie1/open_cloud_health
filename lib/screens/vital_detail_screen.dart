@@ -28,7 +28,7 @@ class _VitalDetailScreenState extends ConsumerState<VitalDetailScreen> {
       case VitalType.heartRate:
         return 'Heart Rate';
       case VitalType.weight:
-        return 'Weight & BMI';
+        return 'Weight';
       case VitalType.bloodSugar:
         return 'Blood Sugar';
     }

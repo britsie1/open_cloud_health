@@ -68,7 +68,7 @@ class MeasurementsScreen extends ConsumerWidget {
               ),
               ListTile(
                 leading: const Icon(Icons.scale, color: Colors.blue),
-                title: const Text('Weight & BMI'),
+                title: const Text('Weight'),
                 subtitle: const Text('Body mass tracking'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {

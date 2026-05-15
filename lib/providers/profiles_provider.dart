@@ -30,6 +30,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
     required bool isOrganDonor,
     bool trackOvulation = true,
     File? imageFile,
+    bool isUpdate = false,
   }) async {
     try {
       String profileId;
@@ -45,12 +46,12 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
         trackOvulation: trackOvulation,
       );
 
-      if (id == null) {
+      if (!isUpdate) {
         await _repository.addProfile(profile);
         profileId = profile.id;
       } else {
         await _repository.updateProfile(profile);
-        profileId = id;
+        profileId = id!;
       }
 
       if (imageFile != null) {

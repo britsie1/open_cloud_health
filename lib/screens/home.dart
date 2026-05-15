@@ -355,7 +355,7 @@ class _MedicationSummarySection extends ConsumerWidget {
                 ),
                 TextButton(
                   onPressed: () {
-                    context.push('${AppRoutes.medicationTracker}/$profileId');
+                    context.go('${AppRoutes.medicationTracker}/$profileId');
                   },
                   child: const Text('Manage'),
                 ),

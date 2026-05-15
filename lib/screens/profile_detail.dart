@@ -35,6 +35,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
   File? _pickImageFile;
   bool _isNewImagePicked = false;
   Profile? _activeProfile;
+  bool _isEditing = false;
 
   @override
   void dispose() {
@@ -45,17 +46,29 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _isEditing = widget.profile != null || widget.profileId != null;
     _initializeProfile();
   }
 
   void _initializeProfile() {
     Profile? profile = widget.profile;
     if (profile == null && widget.profileId != null) {
-      profile = ref.read(profilesProvider.notifier).getProfile(widget.profileId!);
+      profile =
+          ref.read(profilesProvider.notifier).getProfile(widget.profileId!);
     }
+
+    profile ??= Profile(
+      name: '',
+      middleNames: '',
+      surname: '',
+      dateOfBirth: DateTime.now().subtract(const Duration(days: 365 * 18)),
+      gender: Gender.male,
+      bloodType: 'Unknown',
+      isOrganDonor: false,
+    );
     _activeProfile = profile;
 
-    if (_activeProfile != null) {
+    if (_isEditing && _activeProfile != null) {
       _enteredName = _activeProfile!.name;
       _enteredMiddleNames = _activeProfile!.middleNames;
       _enteredSurname = _activeProfile!.surname;
@@ -97,6 +110,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
           bloodType: _selectedBloodType,
           isOrganDonor: _isOrganDonor,
           imageFile: _isNewImagePicked ? _pickImageFile : null,
+          isUpdate: _isEditing,
         );
 
     if (!mounted) return;
@@ -385,8 +399,8 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                           ),
                         ],
                       ),
-                    if (widget.profile != null)
-                      AllergyListSection(profileId: widget.profile!.id),
+                    if (_activeProfile != null)
+                      AllergyListSection(profileId: _activeProfile!.id),
                   ],
                 ),
               ),

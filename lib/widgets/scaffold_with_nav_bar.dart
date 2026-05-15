@@ -18,12 +18,12 @@ class ScaffoldWithNavBar extends StatelessWidget {
         currentIndex: navigationShell.currentIndex,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.medication_liquid_sharp),
-            label: 'Medication',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.home),
             label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.medication_liquid_sharp),
+            label: 'Medication',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.history),
@@ -37,7 +37,7 @@ class ScaffoldWithNavBar extends StatelessWidget {
         onTap: (index) {
           navigationShell.goBranch(
             index,
-            initialLocation: index == navigationShell.currentIndex,
+            initialLocation: false,
           );
         },
       ),
