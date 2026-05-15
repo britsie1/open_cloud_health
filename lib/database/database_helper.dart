@@ -39,8 +39,15 @@ class DatabaseHelper {
         if (oldVersion < 5) {
           await db.execute(createVitalLogsTable);
         }
+        if (oldVersion < 6) {
+          await db.execute("ALTER TABLE medications ADD COLUMN type TEXT DEFAULT 'Other'");
+          await db.execute("ALTER TABLE medications ADD COLUMN alarmEnabled TEXT DEFAULT 'false'");
+        }
+        if (oldVersion < 7) {
+          await db.execute("ALTER TABLE medications ADD COLUMN notificationEnabled TEXT DEFAULT 'false'");
+        }
       },
-      version: 5,
+      version: 7,
     );
 
     return db;
@@ -111,6 +118,9 @@ String createMedicationsTable = '''
     profileId TEXT,
     name TEXT,
     dosage TEXT,
+    type TEXT,
+    notificationEnabled TEXT,
+    alarmEnabled TEXT,
     timeOfDay TEXT,
     isActive TEXT
   )''';

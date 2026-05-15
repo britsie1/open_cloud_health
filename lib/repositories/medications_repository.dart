@@ -20,6 +20,9 @@ class MedicationsRepository {
         profileId: row['profileId'] as String,
         name: row['name'] as String,
         dosage: row['dosage'] as String,
+        type: row['type'] as String? ?? 'Other',
+        notificationEnabled: row['notificationEnabled'] == 'true',
+        alarmEnabled: row['alarmEnabled'] == 'true',
         timeOfDay: TimeOfDay(
           hour: int.parse(timeParts[0]),
           minute: int.parse(timeParts[1]),
@@ -36,6 +39,9 @@ class MedicationsRepository {
       'profileId': medication.profileId,
       'name': medication.name,
       'dosage': medication.dosage,
+      'type': medication.type,
+      'notificationEnabled': medication.notificationEnabled.toString(),
+      'alarmEnabled': medication.alarmEnabled.toString(),
       'timeOfDay': '${medication.timeOfDay.hour}:${medication.timeOfDay.minute}',
       'isActive': medication.isActive.toString(),
     });
@@ -48,6 +54,9 @@ class MedicationsRepository {
         {
           'name': medication.name,
           'dosage': medication.dosage,
+          'type': medication.type,
+          'notificationEnabled': medication.notificationEnabled.toString(),
+          'alarmEnabled': medication.alarmEnabled.toString(),
           'timeOfDay':
               '${medication.timeOfDay.hour}:${medication.timeOfDay.minute}',
           'isActive': medication.isActive.toString(),

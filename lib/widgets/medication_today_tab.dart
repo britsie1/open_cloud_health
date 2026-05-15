@@ -1,8 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:healthicons_flutter/healthicons_flutter.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
 import 'package:open_cloud_health/providers/medications_provider.dart';
 import 'package:open_cloud_health/utils/result.dart';
+
+Widget _getMedicationIcon(String type) {
+  switch (type) {
+    case 'Tablet':
+      return const Pills2Outline();
+    case 'Liquid':
+      return const MedicineBottleOutline();
+    case 'Capsule':
+      return const MedicinesOutline();
+    case 'Injection':
+      return const SyringeOutline();
+    case 'Drops':
+      return const BloodDropOutline();
+    case 'Inhaler':
+      return const AsthmaInhalerOutline();
+    default:
+      return const MedicinesOutline();
+  }
+}
 
 class MedicationTodayTab extends ConsumerWidget {
   const MedicationTodayTab({super.key, required this.profileId});
@@ -30,6 +50,7 @@ class MedicationTodayTab extends ConsumerWidget {
                 final isTaken = logs.any((log) => log.medicationId == med.id);
 
                 return CheckboxListTile(
+                  secondary: SizedBox(height: 32, width: 32, child: _getMedicationIcon(med.type)),
                   title: Text(med.name),
                   subtitle: Text('${med.dosage} at ${med.timeFormatted}'),
                   value: isTaken,

@@ -20,14 +20,24 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
     try {
       await _repository.addMedication(medication);
       
-      // Schedule notification using hash of ID for integer ID
-      final notificationId = medication.id.hashCode;
-      await _notificationService.scheduleDailyNotification(
-        notificationId,
-        'Medication Reminder',
-        'Time to take your medication: ${medication.name} (${medication.dosage})',
-        medication.timeOfDay,
-      );
+      if (medication.notificationEnabled && medication.isActive) {
+        final notificationId = medication.id.hashCode;
+        await _notificationService.scheduleDailyNotification(
+          notificationId,
+          'Medication Reminder',
+          'Time to take your medication: ${medication.name} (${medication.dosage})',
+          medication.timeOfDay,
+          medication.id,
+        );
+      }
+
+      if (medication.alarmEnabled && medication.isActive) {
+        await _notificationService.setSystemAlarm(
+          medication.timeOfDay, 
+          'Take medication: ${medication.name}',
+          [1, 2, 3, 4, 5, 6, 7]
+        );
+      }
       
       await refreshMedications();
       return const Success(null);
@@ -40,14 +50,22 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
     try {
       await _repository.updateMedication(medication);
 
-      // Cancel old notification and reschedule with updated details
       await _notificationService.cancelNotification(medication.id.hashCode);
-      if (medication.isActive) {
+      if (medication.isActive && medication.notificationEnabled) {
         await _notificationService.scheduleDailyNotification(
           medication.id.hashCode,
           'Medication Reminder',
           'Time to take your medication: ${medication.name} (${medication.dosage})',
           medication.timeOfDay,
+          medication.id,
+        );
+      }
+
+      if (medication.isActive && medication.alarmEnabled) {
+        await _notificationService.setSystemAlarm(
+          medication.timeOfDay, 
+          'Take medication: ${medication.name}',
+          [1, 2, 3, 4, 5, 6, 7]
         );
       }
       
@@ -77,15 +95,24 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
       final newIsActive = !medication.isActive;
       await _repository.toggleIsActive(medication.id, newIsActive);
 
-      if (newIsActive) {
+      if (newIsActive && medication.notificationEnabled) {
         await _notificationService.scheduleDailyNotification(
           medication.id.hashCode,
           'Medication Reminder',
           'Time to take your medication: ${medication.name} (${medication.dosage})',
           medication.timeOfDay,
+          medication.id,
         );
       } else {
         await _notificationService.cancelNotification(medication.id.hashCode);
+      }
+
+      if (newIsActive && medication.alarmEnabled) {
+        await _notificationService.setSystemAlarm(
+          medication.timeOfDay, 
+          'Take medication: ${medication.name}',
+          [1, 2, 3, 4, 5, 6, 7]
+        );
       }
       
       await refreshMedications();
@@ -115,6 +142,11 @@ class AllMedicationLogsNotifier extends FamilyAsyncNotifier<List<MedicationLog>,
 
   @override
   Future<List<MedicationLog>> build(String arg) async {
+    final sub = ref.read(notificationServiceProvider).onMedicationMarkedTaken.stream.listen((_) {
+      ref.invalidateSelf();
+    });
+    ref.onDispose(sub.cancel);
+
     _offset = 0;
     hasMore = true;
     final initialLogs = await _repository.loadAllLogs(arg, limit: _limit, offset: _offset);
@@ -174,6 +206,11 @@ class MedicationLogsNotifier
 
   @override
   Future<List<MedicationLog>> build(String arg) async {
+    final sub = ref.read(notificationServiceProvider).onMedicationMarkedTaken.stream.listen((_) {
+      ref.invalidateSelf();
+    });
+    ref.onDispose(sub.cancel);
+
     // Default to today for the initial build
     return _repository.loadLogsForDate(DateTime.now(), arg);
   }

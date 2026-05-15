@@ -9,6 +9,9 @@ class Medication {
     required this.name,
     required this.dosage,
     required this.timeOfDay,
+    this.type = 'Other',
+    this.notificationEnabled = false,
+    this.alarmEnabled = false,
     this.isActive = true,
     String? id,
   }) : id = id ?? uuid.v4();
@@ -17,6 +20,9 @@ class Medication {
   final String profileId;
   final String name;
   final String dosage;
+  final String type;
+  final bool notificationEnabled;
+  final bool alarmEnabled;
   final TimeOfDay timeOfDay;
   final bool isActive;
 

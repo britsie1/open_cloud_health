@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -72,8 +73,10 @@ void main() {
     when(() => mockNotificationService.cancelNotification(any()))
         .thenAnswer((_) async => {});
     when(() => mockNotificationService.scheduleDailyNotification(
-            any(), any(), any(), any()))
+            any(), any(), any(), any(), any()))
         .thenAnswer((_) async => {});
+    when(() => mockNotificationService.onMedicationMarkedTaken)
+        .thenReturn(StreamController<String>.broadcast());
 
     container = ProviderContainer(
       overrides: [

@@ -1,8 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:healthicons_flutter/healthicons_flutter.dart';
 import 'package:open_cloud_health/providers/medications_provider.dart';
 import 'package:open_cloud_health/utils/result.dart';
 import 'package:open_cloud_health/widgets/medication_dialog.dart';
+
+Widget _getMedicationIcon(String type) {
+  switch (type) {
+    case 'Tablet':
+      return const Pills2Outline();
+    case 'Liquid':
+      return const MedicineBottleOutline();
+    case 'Capsule':
+      return const MedicinesOutline();
+    case 'Injection':
+      return const SyringeOutline();
+    case 'Drops':
+      return const BloodDropOutline();
+    case 'Inhaler':
+      return const AsthmaInhalerOutline();
+    default:
+      return const MedicinesOutline();
+  }
+}
 
 class MedicationAllTab extends ConsumerWidget {
   const MedicationAllTab({super.key, required this.profileId});
@@ -23,6 +43,7 @@ class MedicationAllTab extends ConsumerWidget {
           itemBuilder: (ctx, index) {
             final med = medications[index];
             return ListTile(
+              leading: SizedBox(height: 32, width: 32, child: _getMedicationIcon(med.type)),
               title: Text(med.name),
               subtitle: Text('${med.dosage} - ${med.timeFormatted}'),
               trailing: Row(
@@ -63,7 +84,7 @@ class MedicationAllTab extends ConsumerWidget {
                                 'Are you sure you want to delete this medication? This will also remove its daily logs.'),
                             actions: [
                               TextButton(
-                                onPressed: () => Navigator.of(context).pop(),
+                                onPressed: () => Navigator.of(ctx).pop(),
                                 child: const Text('Cancel'),
                               ),
                               ElevatedButton(
@@ -76,10 +97,10 @@ class MedicationAllTab extends ConsumerWidget {
                                           .notifier)
                                       .deleteMedication(med.id);
 
-                                  if (context.mounted) {
-                                    Navigator.of(context).pop();
+                                  if (ctx.mounted) {
+                                    Navigator.of(ctx).pop();
 
-                                    if (result is Failure) {
+                                    if (result is Failure && context.mounted) {
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
                                             content: Text(

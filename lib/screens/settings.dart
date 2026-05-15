@@ -20,27 +20,22 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late double databaseSize = 0;
   late double documentsFileSize = 0;
-  String lastBackupDateTime = 'Loading...';
+  String lastBackupDateTime = 'Not connected';
+  bool isConnectedToGoogle = false;
 
   @override
   void initState() {
     super.initState();
 
-    ref.read(backupServiceProvider).getLastBackupDateTime().then(
-      (value) {
-        setState(() {
-          lastBackupDateTime = '$value UTC';
-        });
-      },
-    );
-
-    ref.read(databaseHelperProvider).getDatabaseSize().then(
-        (value) => {setState(() => databaseSize = value / 1024)});
+    ref
+        .read(databaseHelperProvider)
+        .getDatabaseSize()
+        .then((value) => {setState(() => databaseSize = value / 1024)});
 
     getApplicationDocumentsDirectory().then((appDir) {
       var files = appDir.listSync(recursive: true);
       var size = 0;
-      
+
       if (files.isNotEmpty) {
         size = files
             .where((file) => basename(file.path) != 'opencloudhealth.db')
@@ -61,6 +56,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Future<void> connectToGoogle() async {
+      setState(() {
+        lastBackupDateTime = 'Connecting...';
+      });
+      final value =
+          await ref.read(backupServiceProvider).getLastBackupDateTime();
+      if (value.isEmpty || value == 'Error') {
+        setState(() {
+          lastBackupDateTime = 'Not connected';
+          isConnectedToGoogle = false;
+        });
+      } else {
+        setState(() {
+          isConnectedToGoogle = true;
+          lastBackupDateTime = value == 'Never' ? value : '$value UTC';
+        });
+      }
+    }
+
     Future<void> resetDB() async {
       await ref.read(databaseHelperProvider).resetDatabase();
 
@@ -110,9 +124,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ElevatedButton(
-                onPressed: uploadBackup,
-                child: const Text('Backup to Google Drive')),
+            if (!isConnectedToGoogle)
+              ElevatedButton(
+                onPressed: connectToGoogle,
+                child: const Text('Connect to Google Drive'),
+              )
+            else ...[
+              ElevatedButton(
+                  onPressed: uploadBackup,
+                  child: const Text('Backup to Google Drive')),
+              Text('Last backup: $lastBackupDateTime'),
+            ],
             ElevatedButton(
               onPressed: resetDB,
               child: const Text('Reset Database'),
@@ -120,7 +142,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Text('Database Size: ${databaseSize}kb'),
             Text(
                 'App Documents Size: ${documentsFileSize.toStringAsFixed(2)}kb'),
-            Text('Last backup: $lastBackupDateTime'),
           ],
         ),
       ),
