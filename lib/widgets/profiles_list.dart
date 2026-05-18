@@ -31,8 +31,21 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
     }
   }
 
+  bool _isRestoring = false;
+
   Future<void> restoreBackup() async {
-    await ref.read(backupServiceProvider).restoreFromBackup();
+    setState(() {
+      _isRestoring = true;
+    });
+    try {
+      await ref.read(backupServiceProvider).restoreFromBackup();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRestoring = false;
+        });
+      }
+    }
   }
 
   @override
@@ -127,9 +140,15 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
                 label: const Text('Create a Profile'),
               ),
               ElevatedButton.icon(
-                onPressed: restoreBackup,
-                icon: const Icon(Icons.restore),
-                label: const Text('Restore backup'),
+                onPressed: _isRestoring ? null : restoreBackup,
+                icon: _isRestoring
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.restore),
+                label: Text(_isRestoring ? 'Restoring...' : 'Restore backup'),
               ),
             ],
           ),

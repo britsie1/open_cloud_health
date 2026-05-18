@@ -94,11 +94,17 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
                             padding: const EdgeInsets.all(16.0),
                             child: Column(
                               children: [
-                                if (state.currentCycle != null) ...[
-                                  _buildContextualMessage(state),
-                                  const SizedBox(height: 16),
-                                  _buildDayDetails(state),
-                                ]
+                                if (state.currentCycle == null)
+                                  const Padding(
+                                    padding: EdgeInsets.only(bottom: 16.0),
+                                    child: Text(
+                                      'Select a day and log your flow to start your first cycle.',
+                                      style: TextStyle(fontStyle: FontStyle.italic),
+                                    ),
+                                  ),
+                                _buildContextualMessage(state),
+                                const SizedBox(height: 16),
+                                _buildDayDetails(state),
                               ],
                             ),
                           ),
@@ -227,71 +233,82 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
         });
       },
       calendarStyle: CalendarStyle(
-        todayDecoration: BoxDecoration(
-          color: primaryColor.withOpacity(0.5),
-          shape: BoxShape.circle,
-        ),
-        selectedDecoration: BoxDecoration(
-          color: Colors.transparent,
-          border: Border.all(color: primaryColor, width: 2),
-          shape: BoxShape.circle,
-        ),
+        todayDecoration: const BoxDecoration(),
+        selectedDecoration: const BoxDecoration(),
         selectedTextStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         defaultTextStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface),
       ),
       calendarBuilders: CalendarBuilders(
-        defaultBuilder: (context, day, focusedDay) {
-          final isFertile = isFertileDay(day, state);
-          final isLogged = isLoggedDay(day, state);
-          final isPredicted = state.expectedNextPeriodDate != null && isSameDay(day, state.expectedNextPeriodDate);
+        defaultBuilder: (context, day, focusedDay) => _calendarDayBuilder(context, day, state, primaryColor, loggedColor, fertileColor, isSelected: false, isToday: false),
+        todayBuilder: (context, day, focusedDay) => _calendarDayBuilder(context, day, state, primaryColor, loggedColor, fertileColor, isSelected: false, isToday: true),
+        selectedBuilder: (context, day, focusedDay) => _calendarDayBuilder(context, day, state, primaryColor, loggedColor, fertileColor, isSelected: true, isToday: isSameDay(day, DateTime.now())),
+        outsideBuilder: (context, day, focusedDay) => _calendarDayBuilder(context, day, state, primaryColor, loggedColor, fertileColor, isSelected: false, isToday: false, isOutside: true),
+      ),
+    );
+  }
 
-          final isPrevFertile = isFertileDay(day.subtract(const Duration(days: 1)), state);
-          final isNextFertile = isFertileDay(day.add(const Duration(days: 1)), state);
-          
-          final isPrevLogged = isLoggedDay(day.subtract(const Duration(days: 1)), state);
-          final isNextLogged = isLoggedDay(day.add(const Duration(days: 1)), state);
+  Widget _calendarDayBuilder(BuildContext context, DateTime day, PeriodState state, Color primaryColor, Color loggedColor, Color fertileColor, {required bool isSelected, required bool isToday, bool isOutside = false}) {
+    final isFertile = isFertileDay(day, state);
+    final isLogged = isLoggedDay(day, state);
+    final isPredicted = state.expectedNextPeriodDate != null && isSameDay(day, state.expectedNextPeriodDate);
 
-          BoxDecoration? decoration;
-          
-          if (isLogged) {
-             decoration = BoxDecoration(
-               color: loggedColor,
-               borderRadius: BorderRadius.horizontal(
-                 left: isPrevLogged ? Radius.zero : const Radius.circular(50),
-                 right: isNextLogged ? Radius.zero : const Radius.circular(50),
-               )
-             );
-          } else if (isFertile) {
-             decoration = BoxDecoration(
-               color: fertileColor,
-               borderRadius: BorderRadius.horizontal(
-                 left: isPrevFertile ? Radius.zero : const Radius.circular(50),
-                 right: isNextFertile ? Radius.zero : const Radius.circular(50),
-               )
-             );
-          } else if (isPredicted) {
-             decoration = BoxDecoration(
-                border: Border.all(
-                  color: primaryColor,
-                  style: BorderStyle.solid,
-                  width: 1.5,
-                ),
-                shape: BoxShape.circle,
-              );
-          }
+    final isPrevFertile = isFertileDay(day.subtract(const Duration(days: 1)), state);
+    final isNextFertile = isFertileDay(day.add(const Duration(days: 1)), state);
+    
+    final isPrevLogged = isLoggedDay(day.subtract(const Duration(days: 1)), state);
+    final isNextLogged = isLoggedDay(day.add(const Duration(days: 1)), state);
 
-          final bool isContinuous = (isLogged && (isPrevLogged || isNextLogged)) || (isFertile && (isPrevFertile || isNextFertile));
+    BoxDecoration? decoration;
+    
+    if (isLogged) {
+       decoration = BoxDecoration(
+         color: loggedColor,
+         borderRadius: BorderRadius.horizontal(
+           left: isPrevLogged ? Radius.zero : const Radius.circular(50),
+           right: isNextLogged ? Radius.zero : const Radius.circular(50),
+         )
+       );
+    } else if (isFertile) {
+       decoration = BoxDecoration(
+         color: fertileColor,
+         borderRadius: BorderRadius.horizontal(
+           left: isPrevFertile ? Radius.zero : const Radius.circular(50),
+           right: isNextFertile ? Radius.zero : const Radius.circular(50),
+         )
+       );
+    } else if (isPredicted) {
+       decoration = BoxDecoration(
+          border: Border.all(
+            color: primaryColor,
+            style: BorderStyle.solid,
+            width: 1.5,
+          ),
+          shape: BoxShape.circle,
+        );
+    }
 
-          return Container(
-            margin: isContinuous ? const EdgeInsets.symmetric(vertical: 6) : const EdgeInsets.all(6),
-            decoration: decoration,
-            alignment: Alignment.center,
-            child: Text(
-              '${day.day}',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-            ),
-          );
-        },
+    final bool isContinuous = (isLogged && (isPrevLogged || isNextLogged)) || (isFertile && (isPrevFertile || isNextFertile));
+
+    return Container(
+      margin: isContinuous ? const EdgeInsets.symmetric(vertical: 6) : const EdgeInsets.all(6),
+      decoration: decoration,
+      alignment: Alignment.center,
+      child: Container(
+        decoration: BoxDecoration(
+          border: isSelected ? Border.all(color: primaryColor, width: 2) : null,
+          color: isToday ? primaryColor.withOpacity(0.3) : null,
+          shape: BoxShape.circle,
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          '${day.day}',
+          style: TextStyle(
+            color: isOutside 
+              ? Theme.of(context).colorScheme.onSurface.withOpacity(0.3)
+              : Theme.of(context).colorScheme.onSurface,
+            fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
       ),
     );
   }
@@ -408,6 +425,27 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (logForDate?.flowLevel == null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  ref
+                      .read(periodProvider(widget.profileId).notifier)
+                      .startNewCycle(_selectedDay!);
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('I got my period'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.pink[100],
+                  foregroundColor: Colors.pink[900],
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ),
         Text(
           DateFormat.yMMMd().format(_selectedDay!),
           style: Theme.of(context).textTheme.titleLarge,
@@ -489,7 +527,7 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
               onTap: () {
                 final newLog = PeriodLog(
                   id: logForDate?.id,
-                  cycleId: state.currentCycle!.id,
+                  cycleId: state.currentCycle?.id ?? '',
                   date: _selectedDay!,
                   flowLevel: isSelected ? null : flow,
                   moods: logForDate?.moods ?? [],
@@ -522,7 +560,7 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
                 
                 final newLog = PeriodLog(
                   id: logForDate?.id,
-                  cycleId: state.currentCycle!.id,
+                  cycleId: state.currentCycle?.id ?? '',
                   date: _selectedDay!,
                   flowLevel: logForDate?.flowLevel,
                   moods: logForDate?.moods ?? [],
@@ -555,7 +593,7 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
                 
                 final newLog = PeriodLog(
                   id: logForDate?.id,
-                  cycleId: state.currentCycle!.id,
+                  cycleId: state.currentCycle?.id ?? '',
                   date: _selectedDay!,
                   flowLevel: logForDate?.flowLevel,
                   moods: updated,

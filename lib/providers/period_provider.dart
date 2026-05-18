@@ -118,23 +118,24 @@ class PeriodNotifier extends FamilyAsyncNotifier<PeriodState, String> {
   Future<Result<void, Exception>> startNewCycle(DateTime startDate) async {
     try {
       final stateValue = state.value;
+      final cleanStartDate = DateTime(startDate.year, startDate.month, startDate.day);
+
       if (stateValue?.currentCycle != null) {
         // End the previous cycle
         final oldCycle = stateValue!.currentCycle!;
-        final endDate = startDate.subtract(const Duration(days: 1));
+        final endDate = cleanStartDate.subtract(const Duration(days: 1));
         await _repository.updateCycle(
           PeriodCycle(id: oldCycle.id, profileId: oldCycle.profileId, startDate: oldCycle.startDate, endDate: endDate)
         );
       }
 
       // Start new cycle
-      final newCycle = PeriodCycle(profileId: arg, startDate: startDate);
+      final newCycle = PeriodCycle(profileId: arg, startDate: cleanStartDate);
       await _repository.addCycle(newCycle);
 
       // Log 3 default period days
       for (int i = 0; i < 3; i++) {
-        final logDate = startDate.add(Duration(days: i));
-        if (logDate.isAfter(DateTime.now())) continue; // Don't log future days automatically
+        final logDate = cleanStartDate.add(Duration(days: i));
         
         final log = PeriodLog(
           cycleId: newCycle.id,
@@ -146,6 +147,7 @@ class PeriodNotifier extends FamilyAsyncNotifier<PeriodState, String> {
 
       state = const AsyncValue.loading();
       state = await AsyncValue.guard(() => _loadState());
+      ref.invalidate(allPeriodLogsProvider(arg));
       return const Success(null);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));
@@ -196,6 +198,7 @@ class PeriodNotifier extends FamilyAsyncNotifier<PeriodState, String> {
       
       state = const AsyncValue.loading();
       state = await AsyncValue.guard(() => _loadState());
+      ref.invalidate(allPeriodLogsProvider(arg));
       return const Success(null);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));
