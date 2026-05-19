@@ -21,7 +21,8 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
     try {
       await _repository.addMedication(medication);
       
-      if (medication.notificationEnabled && medication.isActive) {
+      // Do NOT schedule notifications/alarms if it is AsNeeded (PRN)
+      if (!medication.isAsNeeded && medication.notificationEnabled && medication.isActive) {
         final baseId = medication.id.hashCode & 0x0FFFFFFF;
         for (final day in medication.daysOfWeek) {
           for (int i = 0; i < medication.timesOfDay.length; i++) {
@@ -39,7 +40,7 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
         }
       }
 
-      if (medication.alarmEnabled && medication.isActive) {
+      if (!medication.isAsNeeded && medication.alarmEnabled && medication.isActive) {
         for (final time in medication.timesOfDay) {
           await _notificationService.setSystemAlarm(
             time, 
@@ -62,7 +63,8 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
 
       await _notificationService.cancelMedicationNotifications(medication.id);
       
-      if (medication.isActive && medication.notificationEnabled) {
+      // Do NOT schedule notifications/alarms if it is AsNeeded (PRN)
+      if (medication.isActive && !medication.isAsNeeded && medication.notificationEnabled) {
         final baseId = medication.id.hashCode & 0x0FFFFFFF;
         for (final day in medication.daysOfWeek) {
           for (int i = 0; i < medication.timesOfDay.length; i++) {
@@ -80,7 +82,7 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
         }
       }
 
-      if (medication.isActive && medication.alarmEnabled) {
+      if (medication.isActive && !medication.isAsNeeded && medication.alarmEnabled) {
         for (final time in medication.timesOfDay) {
           await _notificationService.setSystemAlarm(
             time, 
@@ -101,7 +103,6 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
     try {
       await _repository.deleteMedication(id);
 
-      // Cancel notifications
       await _notificationService.cancelMedicationNotifications(id);
       
       await refreshMedications();
@@ -119,7 +120,8 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
       await _notificationService.cancelMedicationNotifications(medication.id);
 
       if (newIsActive) {
-        if (medication.notificationEnabled) {
+        // Do NOT schedule notifications/alarms if it is AsNeeded (PRN)
+        if (!medication.isAsNeeded && medication.notificationEnabled) {
           final baseId = medication.id.hashCode & 0x0FFFFFFF;
           for (final day in medication.daysOfWeek) {
             for (int i = 0; i < medication.timesOfDay.length; i++) {
@@ -137,7 +139,7 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
           }
         }
 
-        if (medication.alarmEnabled) {
+        if (!medication.isAsNeeded && medication.alarmEnabled) {
           for (final time in medication.timesOfDay) {
             await _notificationService.setSystemAlarm(
               time, 
@@ -177,6 +179,7 @@ class AllMedicationLogsNotifier extends FamilyAsyncNotifier<List<MedicationLog>,
   Future<List<MedicationLog>> build(String arg) async {
     final sub = ref.read(notificationServiceProvider).onMedicationMarkedTaken.stream.listen((_) {
       ref.invalidateSelf();
+      ref.invalidate(medicationsProvider(arg));
     });
     ref.onDispose(sub.cancel);
 
@@ -241,10 +244,10 @@ class MedicationLogsNotifier
   Future<List<MedicationLog>> build(String arg) async {
     final sub = ref.read(notificationServiceProvider).onMedicationMarkedTaken.stream.listen((_) {
       ref.invalidateSelf();
+      ref.invalidate(medicationsProvider(arg));
     });
     ref.onDispose(sub.cancel);
 
-    // Default to today for the initial build
     return _repository.loadLogsForDate(DateTime.now(), arg);
   }
 
@@ -257,8 +260,9 @@ class MedicationLogsNotifier
     try {
       await _repository.addLog(log);
       
-      // We need to refresh the current view, but build() might be for a different date.
-      // For simplicity, let's just refresh.
+      ref.invalidate(medicationsProvider(arg));
+      ref.invalidate(allMedicationLogsProvider(arg));
+
       state = await AsyncValue.guard(() => _repository.loadLogsForDate(log.timestamp, arg));
       return const Success(null);
     } catch (e) {
@@ -269,6 +273,10 @@ class MedicationLogsNotifier
   Future<Result<void, Exception>> removeLog(String medicationId, DateTime date, {TimeOfDay? time}) async {
     try {
       await _repository.removeLog(medicationId, date, time: time);
+      
+      ref.invalidate(medicationsProvider(arg));
+      ref.invalidate(allMedicationLogsProvider(arg));
+
       state = await AsyncValue.guard(() => _repository.loadLogsForDate(date, arg));
       return const Success(null);
     } catch (e) {
@@ -280,3 +288,101 @@ class MedicationLogsNotifier
 final medicationLogsProvider =
     AsyncNotifierProvider.family<MedicationLogsNotifier, List<MedicationLog>, String>(
         MedicationLogsNotifier.new);
+
+// Adherence calculations models and provider
+class DayAdherence {
+  final DateTime date;
+  final int expected;
+  final int actual;
+  bool get isPerfect => expected == 0 || actual >= expected;
+  double get percentage => expected == 0 ? 1.0 : (actual / expected).clamp(0.0, 1.0);
+
+  DayAdherence({
+    required this.date,
+    required this.expected,
+    required this.actual,
+  });
+}
+
+class AdherenceData {
+  final double adherenceRate;
+  final List<DayAdherence> dailyAdherence;
+  final int streakDays;
+
+  AdherenceData({
+    required this.adherenceRate,
+    required this.dailyAdherence,
+    required this.streakDays,
+  });
+}
+
+final medicationAdherenceProvider = FutureProvider.family<AdherenceData, String>((ref, profileId) async {
+  final medicationsAsync = ref.watch(medicationsProvider(profileId));
+  final logsAsync = ref.watch(allMedicationLogsProvider(profileId));
+
+  final medications = medicationsAsync.value ?? [];
+  final logs = logsAsync.value ?? [];
+
+  final today = DateTime.now();
+  final last7Days = List.generate(7, (index) {
+    final d = today.subtract(Duration(days: 6 - index));
+    return DateTime(d.year, d.month, d.day);
+  });
+
+  final List<DayAdherence> dailyAdherence = [];
+  int expectedTotal = 0;
+  int actualTotal = 0;
+
+  for (final date in last7Days) {
+    int expectedForDay = 0;
+    int actualForDay = 0;
+
+    for (final med in medications) {
+      if (med.isActive && !med.isAsNeeded) {
+        if (med.daysOfWeek.contains(date.weekday)) {
+          expectedForDay += med.timesOfDay.length;
+        }
+      }
+    }
+
+    final dayStr = date.toIso8601String().split('T')[0];
+    final dayLogs = logs.where((l) =>
+        l.isTaken &&
+        l.timestamp.toIso8601String().startsWith(dayStr) &&
+        medications.any((m) => m.id == l.medicationId && !m.isAsNeeded));
+    actualForDay = dayLogs.length;
+
+    expectedTotal += expectedForDay;
+    actualTotal += actualForDay > expectedForDay ? expectedForDay : actualForDay;
+
+    dailyAdherence.add(DayAdherence(
+      date: date,
+      expected: expectedForDay,
+      actual: actualForDay,
+    ));
+  }
+
+  final double rate = expectedTotal == 0 ? 1.0 : actualTotal / expectedTotal;
+
+  int streak = 0;
+  for (int i = dailyAdherence.length - 1; i >= 0; i--) {
+    final day = dailyAdherence[i];
+    if (day.expected == 0) {
+      continue;
+    }
+    if (day.isPerfect) {
+      streak++;
+    } else {
+      if (i == dailyAdherence.length - 1 && day.actual == 0 && day.expected > 0) {
+        continue;
+      }
+      break;
+    }
+  }
+
+  return AdherenceData(
+    adherenceRate: rate,
+    dailyAdherence: dailyAdherence,
+    streakDays: streak,
+  );
+});

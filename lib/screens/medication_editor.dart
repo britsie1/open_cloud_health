@@ -26,11 +26,15 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _dosageController;
+  late final TextEditingController _stockQuantityController;
+  late final TextEditingController _lowStockThresholdController;
   late List<TimeOfDay> _selectedTimes;
   late List<int> _selectedDays;
   late String _selectedType;
   late bool _notificationEnabled;
   late bool _alarmEnabled;
+  late bool _isAsNeeded;
+  late bool _trackInventory;
 
   static const List<String> _medicationTypes = [
     'Tablet',
@@ -57,6 +61,11 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
     super.initState();
     _nameController = TextEditingController(text: widget.medication?.name ?? '');
     _dosageController = TextEditingController(text: widget.medication?.dosage ?? '');
+    _isAsNeeded = widget.medication?.isAsNeeded ?? false;
+    _trackInventory = widget.medication?.trackInventory ?? false;
+    _stockQuantityController = TextEditingController(text: widget.medication?.stockQuantity.toString() ?? '0.0');
+    _lowStockThresholdController = TextEditingController(text: widget.medication?.lowStockThreshold.toString() ?? '0.0');
+    
     _selectedTimes = widget.medication?.timesOfDay != null 
         ? List<TimeOfDay>.from(widget.medication!.timesOfDay) 
         : [TimeOfDay.now()];
@@ -72,6 +81,8 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
   void dispose() {
     _nameController.dispose();
     _dosageController.dispose();
+    _stockQuantityController.dispose();
+    _lowStockThresholdController.dispose();
     super.dispose();
   }
 
@@ -154,19 +165,23 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
 
     final name = _nameController.text.trim();
     final dosage = _dosageController.text.trim();
+    final stockQuantity = _trackInventory ? (double.tryParse(_stockQuantityController.text.trim()) ?? 0.0) : 0.0;
+    final lowStockThreshold = _trackInventory ? (double.tryParse(_lowStockThresholdController.text.trim()) ?? 0.0) : 0.0;
 
-    if (_selectedDays.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one day of the week.')),
-      );
-      return;
-    }
+    if (!_isAsNeeded) {
+      if (_selectedDays.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select at least one day of the week.')),
+        );
+        return;
+      }
 
-    if (_selectedTimes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add at least one dosage time.')),
-      );
-      return;
+      if (_selectedTimes.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please add at least one dosage time.')),
+        );
+        return;
+      }
     }
 
     Result<void, Exception> result;
@@ -177,10 +192,14 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
         name: name,
         dosage: dosage,
         type: _selectedType,
-        notificationEnabled: _notificationEnabled,
-        alarmEnabled: _alarmEnabled,
-        daysOfWeek: _selectedDays,
-        timesOfDay: _selectedTimes,
+        notificationEnabled: _isAsNeeded ? false : _notificationEnabled,
+        alarmEnabled: _isAsNeeded ? false : _alarmEnabled,
+        daysOfWeek: _isAsNeeded ? const [1, 2, 3, 4, 5, 6, 7] : _selectedDays,
+        timesOfDay: _isAsNeeded ? const [] : _selectedTimes,
+        isAsNeeded: _isAsNeeded,
+        trackInventory: _trackInventory,
+        stockQuantity: stockQuantity,
+        lowStockThreshold: lowStockThreshold,
       );
 
       result = await ref
@@ -193,11 +212,15 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
         name: name,
         dosage: dosage,
         type: _selectedType,
-        notificationEnabled: _notificationEnabled,
-        alarmEnabled: _alarmEnabled,
-        daysOfWeek: _selectedDays,
-        timesOfDay: _selectedTimes,
+        notificationEnabled: _isAsNeeded ? false : _notificationEnabled,
+        alarmEnabled: _isAsNeeded ? false : _alarmEnabled,
+        daysOfWeek: _isAsNeeded ? const [1, 2, 3, 4, 5, 6, 7] : _selectedDays,
+        timesOfDay: _isAsNeeded ? const [] : _selectedTimes,
         isActive: widget.medication!.isActive,
+        isAsNeeded: _isAsNeeded,
+        trackInventory: _trackInventory,
+        stockQuantity: stockQuantity,
+        lowStockThreshold: lowStockThreshold,
       );
 
       result = await ref
@@ -295,6 +318,18 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
                             return null;
                           },
                         ),
+                        const Divider(height: 32),
+                        SwitchListTile(
+                          title: const Text('Track As-Needed (PRN)'),
+                          subtitle: const Text('For ad-hoc medications like insulin logged dynamically without a scheduled time'),
+                          contentPadding: EdgeInsets.zero,
+                          value: _isAsNeeded,
+                          onChanged: (val) {
+                            setState(() {
+                              _isAsNeeded = val;
+                            });
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -349,7 +384,7 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
                 ),
                 const SizedBox(height: 20),
 
-                // Schedule card
+                // Inventory Card
                 Card(
                   elevation: 2,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -359,218 +394,311 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Frequency & Timing',
+                          'Inventory Tracking',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.primary,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Repeat On',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: _weekdays.map((item) {
-                            final dayNum = item['day'] as int;
-                            final label = item['label'] as String;
-                            final isSelected = _selectedDays.contains(dayNum);
-
-                            return InkWell(
-                              onTap: () => _toggleDay(dayNum),
-                              borderRadius: BorderRadius.circular(24),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isSelected 
-                                      ? theme.colorScheme.primary 
-                                      : theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                                  border: Border.all(
-                                    color: isSelected 
-                                        ? theme.colorScheme.primary 
-                                        : theme.colorScheme.outline.withOpacity(0.5),
-                                    width: 1.5,
-                                  ),
-                                  boxShadow: isSelected 
-                                      ? [
-                                          BoxShadow(
-                                            color: theme.colorScheme.primary.withOpacity(0.3),
-                                            blurRadius: 4,
-                                            offset: const Offset(0, 2),
-                                          )
-                                        ]
-                                      : null,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    label,
-                                    style: TextStyle(
-                                      color: isSelected 
-                                          ? theme.colorScheme.onPrimary 
-                                          : theme.colorScheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 12),
-                        // Quick Presets
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _presetButton('Everyday', () => _selectPreset('everyday')),
-                            _presetButton('Weekdays', () => _selectPreset('weekdays')),
-                            _presetButton('Weekends', () => _selectPreset('weekends')),
-                            _presetButton('Clear', () => _selectPreset('clear')),
-                          ],
-                        ),
-                        const Divider(height: 32),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Dosage Times',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            TextButton.icon(
-                              onPressed: _addTime,
-                              icon: const Icon(Icons.add),
-                              label: const Text('Add Time'),
-                            ),
-                          ],
-                        ),
                         const SizedBox(height: 8),
-                        // Times List
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _selectedTimes.length,
-                          itemBuilder: (context, index) {
-                            final time = _selectedTimes[index];
-                            return Card(
-                              elevation: 0,
-                              color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.2)),
-                              ),
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: ListTile(
-                                leading: Icon(Icons.access_time, color: theme.colorScheme.primary),
-                                title: Text(
-                                  time.format(context),
-                                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.edit, size: 20),
-                                      onPressed: () => _editTime(index),
-                                    ),
-                                    IconButton(
-                                      icon: Icon(Icons.delete, color: theme.colorScheme.error, size: 20),
-                                      onPressed: () => _removeTime(index),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
+                        SwitchListTile(
+                          title: const Text('Track Stock Level'),
+                          subtitle: const Text('Automatically monitor remaining quantity and alert when low'),
+                          contentPadding: EdgeInsets.zero,
+                          value: _trackInventory,
+                          onChanged: (val) {
+                            setState(() {
+                              _trackInventory = val;
+                            });
                           },
                         ),
+                        if (_trackInventory) ...[
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _stockQuantityController,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  decoration: InputDecoration(
+                                    labelText: 'Current Stock',
+                                    prefixIcon: const Icon(Icons.inventory),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  validator: (val) {
+                                    if (_trackInventory) {
+                                      if (val == null || val.trim().isEmpty) {
+                                        return 'Required';
+                                      }
+                                      if (double.tryParse(val) == null) {
+                                        return 'Invalid';
+                                      }
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _lowStockThresholdController,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  decoration: InputDecoration(
+                                    labelText: 'Low Stock Alert',
+                                    prefixIcon: const Icon(Icons.warning_amber),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  validator: (val) {
+                                    if (_trackInventory) {
+                                      if (val == null || val.trim().isEmpty) {
+                                        return 'Required';
+                                      }
+                                      if (double.tryParse(val) == null) {
+                                        return 'Invalid';
+                                      }
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
 
-                // Reminders Card
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Notifications & Alarms',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary,
+                // Show timing and reminders only if not As-Needed (PRN)
+                if (!_isAsNeeded) ...[
+                  // Schedule card
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Frequency & Timing',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        SwitchListTile(
-                          title: const Text('Enable Notifications'),
-                          subtitle: const Text('Get push notifications at scheduled times'),
-                          contentPadding: EdgeInsets.zero,
-                          value: _notificationEnabled,
-                          onChanged: (val) async {
-                            if (val) {
-                              final status = await Permission.notification.request();
-                              if (!status.isGranted) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Notifications permission is required.')),
-                                  );
-                                }
-                                return;
-                              }
-                            }
-                            setState(() {
-                              _notificationEnabled = val;
-                            });
-                          },
-                        ),
-                        const Divider(),
-                        SwitchListTile(
-                          title: const Text('Set System Alarm'),
-                          subtitle: const Text('Set standard system clock alarms (Android only)'),
-                          contentPadding: EdgeInsets.zero,
-                          value: _alarmEnabled,
-                          onChanged: (val) async {
-                            if (val) {
-                              if (Platform.isAndroid) {
-                                final status = await Permission.scheduleExactAlarm.request();
+                          const SizedBox(height: 16),
+                          Text(
+                            'Repeat On',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: _weekdays.map((item) {
+                              final dayNum = item['day'] as int;
+                              final label = item['label'] as String;
+                              final isSelected = _selectedDays.contains(dayNum);
+
+                              return InkWell(
+                                onTap: () => _toggleDay(dayNum),
+                                borderRadius: BorderRadius.circular(24),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isSelected 
+                                        ? theme.colorScheme.primary 
+                                        : theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                                    border: Border.all(
+                                      color: isSelected 
+                                          ? theme.colorScheme.primary 
+                                          : theme.colorScheme.outline.withOpacity(0.5),
+                                      width: 1.5,
+                                    ),
+                                    boxShadow: isSelected 
+                                        ? [
+                                            BoxShadow(
+                                              color: theme.colorScheme.primary.withOpacity(0.3),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
+                                            )
+                                          ]
+                                        : null,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      label,
+                                      style: TextStyle(
+                                        color: isSelected 
+                                            ? theme.colorScheme.onPrimary 
+                                            : theme.colorScheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 12),
+                          // Quick Presets
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _presetButton('Everyday', () => _selectPreset('everyday')),
+                              _presetButton('Weekdays', () => _selectPreset('weekdays')),
+                              _presetButton('Weekends', () => _selectPreset('weekends')),
+                              _presetButton('Clear', () => _selectPreset('clear')),
+                            ],
+                          ),
+                          const Divider(height: 32),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Dosage Times',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: _addTime,
+                                icon: const Icon(Icons.add),
+                                label: const Text('Add Time'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          // Times List
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _selectedTimes.length,
+                            itemBuilder: (context, index) {
+                              final time = _selectedTimes[index];
+                              return Card(
+                                elevation: 0,
+                                color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.2)),
+                                ),
+                                margin: const EdgeInsets.only(bottom: 8),
+                                child: ListTile(
+                                  leading: Icon(Icons.access_time, color: theme.colorScheme.primary),
+                                  title: Text(
+                                    time.format(context),
+                                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit, size: 20),
+                                        onPressed: () => _editTime(index),
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.delete, color: theme.colorScheme.error, size: 20),
+                                        onPressed: () => _removeTime(index),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Reminders Card
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Notifications & Alarms',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SwitchListTile(
+                            title: const Text('Enable Notifications'),
+                            subtitle: const Text('Get push notifications at scheduled times'),
+                            contentPadding: EdgeInsets.zero,
+                            value: _notificationEnabled,
+                            onChanged: (val) async {
+                              if (val) {
+                                final status = await Permission.notification.request();
                                 if (!status.isGranted) {
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Exact alarm permission is required.')),
+                                      const SnackBar(content: Text('Notifications permission is required.')),
                                     );
                                   }
                                   return;
                                 }
-                              } else if (Platform.isIOS) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('System alarms are not supported on iOS.')),
-                                  );
-                                }
-                                return;
                               }
-                            }
-                            setState(() {
-                              _alarmEnabled = val;
-                            });
-                          },
-                        ),
-                      ],
+                              setState(() {
+                                _notificationEnabled = val;
+                              });
+                            },
+                          ),
+                          const Divider(),
+                          SwitchListTile(
+                            title: const Text('Set System Alarm'),
+                            subtitle: const Text('Set standard system clock alarms (Android only)'),
+                            contentPadding: EdgeInsets.zero,
+                            value: _alarmEnabled,
+                            onChanged: (val) async {
+                              if (val) {
+                                if (Platform.isAndroid) {
+                                  final status = await Permission.scheduleExactAlarm.request();
+                                  if (!status.isGranted) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Exact alarm permission is required.')),
+                                      );
+                                    }
+                                    return;
+                                  }
+                                } else if (Platform.isIOS) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('System alarms are not supported on iOS.')),
+                                    );
+                                  }
+                                  return;
+                                }
+                              }
+                              setState(() {
+                                _alarmEnabled = val;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                ],
                 const SizedBox(height: 32),
 
                 // Save button

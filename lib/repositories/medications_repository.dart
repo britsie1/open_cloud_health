@@ -55,6 +55,10 @@ class MedicationsRepository {
         isActive: row['isActive'] == 'true',
         daysOfWeek: daysOfWeek,
         timesOfDay: timesOfDay,
+        isAsNeeded: row['isAsNeeded'] == 'true',
+        trackInventory: row['trackInventory'] == 'true',
+        stockQuantity: (row['stockQuantity'] as num?)?.toDouble() ?? 0.0,
+        lowStockThreshold: (row['lowStockThreshold'] as num?)?.toDouble() ?? 0.0,
       );
     }).toList();
   }
@@ -73,6 +77,10 @@ class MedicationsRepository {
       'isActive': medication.isActive.toString(),
       'daysOfWeek': jsonEncode(medication.daysOfWeek),
       'timesOfDay': jsonEncode(medication.timesOfDay.map((t) => '${t.hour}:${t.minute}').toList()),
+      'isAsNeeded': medication.isAsNeeded.toString(),
+      'trackInventory': medication.trackInventory.toString(),
+      'stockQuantity': medication.stockQuantity,
+      'lowStockThreshold': medication.lowStockThreshold,
     });
   }
 
@@ -91,6 +99,10 @@ class MedicationsRepository {
           'isActive': medication.isActive.toString(),
           'daysOfWeek': jsonEncode(medication.daysOfWeek),
           'timesOfDay': jsonEncode(medication.timesOfDay.map((t) => '${t.hour}:${t.minute}').toList()),
+          'isAsNeeded': medication.isAsNeeded.toString(),
+          'trackInventory': medication.trackInventory.toString(),
+          'stockQuantity': medication.stockQuantity,
+          'lowStockThreshold': medication.lowStockThreshold,
         },
         where: 'id = ?',
         whereArgs: [medication.id]);
@@ -126,6 +138,7 @@ class MedicationsRepository {
               medicationId: row['medicationId'] as String,
               timestamp: DateTime.parse(row['timestamp'] as String),
               isTaken: row['isTaken'] == 'true',
+              dosage: row['dosage'] as String?,
             ))
         .toList();
   }
@@ -147,6 +160,7 @@ class MedicationsRepository {
               medicationId: row['medicationId'] as String,
               timestamp: DateTime.parse(row['timestamp'] as String),
               isTaken: row['isTaken'] == 'true',
+              dosage: row['dosage'] as String?,
             ))
         .toList();
   }
@@ -158,12 +172,54 @@ class MedicationsRepository {
       'medicationId': log.medicationId,
       'timestamp': log.timestamp.toIso8601String(),
       'isTaken': log.isTaken.toString(),
+      'dosage': log.dosage,
     });
+
+    // Decrement stock if trackInventory is enabled
+    final List<Map<String, dynamic>> meds = await db.query(
+      'medications',
+      where: 'id = ?',
+      whereArgs: [log.medicationId],
+    );
+    if (meds.isNotEmpty) {
+      final med = meds.first;
+      final trackInventory = med['trackInventory'] == 'true';
+      if (trackInventory) {
+        final currentStock = (med['stockQuantity'] as num?)?.toDouble() ?? 0.0;
+        final newStock = (currentStock - 1.0).clamp(0.0, double.infinity);
+        await db.update(
+          'medications',
+          {'stockQuantity': newStock},
+          where: 'id = ?',
+          whereArgs: [log.medicationId],
+        );
+      }
+    }
   }
 
   Future<void> removeLog(String medicationId, DateTime date, {TimeOfDay? time}) async {
     final db = await _dbHelper.getDatabase();
     final dateStr = date.toIso8601String().split('T')[0];
+    
+    final List<Map<String, dynamic>> logsToDelete;
+    if (time != null) {
+      final hourStr = time.hour.toString().padLeft(2, '0');
+      final minuteStr = time.minute.toString().padLeft(2, '0');
+      logsToDelete = await db.query(
+        'medication_logs',
+        where: 'medicationId = ? AND timestamp LIKE ?',
+        whereArgs: [medicationId, '${dateStr}T$hourStr:$minuteStr%'],
+      );
+    } else {
+      logsToDelete = await db.query(
+        'medication_logs',
+        where: 'medicationId = ? AND timestamp LIKE ?',
+        whereArgs: [medicationId, '$dateStr%'],
+      );
+    }
+
+    final deleteCount = logsToDelete.length;
+
     if (time != null) {
       final hourStr = time.hour.toString().padLeft(2, '0');
       final minuteStr = time.minute.toString().padLeft(2, '0');
@@ -174,6 +230,28 @@ class MedicationsRepository {
       await db.delete('medication_logs',
           where: 'medicationId = ? AND timestamp LIKE ?',
           whereArgs: [medicationId, '$dateStr%']);
+    }
+
+    if (deleteCount > 0) {
+      final List<Map<String, dynamic>> meds = await db.query(
+        'medications',
+        where: 'id = ?',
+        whereArgs: [medicationId],
+      );
+      if (meds.isNotEmpty) {
+        final med = meds.first;
+        final trackInventory = med['trackInventory'] == 'true';
+        if (trackInventory) {
+          final currentStock = (med['stockQuantity'] as num?)?.toDouble() ?? 0.0;
+          final newStock = currentStock + deleteCount;
+          await db.update(
+            'medications',
+            {'stockQuantity': newStock},
+            where: 'id = ?',
+            whereArgs: [medicationId],
+          );
+        }
+      }
     }
   }
 }

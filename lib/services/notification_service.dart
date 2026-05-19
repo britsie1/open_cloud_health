@@ -18,11 +18,14 @@ import 'package:uuid/uuid.dart';
 void notificationTapBackground(NotificationResponse response) async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
-  if (response.actionId == 'mark_taken' && response.payload != null) {
-    final medicationId = response.payload!;
-    final dbHelper = DatabaseHelper();
-    final db = await dbHelper.getDatabase();
-    
+  
+  final medicationId = response.payload;
+  if (medicationId == null) return;
+
+  final dbHelper = DatabaseHelper();
+  final db = await dbHelper.getDatabase();
+
+  if (response.actionId == 'mark_taken') {
     final log = MedicationLog(
       id: const Uuid().v4(),
       medicationId: medicationId,
@@ -36,16 +39,134 @@ void notificationTapBackground(NotificationResponse response) async {
       'isTaken': log.isTaken.toString(),
     });
 
+    // Background stock decrement direct SQLite query
+    final List<Map<String, dynamic>> meds = await db.query(
+      'medications',
+      where: 'id = ?',
+      whereArgs: [medicationId],
+    );
+    if (meds.isNotEmpty) {
+      final med = meds.first;
+      final trackInventory = med['trackInventory'] == 'true';
+      if (trackInventory) {
+        final currentStock = (med['stockQuantity'] as num?)?.toDouble() ?? 0.0;
+        final newStock = (currentStock - 1.0).clamp(0.0, double.infinity);
+        await db.update(
+          'medications',
+          {'stockQuantity': newStock},
+          where: 'id = ?',
+          whereArgs: [medicationId],
+        );
+      }
+    }
+
     final SendPort? sendPort = IsolateNameServer.lookupPortByName('notification_action_port');
     if (sendPort != null) {
       sendPort.send(medicationId);
     }
+  } else if (response.actionId == 'snooze_15') {
+    tz.initializeTimeZones();
+    try {
+      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+    } catch (_) {}
+
+    final List<Map<String, dynamic>> meds = await db.query(
+      'medications',
+      where: 'id = ?',
+      whereArgs: [medicationId],
+    );
+    final String medName = meds.isNotEmpty ? meds.first['name'] as String : 'Medication';
+
+    final notificationService = NotificationService();
+    
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/launcher_icon');
+
+    final List<DarwinNotificationCategory> darwinCategories = [
+      DarwinNotificationCategory(
+        'medication_category',
+        actions: <DarwinNotificationAction>[
+          DarwinNotificationAction.plain(
+            'mark_taken',
+            'Mark as Taken',
+          ),
+          DarwinNotificationAction.plain(
+            'snooze_15',
+            'Snooze (15m)',
+          ),
+        ],
+      )
+    ];
+
+    final DarwinInitializationSettings initializationSettingsDarwin =
+        DarwinInitializationSettings(
+            requestAlertPermission: true,
+            requestBadgePermission: true,
+            requestSoundPermission: true,
+            notificationCategories: darwinCategories);
+
+    final InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsDarwin,
+      macOS: initializationSettingsDarwin,
+    );
+
+    await notificationService.flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: notificationTapForeground,
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
+    );
+
+    final now = tz.TZDateTime.now(tz.local);
+    final scheduledDate = now.add(const Duration(minutes: 15));
+    final snoozeId = (medicationId.hashCode & 0x0FFFFFFF) + 9999;
+
+    const androidDetails = AndroidNotificationDetails(
+      'daily_medication_channel', 'Medication Reminders',
+      channelDescription: 'Daily reminders to take your medications',
+      importance: Importance.max,
+      priority: Priority.high,
+      actions: <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          'mark_taken', 
+          'Mark as Taken',
+          cancelNotification: true,
+          showsUserInterface: false,
+        ),
+        AndroidNotificationAction(
+          'snooze_15',
+          'Snooze (15m)',
+          cancelNotification: true,
+          showsUserInterface: false,
+        ),
+      ],
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      categoryIdentifier: 'medication_category',
+    );
+
+    await notificationService.flutterLocalNotificationsPlugin.zonedSchedule(
+        snoozeId,
+        'Snoozed: $medName',
+        'Time to take your medication $medName.',
+        scheduledDate,
+        const NotificationDetails(android: androidDetails, iOS: iosDetails),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: medicationId);
   }
 }
 
 void notificationTapForeground(NotificationResponse response) async {
-  if (response.actionId == 'mark_taken' && response.payload != null) {
-    await NotificationService().markMedicationTaken(response.payload!);
+  if (response.payload != null) {
+    if (response.actionId == 'mark_taken') {
+      await NotificationService().markMedicationTaken(response.payload!);
+    } else if (response.actionId == 'snooze_15') {
+      await NotificationService().snoozeMedication(response.payload!);
+    }
   }
 }
 
@@ -76,7 +197,80 @@ class NotificationService {
       'isTaken': log.isTaken.toString(),
     });
 
+    // Decrement stock in foreground directly
+    final List<Map<String, dynamic>> meds = await db.query(
+      'medications',
+      where: 'id = ?',
+      whereArgs: [medicationId],
+    );
+    if (meds.isNotEmpty) {
+      final med = meds.first;
+      final trackInventory = med['trackInventory'] == 'true';
+      if (trackInventory) {
+        final currentStock = (med['stockQuantity'] as num?)?.toDouble() ?? 0.0;
+        final newStock = (currentStock - 1.0).clamp(0.0, double.infinity);
+        await db.update(
+          'medications',
+          {'stockQuantity': newStock},
+          where: 'id = ?',
+          whereArgs: [medicationId],
+        );
+      }
+    }
+
     onMedicationMarkedTaken.add(medicationId);
+  }
+
+  Future<void> snoozeMedication(String medicationId) async {
+    final dbHelper = DatabaseHelper();
+    final db = await dbHelper.getDatabase();
+    
+    final List<Map<String, dynamic>> meds = await db.query(
+      'medications',
+      where: 'id = ?',
+      whereArgs: [medicationId],
+    );
+    final String medName = meds.isNotEmpty ? meds.first['name'] as String : 'Medication';
+
+    final now = tz.TZDateTime.now(tz.local);
+    final scheduledDate = now.add(const Duration(minutes: 15));
+    final snoozeId = (medicationId.hashCode & 0x0FFFFFFF) + 9999;
+
+    const androidDetails = AndroidNotificationDetails(
+      'daily_medication_channel', 'Medication Reminders',
+      channelDescription: 'Daily reminders to take your medications',
+      importance: Importance.max,
+      priority: Priority.high,
+      actions: <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          'mark_taken', 
+          'Mark as Taken',
+          cancelNotification: true,
+          showsUserInterface: false,
+        ),
+        AndroidNotificationAction(
+          'snooze_15',
+          'Snooze (15m)',
+          cancelNotification: true,
+          showsUserInterface: false,
+        ),
+      ],
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      categoryIdentifier: 'medication_category',
+    );
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+        snoozeId,
+        'Snoozed: $medName',
+        'Time to take your medication $medName.',
+        scheduledDate,
+        const NotificationDetails(android: androidDetails, iOS: iosDetails),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: medicationId);
   }
 
   Future<void> init() async {
@@ -103,6 +297,10 @@ class NotificationService {
           DarwinNotificationAction.plain(
             'mark_taken',
             'Mark as Taken',
+          ),
+          DarwinNotificationAction.plain(
+            'snooze_15',
+            'Snooze (15m)',
           ),
         ],
       )
@@ -145,6 +343,12 @@ class NotificationService {
         AndroidNotificationAction(
           'mark_taken', 
           'Mark as Taken',
+          cancelNotification: true,
+          showsUserInterface: false,
+        ),
+        AndroidNotificationAction(
+          'snooze_15', 
+          'Snooze (15m)',
           cancelNotification: true,
           showsUserInterface: false,
         ),
@@ -192,6 +396,12 @@ class NotificationService {
           cancelNotification: true,
           showsUserInterface: false,
         ),
+        AndroidNotificationAction(
+          'snooze_15', 
+          'Snooze (15m)',
+          cancelNotification: true,
+          showsUserInterface: false,
+        ),
       ],
     );
 
@@ -227,7 +437,6 @@ class NotificationService {
       );
       await intent.launch();
     }
-    // Note: iOS does not support setting the native clock alarm via intents.
   }
 
   Future<void> cancelNotification(int id) async {

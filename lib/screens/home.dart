@@ -15,6 +15,7 @@ import 'package:open_cloud_health/utils/icon_utils.dart';
 import 'package:open_cloud_health/utils/result.dart';
 import 'package:open_cloud_health/widgets/account_appbar_actions.dart';
 import 'package:open_cloud_health/widgets/log_checkup_dialog.dart';
+import 'package:open_cloud_health/widgets/log_tracked_dose_dialog.dart';
 
 class TodayMedicationTask {
   final Medication medication;
@@ -338,11 +339,14 @@ class _MedicationSummarySection extends ConsumerWidget {
         if (medications.isEmpty) return const SizedBox.shrink();
 
         final todayWeekday = DateTime.now().weekday;
-        final activeMedications =
-            medications.where((m) => m.isActive && m.daysOfWeek.contains(todayWeekday)).toList();
+        
+        // Active scheduled medications today
+        final activeScheduled = medications
+            .where((m) => m.isActive && !m.isAsNeeded && m.daysOfWeek.contains(todayWeekday))
+            .toList();
 
         final List<TodayMedicationTask> tasks = [];
-        for (final med in activeMedications) {
+        for (final med in activeScheduled) {
           for (final time in med.timesOfDay) {
             tasks.add(TodayMedicationTask(medication: med, time: time));
           }
@@ -353,6 +357,13 @@ class _MedicationSummarySection extends ConsumerWidget {
           if (a.time.hour != b.time.hour) return a.time.hour.compareTo(b.time.hour);
           return a.time.minute.compareTo(b.time.minute);
         });
+
+        // PRN / As Needed active medications
+        final prnMedications = medications
+            .where((m) => m.isActive && m.isAsNeeded)
+            .toList();
+
+        if (tasks.isEmpty && prnMedications.isEmpty) return const SizedBox.shrink();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -384,12 +395,67 @@ class _MedicationSummarySection extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
-            if (tasks.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12.0),
-                child: Text("No medications active for today."),
-              )
-            else
+            // Mini Adherence Bar
+            Consumer(
+              builder: (context, ref, child) {
+                final adherenceAsync = ref.watch(medicationAdherenceProvider(profileId));
+                return adherenceAsync.maybeWhen(
+                  data: (data) {
+                    final percentage = (data.adherenceRate * 100).toInt();
+                    final theme = Theme.of(context);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Daily Adherence',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                              Text(
+                                '$percentage%',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: data.adherenceRate,
+                              minHeight: 6,
+                              backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  orElse: () => const SizedBox.shrink(),
+                );
+              },
+            ),
+            
+            if (tasks.isNotEmpty) ...[
+              const Text(
+                'Scheduled Tasks',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 8),
               logsAsync.when(
                 data: (logs) {
                   return Container(
@@ -422,6 +488,41 @@ class _MedicationSummarySection extends ConsumerWidget {
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (err, stack) => Text('Error: $err'),
               ),
+              const SizedBox(height: 16),
+            ],
+
+            if (prnMedications.isNotEmpty) ...[
+              const Text(
+                'As-Needed & Tracked',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                child: Column(
+                  children: prnMedications.map((med) {
+                    return _PRNMedicationSummaryItem(
+                      medication: med,
+                      profileId: profileId,
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
           ],
         );
       },
@@ -445,21 +546,58 @@ class _MedicationSummaryItem extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final med = task.medication;
     final taskTime = task.time;
+    final theme = Theme.of(context);
     
     final hour = taskTime.hour.toString().padLeft(2, '0');
     final minute = taskTime.minute.toString().padLeft(2, '0');
     final timeFormatted = '$hour:$minute';
 
+    final isLowStock = med.trackInventory &&
+        med.stockQuantity <= med.lowStockThreshold;
+
     return CheckboxListTile(
-      title: Text(
-        med.name,
-        style: TextStyle(
-          decoration: isTaken ? TextDecoration.lineThrough : null,
-          color: isTaken ? Colors.grey : Colors.black,
-          fontWeight: FontWeight.w600,
-        ),
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(
+              med.name,
+              style: TextStyle(
+                decoration: isTaken ? TextDecoration.lineThrough : null,
+                color: isTaken ? Colors.grey : Colors.black,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          if (isLowStock)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.warning, size: 10, color: theme.colorScheme.onErrorContainer),
+                  const SizedBox(width: 2),
+                  Text(
+                    'Low Stock: ${med.stockQuantity.toInt()}',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onErrorContainer,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
-      subtitle: Text('${med.dosage} at $timeFormatted'),
+      subtitle: Text(
+        med.trackInventory
+            ? '${med.dosage} at $timeFormatted • Stock: ${med.stockQuantity.toInt()} left'
+            : '${med.dosage} at $timeFormatted',
+      ),
       value: isTaken,
       activeColor: Colors.blue,
       onChanged: (val) async {
@@ -492,6 +630,87 @@ class _MedicationSummaryItem extends ConsumerWidget {
           );
         }
       },
+    );
+  }
+}
+
+class _PRNMedicationSummaryItem extends ConsumerWidget {
+  const _PRNMedicationSummaryItem({
+    required this.medication,
+    required this.profileId,
+  });
+
+  final Medication medication;
+  final String profileId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isLowStock = medication.trackInventory &&
+        medication.stockQuantity <= medication.lowStockThreshold;
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(
+              medication.name,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+          ),
+          if (isLowStock)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.warning, size: 10, color: theme.colorScheme.onErrorContainer),
+                  const SizedBox(width: 2),
+                  Text(
+                    'Low Stock: ${medication.stockQuantity.toInt()}',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onErrorContainer,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+      subtitle: Text(
+        medication.trackInventory
+            ? '${medication.dosage} • Stock: ${medication.stockQuantity.toInt()} left'
+            : medication.dosage,
+      ),
+      trailing: ElevatedButton.icon(
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (ctx) => LogTrackedDoseDialog(
+              profileId: profileId,
+              medication: medication,
+            ),
+          );
+        },
+        icon: const Icon(Icons.add, size: 14),
+        label: const Text('Log', style: TextStyle(fontSize: 12)),
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
     );
   }
 }

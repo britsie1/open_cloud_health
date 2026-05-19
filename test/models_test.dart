@@ -194,6 +194,27 @@ void main() {
       expect(copied.daysOfWeek, [1, 2, 3]);
       expect(copied.timesOfDay.first, const TimeOfDay(hour: 9, minute: 0));
     });
+
+    test('Medication supports PRN and stock inventory tracking fields', () {
+      final med = Medication(
+        profileId: 'p1',
+        name: 'Insulin',
+        dosage: '5 Units',
+        isAsNeeded: true,
+        trackInventory: true,
+        stockQuantity: 100.0,
+        lowStockThreshold: 10.0,
+      );
+
+      expect(med.isAsNeeded, true);
+      expect(med.trackInventory, true);
+      expect(med.stockQuantity, 100.0);
+      expect(med.lowStockThreshold, 10.0);
+
+      final copied = med.copyWith(stockQuantity: 95.0);
+      expect(copied.stockQuantity, 95.0);
+      expect(copied.isAsNeeded, true);
+    });
   });
 
   group('MedicationLog Model Tests', () {
@@ -201,6 +222,18 @@ void main() {
       final log = MedicationLog(medicationId: 'm1', timestamp: DateTime.now());
       expect(log.isTaken, true);
       expect(log.id, isNotEmpty);
+    });
+
+    test('MedicationLog supports custom dosage amount', () {
+      final log = MedicationLog(
+        medicationId: 'm1',
+        timestamp: DateTime.now(),
+        dosage: '5 Units',
+      );
+      expect(log.dosage, '5 Units');
+      
+      final copied = log.copyWith(dosage: '10 Units');
+      expect(copied.dosage, '10 Units');
     });
   });
 }

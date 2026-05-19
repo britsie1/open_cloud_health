@@ -35,6 +35,8 @@ class MockMedicationsRepository extends Mock implements MedicationsRepository {}
 
 class FakeMedication extends Fake implements Medication {}
 
+class FakeMedicationLog extends Fake implements MedicationLog {}
+
 class MockNotificationService extends Mock implements NotificationService {}
 
 class MockAllergiesRepository extends Mock implements AllergiesRepository {}
@@ -65,6 +67,7 @@ void main() {
     registerFallbackValue(FakeProfile());
     registerFallbackValue(FakeHistoryEvent());
     registerFallbackValue(FakeMedication());
+    registerFallbackValue(FakeMedicationLog());
     registerFallbackValue(FakeAllergy());
     registerFallbackValue(const TimeOfDay(hour: 0, minute: 0));
   });
@@ -345,6 +348,38 @@ void main() {
           .called(1);
       verify(() => mockNotificationService.cancelMedicationNotifications('m1')).called(1);
     });
+
+    test('addMedication with isAsNeeded = true (PRN) should NOT schedule notifications or alarms', () async {
+      final prnMed = Medication(
+        id: 'm2',
+        profileId: 'p1',
+        name: 'Insulin',
+        dosage: '5 Units',
+        timeOfDay: const TimeOfDay(hour: 8, minute: 0),
+        isActive: true,
+        isAsNeeded: true,
+        notificationEnabled: true,
+        alarmEnabled: true,
+      );
+
+      when(() => mockMedicationsRepository.addMedication(any()))
+          .thenAnswer((_) async => {});
+      when(() => mockMedicationsRepository.loadMedications('p1'))
+          .thenAnswer((_) async => [prnMed]);
+
+      await container.read(medicationsProvider('p1').future);
+
+      final result = await container
+          .read(medicationsProvider('p1').notifier)
+          .addMedication(prnMed);
+
+      expect(result, isA<Success<void, Exception>>());
+      verify(() => mockMedicationsRepository.addMedication(any())).called(1);
+      verifyNever(() => mockNotificationService.scheduleWeeklyNotification(
+            any(), any(), any(), any(), any(), any()));
+      verifyNever(() => mockNotificationService.setSystemAlarm(
+            any(), any(), any()));
+    });
   });
 
   group('MedicationLogsProvider Tests', () {
@@ -360,6 +395,97 @@ void main() {
       await container.read(medicationLogsProvider('p1').future);
 
       expect(container.read(medicationLogsProvider('p1')).value, tLogs);
+    });
+
+    test('addLog should trigger repository addLog, refresh medications with decremented inventory stock', () async {
+      final now = DateTime.now();
+      final log = MedicationLog(id: 'l2', medicationId: 'm1', timestamp: now);
+      final initialMed = Medication(
+        id: 'm1',
+        profileId: 'p1',
+        name: 'Aspirin',
+        dosage: '100mg',
+        timeOfDay: const TimeOfDay(hour: 8, minute: 0),
+        isActive: true,
+        trackInventory: true,
+        stockQuantity: 10.0,
+      );
+      final updatedMed = initialMed.copyWith(stockQuantity: 9.0);
+
+      when(() => mockMedicationsRepository.addLog(any()))
+          .thenAnswer((_) async => {});
+      when(() => mockMedicationsRepository.loadLogsForDate(any(), 'p1'))
+          .thenAnswer((_) async => [log]);
+      
+      var loadCount = 0;
+      when(() => mockMedicationsRepository.loadMedications('p1'))
+          .thenAnswer((_) async {
+            loadCount++;
+            return loadCount == 1 ? [initialMed] : [updatedMed];
+          });
+
+      // Load initial state
+      await container.read(medicationsProvider('p1').future);
+      await container.read(medicationLogsProvider('p1').future);
+
+      expect(container.read(medicationsProvider('p1')).value!.first.stockQuantity, 10.0);
+
+      // Perform addLog
+      final result = await container
+          .read(medicationLogsProvider('p1').notifier)
+          .addLog(log);
+
+      expect(result, isA<Success<void, Exception>>());
+      verify(() => mockMedicationsRepository.addLog(any())).called(1);
+      
+      // Verify medicationsProvider was invalidated and loaded the updated stock quantity
+      final medsState = await container.read(medicationsProvider('p1').future);
+      expect(medsState.first.stockQuantity, 9.0);
+    });
+
+    test('removeLog should trigger repository removeLog, refresh medications with incremented inventory stock', () async {
+      final now = DateTime.now();
+      final medInitial = Medication(
+        id: 'm1',
+        profileId: 'p1',
+        name: 'Aspirin',
+        dosage: '100mg',
+        timeOfDay: const TimeOfDay(hour: 8, minute: 0),
+        isActive: true,
+        trackInventory: true,
+        stockQuantity: 9.0,
+      );
+      final medUpdated = medInitial.copyWith(stockQuantity: 10.0);
+
+      when(() => mockMedicationsRepository.removeLog(any(), any(), time: any(named: 'time')))
+          .thenAnswer((_) async => {});
+      when(() => mockMedicationsRepository.loadLogsForDate(any(), 'p1'))
+          .thenAnswer((_) async => []);
+
+      var loadCount = 0;
+      when(() => mockMedicationsRepository.loadMedications('p1'))
+          .thenAnswer((_) async {
+            loadCount++;
+            return loadCount == 1 ? [medInitial] : [medUpdated];
+          });
+
+      // Load initial state
+      await container.read(medicationsProvider('p1').future);
+      await container.read(medicationLogsProvider('p1').future);
+
+      expect(container.read(medicationsProvider('p1')).value!.first.stockQuantity, 9.0);
+
+      // Perform removeLog
+      final result = await container
+          .read(medicationLogsProvider('p1').notifier)
+          .removeLog('m1', now);
+
+      expect(result, isA<Success<void, Exception>>());
+      verify(() => mockMedicationsRepository.removeLog('m1', any(), time: any(named: 'time'))).called(1);
+
+      // Verify medicationsProvider was invalidated and updated
+      final medsState = await container.read(medicationsProvider('p1').future);
+      expect(medsState.first.stockQuantity, 10.0);
     });
   });
 
@@ -399,6 +525,132 @@ void main() {
       expect(container.read(allergiesProvider('p1')).value!.length, 1);
       expect(container.read(allergiesProvider('p1')).value!.first.name, 'Dust');
       verify(() => mockAllergiesRepository.addAllergy(any())).called(1);
+    });
+  });
+
+  group('MedicationAdherenceProvider Tests', () {
+    test('should calculate 100% adherence and 0 streak when there are no expected medications', () async {
+      when(() => mockMedicationsRepository.loadMedications('p1'))
+          .thenAnswer((_) async => []);
+      when(() => mockMedicationsRepository.loadAllLogs('p1', limit: any(named: 'limit'), offset: any(named: 'offset')))
+          .thenAnswer((_) async => []);
+
+      await container.read(medicationsProvider('p1').future);
+      await container.read(allMedicationLogsProvider('p1').future);
+
+      final adherence = await container.read(medicationAdherenceProvider('p1').future);
+
+      expect(adherence.adherenceRate, 1.0);
+      expect(adherence.streakDays, 0);
+      expect(adherence.dailyAdherence.length, 7);
+    });
+
+    test('should calculate correct adherence rate and streak for 7-day period', () async {
+      final today = DateTime.now();
+      final scheduledMed = Medication(
+        id: 'm1',
+        profileId: 'p1',
+        name: 'Aspirin',
+        dosage: '100mg',
+        timeOfDay: const TimeOfDay(hour: 8, minute: 0),
+        isActive: true,
+        isAsNeeded: false,
+        daysOfWeek: const [1, 2, 3, 4, 5, 6, 7],
+        timesOfDay: const [TimeOfDay(hour: 8, minute: 0)],
+      );
+
+      final logs = [
+        MedicationLog(
+          id: 'l1',
+          medicationId: 'm1',
+          timestamp: today,
+          isTaken: true,
+        ),
+        MedicationLog(
+          id: 'l2',
+          medicationId: 'm1',
+          timestamp: today.subtract(const Duration(days: 1)),
+          isTaken: true,
+        ),
+        MedicationLog(
+          id: 'l3',
+          medicationId: 'm1',
+          timestamp: today.subtract(const Duration(days: 2)),
+          isTaken: true,
+        ),
+        MedicationLog(
+          id: 'l4',
+          medicationId: 'm1',
+          timestamp: today.subtract(const Duration(days: 4)),
+          isTaken: true,
+        ),
+        MedicationLog(
+          id: 'l5',
+          medicationId: 'm1',
+          timestamp: today.subtract(const Duration(days: 5)),
+          isTaken: true,
+        ),
+      ];
+
+      when(() => mockMedicationsRepository.loadMedications('p1'))
+          .thenAnswer((_) async => [scheduledMed]);
+      when(() => mockMedicationsRepository.loadAllLogs('p1', limit: any(named: 'limit'), offset: any(named: 'offset')))
+          .thenAnswer((_) async => logs);
+
+      await container.read(medicationsProvider('p1').future);
+      await container.read(allMedicationLogsProvider('p1').future);
+
+      final adherence = await container.read(medicationAdherenceProvider('p1').future);
+
+      expect(adherence.adherenceRate, 5 / 7);
+      expect(adherence.streakDays, 3);
+    });
+
+    test('should exclude PRN (as-needed) medications from expected dose calculations', () async {
+      final prnMed = Medication(
+        id: 'm2',
+        profileId: 'p1',
+        name: 'Insulin',
+        dosage: '5 Units',
+        timeOfDay: const TimeOfDay(hour: 12, minute: 0),
+        isActive: true,
+        isAsNeeded: true,
+        notificationEnabled: true,
+      );
+
+      final scheduledMed = Medication(
+        id: 'm1',
+        profileId: 'p1',
+        name: 'Aspirin',
+        dosage: '100mg',
+        timeOfDay: const TimeOfDay(hour: 8, minute: 0),
+        isActive: true,
+        isAsNeeded: false,
+        daysOfWeek: const [1, 2, 3, 4, 5, 6, 7],
+        timesOfDay: const [TimeOfDay(hour: 8, minute: 0)],
+      );
+
+      final logs = [
+        MedicationLog(
+          id: 'l1',
+          medicationId: 'm2',
+          timestamp: DateTime.now(),
+          isTaken: true,
+        ),
+      ];
+
+      when(() => mockMedicationsRepository.loadMedications('p1'))
+          .thenAnswer((_) async => [prnMed, scheduledMed]);
+      when(() => mockMedicationsRepository.loadAllLogs('p1', limit: any(named: 'limit'), offset: any(named: 'offset')))
+          .thenAnswer((_) async => logs);
+
+      await container.read(medicationsProvider('p1').future);
+      await container.read(allMedicationLogsProvider('p1').future);
+
+      final adherence = await container.read(medicationAdherenceProvider('p1').future);
+
+      expect(adherence.adherenceRate, 0.0);
+      expect(adherence.streakDays, 0);
     });
   });
 }

@@ -15,6 +15,10 @@ class Medication {
     this.isActive = true,
     List<int>? daysOfWeek,
     List<TimeOfDay>? timesOfDay,
+    this.isAsNeeded = false,
+    this.trackInventory = false,
+    this.stockQuantity = 0.0,
+    this.lowStockThreshold = 0.0,
     String? id,
   })  : id = id ?? uuid.v4(),
         daysOfWeek = daysOfWeek ?? const [1, 2, 3, 4, 5, 6, 7],
@@ -32,6 +36,10 @@ class Medication {
   final bool isActive;
   final List<int> daysOfWeek;
   final List<TimeOfDay> timesOfDay;
+  final bool isAsNeeded;
+  final bool trackInventory;
+  final double stockQuantity;
+  final double lowStockThreshold;
 
   String get timeFormatted {
     final hour = timeOfDay.hour.toString().padLeft(2, '0');
@@ -51,6 +59,10 @@ class Medication {
     bool? isActive,
     List<int>? daysOfWeek,
     List<TimeOfDay>? timesOfDay,
+    bool? isAsNeeded,
+    bool? trackInventory,
+    double? stockQuantity,
+    double? lowStockThreshold,
   }) {
     return Medication(
       id: id ?? this.id,
@@ -64,6 +76,10 @@ class Medication {
       isActive: isActive ?? this.isActive,
       daysOfWeek: daysOfWeek ?? this.daysOfWeek,
       timesOfDay: timesOfDay ?? this.timesOfDay,
+      isAsNeeded: isAsNeeded ?? this.isAsNeeded,
+      trackInventory: trackInventory ?? this.trackInventory,
+      stockQuantity: stockQuantity ?? this.stockQuantity,
+      lowStockThreshold: lowStockThreshold ?? this.lowStockThreshold,
     );
   }
 }

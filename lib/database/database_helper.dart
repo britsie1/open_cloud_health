@@ -50,8 +50,15 @@ class DatabaseHelper {
           await db.execute("ALTER TABLE medications ADD COLUMN daysOfWeek TEXT");
           await db.execute("ALTER TABLE medications ADD COLUMN timesOfDay TEXT");
         }
+        if (oldVersion < 9) {
+          await db.execute("ALTER TABLE medications ADD COLUMN isAsNeeded TEXT DEFAULT 'false'");
+          await db.execute("ALTER TABLE medications ADD COLUMN trackInventory TEXT DEFAULT 'false'");
+          await db.execute("ALTER TABLE medications ADD COLUMN stockQuantity REAL DEFAULT 0.0");
+          await db.execute("ALTER TABLE medications ADD COLUMN lowStockThreshold REAL DEFAULT 0.0");
+          await db.execute("ALTER TABLE medication_logs ADD COLUMN dosage TEXT");
+        }
       },
-      version: 8,
+      version: 9,
     );
 
     return db;
@@ -128,7 +135,11 @@ String createMedicationsTable = '''
     timeOfDay TEXT,
     isActive TEXT,
     daysOfWeek TEXT,
-    timesOfDay TEXT
+    timesOfDay TEXT,
+    isAsNeeded TEXT DEFAULT 'false',
+    trackInventory TEXT DEFAULT 'false',
+    stockQuantity REAL DEFAULT 0.0,
+    lowStockThreshold REAL DEFAULT 0.0
   )''';
 
 String createMedicationLogsTable = '''
@@ -136,7 +147,8 @@ String createMedicationLogsTable = '''
     id TEXT PRIMARY KEY,
     medicationId TEXT,
     timestamp TEXT,
-    isTaken TEXT
+    isTaken TEXT,
+    dosage TEXT
   )''';
 
 String createCheckupsTable = '''
