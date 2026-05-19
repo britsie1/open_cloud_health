@@ -46,8 +46,12 @@ class DatabaseHelper {
         if (oldVersion < 7) {
           await db.execute("ALTER TABLE medications ADD COLUMN notificationEnabled TEXT DEFAULT 'false'");
         }
+        if (oldVersion < 8) {
+          await db.execute("ALTER TABLE medications ADD COLUMN daysOfWeek TEXT");
+          await db.execute("ALTER TABLE medications ADD COLUMN timesOfDay TEXT");
+        }
       },
-      version: 7,
+      version: 8,
     );
 
     return db;
@@ -122,7 +126,9 @@ String createMedicationsTable = '''
     notificationEnabled TEXT,
     alarmEnabled TEXT,
     timeOfDay TEXT,
-    isActive TEXT
+    isActive TEXT,
+    daysOfWeek TEXT,
+    timesOfDay TEXT
   )''';
 
 String createMedicationLogsTable = '''

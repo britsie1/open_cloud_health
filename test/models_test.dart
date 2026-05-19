@@ -143,6 +143,57 @@ void main() {
       );
       expect(med2.timeFormatted, '14:30');
     });
+
+    test('Medication defaults daysOfWeek and timesOfDay when none provided', () {
+      final med = Medication(
+        profileId: 'p1',
+        name: 'Aspirin',
+        dosage: '100mg',
+        timeOfDay: const TimeOfDay(hour: 8, minute: 5),
+      );
+      expect(med.daysOfWeek, [1, 2, 3, 4, 5, 6, 7]);
+      expect(med.timesOfDay.length, 1);
+      expect(med.timesOfDay.first, const TimeOfDay(hour: 8, minute: 5));
+    });
+
+    test('Medication supports custom daysOfWeek and timesOfDay', () {
+      final med = Medication(
+        profileId: 'p1',
+        name: 'Aspirin',
+        dosage: '100mg',
+        daysOfWeek: const [1, 3, 5],
+        timesOfDay: const [
+          TimeOfDay(hour: 8, minute: 0),
+          TimeOfDay(hour: 20, minute: 0),
+        ],
+      );
+      expect(med.daysOfWeek, [1, 3, 5]);
+      expect(med.timesOfDay, const [
+        TimeOfDay(hour: 8, minute: 0),
+        TimeOfDay(hour: 20, minute: 0),
+      ]);
+      expect(med.timeOfDay, const TimeOfDay(hour: 8, minute: 0));
+    });
+
+    test('Medication copyWith duplicates correctly', () {
+      final med = Medication(
+        profileId: 'p1',
+        name: 'Aspirin',
+        dosage: '100mg',
+        daysOfWeek: const [2, 4],
+        timesOfDay: const [TimeOfDay(hour: 9, minute: 0)],
+      );
+
+      final copied = med.copyWith(
+        name: 'Ibuprofen',
+        daysOfWeek: const [1, 2, 3],
+      );
+
+      expect(copied.name, 'Ibuprofen');
+      expect(copied.dosage, '100mg');
+      expect(copied.daysOfWeek, [1, 2, 3]);
+      expect(copied.timesOfDay.first, const TimeOfDay(hour: 9, minute: 0));
+    });
   });
 
   group('MedicationLog Model Tests', () {

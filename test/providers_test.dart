@@ -82,8 +82,16 @@ void main() {
 
     when(() => mockNotificationService.cancelNotification(any()))
         .thenAnswer((_) async => {});
+    when(() => mockNotificationService.cancelMedicationNotifications(any()))
+        .thenAnswer((_) async => {});
     when(() => mockNotificationService.scheduleDailyNotification(
             any(), any(), any(), any(), any()))
+        .thenAnswer((_) async => {});
+    when(() => mockNotificationService.scheduleWeeklyNotification(
+            any(), any(), any(), any(), any(), any()))
+        .thenAnswer((_) async => {});
+    when(() => mockNotificationService.setSystemAlarm(
+            any(), any(), any()))
         .thenAnswer((_) async => {});
     when(() => mockNotificationService.onMedicationMarkedTaken)
         .thenReturn(StreamController<String>.broadcast());
@@ -335,7 +343,7 @@ void main() {
           false);
       verify(() => mockMedicationsRepository.toggleIsActive('m1', false))
           .called(1);
-      verify(() => mockNotificationService.cancelNotification(any())).called(1);
+      verify(() => mockNotificationService.cancelMedicationNotifications('m1')).called(1);
     });
   });
 

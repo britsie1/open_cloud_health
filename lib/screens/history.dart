@@ -23,7 +23,7 @@ class HistoryScreen extends ConsumerStatefulWidget {
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   Profile? _activeProfile;
   String _searchQuery = '';
-  Set<EventType> _selectedTypes = {EventType.manual, EventType.period, EventType.checkup};
+  final Set<EventType> _selectedTypes = {EventType.manual, EventType.period, EventType.checkup};
 
   void _initializeProfile() {
     Profile? profile = widget.profile;

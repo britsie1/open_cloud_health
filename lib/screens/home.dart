@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/models/vital_log.dart';
@@ -14,6 +15,13 @@ import 'package:open_cloud_health/utils/icon_utils.dart';
 import 'package:open_cloud_health/utils/result.dart';
 import 'package:open_cloud_health/widgets/account_appbar_actions.dart';
 import 'package:open_cloud_health/widgets/log_checkup_dialog.dart';
+
+class TodayMedicationTask {
+  final Medication medication;
+  final TimeOfDay time;
+
+  TodayMedicationTask({required this.medication, required this.time});
+}
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key, this.profile, this.profileId});
@@ -329,8 +337,22 @@ class _MedicationSummarySection extends ConsumerWidget {
       data: (medications) {
         if (medications.isEmpty) return const SizedBox.shrink();
 
+        final todayWeekday = DateTime.now().weekday;
         final activeMedications =
-            medications.where((m) => m.isActive).toList();
+            medications.where((m) => m.isActive && m.daysOfWeek.contains(todayWeekday)).toList();
+
+        final List<TodayMedicationTask> tasks = [];
+        for (final med in activeMedications) {
+          for (final time in med.timesOfDay) {
+            tasks.add(TodayMedicationTask(medication: med, time: time));
+          }
+        }
+
+        // Sort tasks chronologically
+        tasks.sort((a, b) {
+          if (a.time.hour != b.time.hour) return a.time.hour.compareTo(b.time.hour);
+          return a.time.minute.compareTo(b.time.minute);
+        });
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -362,7 +384,7 @@ class _MedicationSummarySection extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
-            if (activeMedications.isEmpty)
+            if (tasks.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12.0),
                 child: Text("No medications active for today."),
@@ -383,11 +405,13 @@ class _MedicationSummarySection extends ConsumerWidget {
                       ],
                     ),
                     child: Column(
-                      children: activeMedications.map((med) {
-                        final isTaken =
-                            logs.any((log) => log.medicationId == med.id);
+                      children: tasks.map((task) {
+                        final isTaken = logs.any((log) =>
+                            log.medicationId == task.medication.id &&
+                            log.timestamp.hour == task.time.hour &&
+                            log.timestamp.minute == task.time.minute);
                         return _MedicationSummaryItem(
-                          medication: med,
+                          task: task,
                           isTaken: isTaken,
                           profileId: profileId,
                         );
@@ -408,46 +432,57 @@ class _MedicationSummarySection extends ConsumerWidget {
 
 class _MedicationSummaryItem extends ConsumerWidget {
   const _MedicationSummaryItem({
-    required this.medication,
+    required this.task,
     required this.isTaken,
     required this.profileId,
   });
 
-  final dynamic medication; // Using dynamic to avoid strict typing for now
+  final TodayMedicationTask task;
   final bool isTaken;
   final String profileId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final med = task.medication;
+    final taskTime = task.time;
+    
+    final hour = taskTime.hour.toString().padLeft(2, '0');
+    final minute = taskTime.minute.toString().padLeft(2, '0');
+    final timeFormatted = '$hour:$minute';
+
     return CheckboxListTile(
       title: Text(
-        medication.name,
+        med.name,
         style: TextStyle(
           decoration: isTaken ? TextDecoration.lineThrough : null,
           color: isTaken ? Colors.grey : Colors.black,
           fontWeight: FontWeight.w600,
         ),
       ),
-      subtitle: Text('${medication.dosage} at ${medication.timeFormatted}'),
+      subtitle: Text('${med.dosage} at $timeFormatted'),
       value: isTaken,
       activeColor: Colors.blue,
       onChanged: (val) async {
         Result<void, Exception> result;
+        final now = DateTime.now();
+        final targetTimestamp = DateTime(now.year, now.month, now.day, taskTime.hour, taskTime.minute);
+
         if (val == true) {
           result = await ref
               .read(medicationLogsProvider(profileId).notifier)
               .addLog(
                 MedicationLog(
-                  medicationId: medication.id,
-                  timestamp: DateTime.now(),
+                  medicationId: med.id,
+                  timestamp: targetTimestamp,
                 ),
               );
         } else {
           result = await ref
               .read(medicationLogsProvider(profileId).notifier)
               .removeLog(
-                medication.id,
-                DateTime.now(),
+                med.id,
+                targetTimestamp,
+                time: taskTime,
               );
         }
 

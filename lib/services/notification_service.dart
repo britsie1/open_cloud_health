@@ -168,8 +168,53 @@ class NotificationService {
         payload: medicationId);
   }
 
+  Future<void> scheduleWeeklyNotification(int id, String title, String body, TimeOfDay time, int dayOfWeek, String medicationId) async {
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, time.hour, time.minute);
+    
+    while (scheduledDate.weekday != dayOfWeek) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+    
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 7));
+    }
+
+    const androidDetails = AndroidNotificationDetails(
+      'weekly_medication_channel', 'Medication Reminders',
+      channelDescription: 'Weekly reminders to take your medications',
+      importance: Importance.max,
+      priority: Priority.high,
+      actions: <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          'mark_taken', 
+          'Mark as Taken',
+          cancelNotification: true,
+          showsUserInterface: false,
+        ),
+      ],
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      categoryIdentifier: 'medication_category',
+    );
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledDate,
+        const NotificationDetails(android: androidDetails, iOS: iosDetails),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        payload: medicationId);
+  }
+
   Future<void> setSystemAlarm(TimeOfDay time, String message, List<int> days) async {
     if (Platform.isAndroid) {
+      final androidDays = days.map((d) => d == 7 ? 1 : d + 1).toList();
       final intent = AndroidIntent(
         action: 'android.intent.action.SET_ALARM',
         arguments: <String, dynamic>{
@@ -177,7 +222,7 @@ class NotificationService {
           'android.intent.extra.alarm.MINUTES': time.minute,
           'android.intent.extra.alarm.MESSAGE': message,
           'android.intent.extra.alarm.SKIP_UI': true,
-          'android.intent.extra.alarm.DAYS': days, // 1=Sunday, 2=Monday, etc. depending on Java Calendar
+          'android.intent.extra.alarm.DAYS': androidDays, // 1=Sunday, 2=Monday, etc. depending on Java Calendar
         },
       );
       await intent.launch();
@@ -187,6 +232,15 @@ class NotificationService {
 
   Future<void> cancelNotification(int id) async {
     await flutterLocalNotificationsPlugin.cancel(id);
+  }
+
+  Future<void> cancelMedicationNotifications(String medicationId) async {
+    final baseId = medicationId.hashCode & 0x0FFFFFFF;
+    for (int day = 1; day <= 7; day++) {
+      for (int timeIdx = 0; timeIdx < 20; timeIdx++) {
+        await cancelNotification(baseId + day * 100 + timeIdx);
+      }
+    }
   }
 }
 

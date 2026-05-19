@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/database/database_helper.dart';
@@ -14,6 +15,30 @@ class MedicationsRepository {
         where: 'profileId = ?', whereArgs: [profileId]);
 
     return data.map((row) {
+      final daysOfWeekStr = row['daysOfWeek'] as String?;
+      final List<int> daysOfWeek = daysOfWeekStr != null
+          ? List<int>.from(jsonDecode(daysOfWeekStr))
+          : const [1, 2, 3, 4, 5, 6, 7];
+
+      final timesOfDayStr = row['timesOfDay'] as String?;
+      final List<TimeOfDay> timesOfDay;
+      if (timesOfDayStr != null) {
+        final decoded = jsonDecode(timesOfDayStr) as List;
+        timesOfDay = decoded.map((t) {
+          final parts = (t as String).split(':');
+          return TimeOfDay(
+              hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+        }).toList();
+      } else {
+        final timeParts = (row['timeOfDay'] as String).split(':');
+        timesOfDay = [
+          TimeOfDay(
+            hour: int.parse(timeParts[0]),
+            minute: int.parse(timeParts[1]),
+          )
+        ];
+      }
+
       final timeParts = (row['timeOfDay'] as String).split(':');
       return Medication(
         id: row['id'] as String,
@@ -28,6 +53,8 @@ class MedicationsRepository {
           minute: int.parse(timeParts[1]),
         ),
         isActive: row['isActive'] == 'true',
+        daysOfWeek: daysOfWeek,
+        timesOfDay: timesOfDay,
       );
     }).toList();
   }
@@ -44,6 +71,8 @@ class MedicationsRepository {
       'alarmEnabled': medication.alarmEnabled.toString(),
       'timeOfDay': '${medication.timeOfDay.hour}:${medication.timeOfDay.minute}',
       'isActive': medication.isActive.toString(),
+      'daysOfWeek': jsonEncode(medication.daysOfWeek),
+      'timesOfDay': jsonEncode(medication.timesOfDay.map((t) => '${t.hour}:${t.minute}').toList()),
     });
   }
 
@@ -60,6 +89,8 @@ class MedicationsRepository {
           'timeOfDay':
               '${medication.timeOfDay.hour}:${medication.timeOfDay.minute}',
           'isActive': medication.isActive.toString(),
+          'daysOfWeek': jsonEncode(medication.daysOfWeek),
+          'timesOfDay': jsonEncode(medication.timesOfDay.map((t) => '${t.hour}:${t.minute}').toList()),
         },
         where: 'id = ?',
         whereArgs: [medication.id]);
@@ -130,12 +161,20 @@ class MedicationsRepository {
     });
   }
 
-  Future<void> removeLog(String medicationId, DateTime date) async {
+  Future<void> removeLog(String medicationId, DateTime date, {TimeOfDay? time}) async {
     final db = await _dbHelper.getDatabase();
     final dateStr = date.toIso8601String().split('T')[0];
-    await db.delete('medication_logs',
-        where: 'medicationId = ? AND timestamp LIKE ?',
-        whereArgs: [medicationId, '$dateStr%']);
+    if (time != null) {
+      final hourStr = time.hour.toString().padLeft(2, '0');
+      final minuteStr = time.minute.toString().padLeft(2, '0');
+      await db.delete('medication_logs',
+          where: 'medicationId = ? AND timestamp LIKE ?',
+          whereArgs: [medicationId, '${dateStr}T$hourStr:$minuteStr%']);
+    } else {
+      await db.delete('medication_logs',
+          where: 'medicationId = ? AND timestamp LIKE ?',
+          whereArgs: [medicationId, '$dateStr%']);
+    }
   }
 }
 

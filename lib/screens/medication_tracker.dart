@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/widgets/account_appbar_actions.dart';
 import 'package:open_cloud_health/widgets/medication_all_tab.dart';
-import 'package:open_cloud_health/widgets/medication_dialog.dart';
 import 'package:open_cloud_health/widgets/medication_log_tab.dart';
 import 'package:open_cloud_health/widgets/medication_today_tab.dart';
 
@@ -18,11 +19,8 @@ class MedicationTrackerScreen extends ConsumerStatefulWidget {
 
 class _MedicationTrackerScreenState
     extends ConsumerState<MedicationTrackerScreen> {
-  void _openAddMedicationDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => MedicationDialog(profileId: widget.profileId),
-    );
+  void _openAddMedicationScreen() {
+    context.push('${AppRoutes.medicationEditor}/${widget.profileId}');
   }
 
   @override
@@ -50,7 +48,7 @@ class _MedicationTrackerScreenState
           ],
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: _openAddMedicationDialog,
+          onPressed: _openAddMedicationScreen,
           child: const Icon(Icons.add),
         ),
       ),

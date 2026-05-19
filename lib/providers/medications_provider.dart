@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
@@ -21,22 +22,31 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
       await _repository.addMedication(medication);
       
       if (medication.notificationEnabled && medication.isActive) {
-        final notificationId = medication.id.hashCode;
-        await _notificationService.scheduleDailyNotification(
-          notificationId,
-          'Medication Reminder',
-          'Time to take your medication: ${medication.name} (${medication.dosage})',
-          medication.timeOfDay,
-          medication.id,
-        );
+        final baseId = medication.id.hashCode & 0x0FFFFFFF;
+        for (final day in medication.daysOfWeek) {
+          for (int i = 0; i < medication.timesOfDay.length; i++) {
+            final time = medication.timesOfDay[i];
+            final notificationId = baseId + day * 100 + i;
+            await _notificationService.scheduleWeeklyNotification(
+              notificationId,
+              'Medication Reminder',
+              'Time to take your medication: ${medication.name} (${medication.dosage})',
+              time,
+              day,
+              medication.id,
+            );
+          }
+        }
       }
 
       if (medication.alarmEnabled && medication.isActive) {
-        await _notificationService.setSystemAlarm(
-          medication.timeOfDay, 
-          'Take medication: ${medication.name}',
-          [1, 2, 3, 4, 5, 6, 7]
-        );
+        for (final time in medication.timesOfDay) {
+          await _notificationService.setSystemAlarm(
+            time, 
+            'Take medication: ${medication.name}',
+            medication.daysOfWeek,
+          );
+        }
       }
       
       await refreshMedications();
@@ -50,23 +60,34 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
     try {
       await _repository.updateMedication(medication);
 
-      await _notificationService.cancelNotification(medication.id.hashCode);
+      await _notificationService.cancelMedicationNotifications(medication.id);
+      
       if (medication.isActive && medication.notificationEnabled) {
-        await _notificationService.scheduleDailyNotification(
-          medication.id.hashCode,
-          'Medication Reminder',
-          'Time to take your medication: ${medication.name} (${medication.dosage})',
-          medication.timeOfDay,
-          medication.id,
-        );
+        final baseId = medication.id.hashCode & 0x0FFFFFFF;
+        for (final day in medication.daysOfWeek) {
+          for (int i = 0; i < medication.timesOfDay.length; i++) {
+            final time = medication.timesOfDay[i];
+            final notificationId = baseId + day * 100 + i;
+            await _notificationService.scheduleWeeklyNotification(
+              notificationId,
+              'Medication Reminder',
+              'Time to take your medication: ${medication.name} (${medication.dosage})',
+              time,
+              day,
+              medication.id,
+            );
+          }
+        }
       }
 
       if (medication.isActive && medication.alarmEnabled) {
-        await _notificationService.setSystemAlarm(
-          medication.timeOfDay, 
-          'Take medication: ${medication.name}',
-          [1, 2, 3, 4, 5, 6, 7]
-        );
+        for (final time in medication.timesOfDay) {
+          await _notificationService.setSystemAlarm(
+            time, 
+            'Take medication: ${medication.name}',
+            medication.daysOfWeek,
+          );
+        }
       }
       
       await refreshMedications();
@@ -80,8 +101,8 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
     try {
       await _repository.deleteMedication(id);
 
-      // Cancel notification
-      await _notificationService.cancelNotification(id.hashCode);
+      // Cancel notifications
+      await _notificationService.cancelMedicationNotifications(id);
       
       await refreshMedications();
       return const Success(null);
@@ -95,24 +116,36 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
       final newIsActive = !medication.isActive;
       await _repository.toggleIsActive(medication.id, newIsActive);
 
-      if (newIsActive && medication.notificationEnabled) {
-        await _notificationService.scheduleDailyNotification(
-          medication.id.hashCode,
-          'Medication Reminder',
-          'Time to take your medication: ${medication.name} (${medication.dosage})',
-          medication.timeOfDay,
-          medication.id,
-        );
-      } else {
-        await _notificationService.cancelNotification(medication.id.hashCode);
-      }
+      await _notificationService.cancelMedicationNotifications(medication.id);
 
-      if (newIsActive && medication.alarmEnabled) {
-        await _notificationService.setSystemAlarm(
-          medication.timeOfDay, 
-          'Take medication: ${medication.name}',
-          [1, 2, 3, 4, 5, 6, 7]
-        );
+      if (newIsActive) {
+        if (medication.notificationEnabled) {
+          final baseId = medication.id.hashCode & 0x0FFFFFFF;
+          for (final day in medication.daysOfWeek) {
+            for (int i = 0; i < medication.timesOfDay.length; i++) {
+              final time = medication.timesOfDay[i];
+              final notificationId = baseId + day * 100 + i;
+              await _notificationService.scheduleWeeklyNotification(
+                notificationId,
+                'Medication Reminder',
+                'Time to take your medication: ${medication.name} (${medication.dosage})',
+                time,
+                day,
+                medication.id,
+              );
+            }
+          }
+        }
+
+        if (medication.alarmEnabled) {
+          for (final time in medication.timesOfDay) {
+            await _notificationService.setSystemAlarm(
+              time, 
+              'Take medication: ${medication.name}',
+              medication.daysOfWeek,
+            );
+          }
+        }
       }
       
       await refreshMedications();
@@ -233,9 +266,9 @@ class MedicationLogsNotifier
     }
   }
 
-  Future<Result<void, Exception>> removeLog(String medicationId, DateTime date) async {
+  Future<Result<void, Exception>> removeLog(String medicationId, DateTime date, {TimeOfDay? time}) async {
     try {
-      await _repository.removeLog(medicationId, date);
+      await _repository.removeLog(medicationId, date, time: time);
       state = await AsyncValue.guard(() => _repository.loadLogsForDate(date, arg));
       return const Success(null);
     } catch (e) {

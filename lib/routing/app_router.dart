@@ -15,6 +15,8 @@ import 'package:open_cloud_health/screens/profile_detail.dart';
 import 'package:open_cloud_health/screens/profiles.dart';
 import 'package:open_cloud_health/screens/settings.dart';
 import 'package:open_cloud_health/screens/vital_detail_screen.dart';
+import 'package:open_cloud_health/models/medication.dart';
+import 'package:open_cloud_health/screens/medication_editor.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/widgets/scaffold_with_nav_bar.dart';
 import 'package:open_cloud_health/widgets/shell_route_redirector.dart';
@@ -143,6 +145,17 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final profileId = state.pathParameters['profileId']!;
         return PeriodTrackerScreen(profileId: profileId);
+      },
+    ),
+    GoRoute(
+      path: '${AppRoutes.medicationEditor}/:profileId',
+      builder: (context, state) {
+        final profileId = state.pathParameters['profileId']!;
+        final medication = state.extra as Medication?;
+        return MedicationEditorScreen(
+          profileId: profileId,
+          medication: medication,
+        );
       },
     ),
     GoRoute(

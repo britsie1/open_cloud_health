@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:healthicons_flutter/healthicons_flutter.dart';
+import 'package:go_router/go_router.dart';
+import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/providers/medications_provider.dart';
 import 'package:open_cloud_health/utils/result.dart';
-import 'package:open_cloud_health/widgets/medication_dialog.dart';
 
 Widget _getMedicationIcon(String type) {
   switch (type) {
@@ -68,13 +69,7 @@ class MedicationAllTab extends ConsumerWidget {
                   PopupMenuButton<String>(
                     onSelected: (value) {
                       if (value == 'edit') {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => MedicationDialog(
-                            profileId: profileId,
-                            medication: med,
-                          ),
-                        );
+                        context.push('${AppRoutes.medicationEditor}/$profileId', extra: med);
                       } else if (value == 'delete') {
                         showDialog(
                           context: context,
