@@ -81,6 +81,21 @@ class CheckupsRepository {
       'dateCompleted': log.dateCompleted.toIso8601String(),
     });
   }
+
+  Future<List<CheckupLog>> loadAllLogsForProfile(String profileId) async {
+    final db = await _dbHelper.getDatabase();
+    final data = await db.rawQuery('''
+      SELECT cl.* FROM checkup_logs cl
+      JOIN checkups c ON cl.checkupId = c.id
+      WHERE c.profileId = ?
+    ''', [profileId]);
+
+    return data.map((row) => CheckupLog(
+      id: row['id'] as String,
+      checkupId: row['checkupId'] as String,
+      dateCompleted: DateTime.parse(row['dateCompleted'] as String),
+    )).toList();
+  }
 }
 
 final checkupsRepositoryProvider = Provider<CheckupsRepository>((ref) {

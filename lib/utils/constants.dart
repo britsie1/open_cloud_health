@@ -18,6 +18,7 @@ class AppRoutes {
   static const String history = '/history';
   static const String historyBase = '/history-base';
   static const String historyDetail = '/history-detail';
+  static const String historyReadonlyDetail = '/history-readonly-detail';
   static const String medicationTracker = '/medication-tracker';
   static const String medicationBase = '/medication-base';
   static const String checkups = '/checkups';

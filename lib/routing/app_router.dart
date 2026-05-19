@@ -8,6 +8,7 @@ import 'package:open_cloud_health/screens/home.dart';
 import 'package:open_cloud_health/screens/checkups.dart';
 import 'package:open_cloud_health/screens/history.dart';
 import 'package:open_cloud_health/screens/history_event_detail.dart';
+import 'package:open_cloud_health/screens/history_event_readonly_detail.dart';
 import 'package:open_cloud_health/screens/medication_tracker.dart';
 import 'package:open_cloud_health/screens/period_tracker.dart';
 import 'package:open_cloud_health/screens/profile_detail.dart';
@@ -121,6 +122,13 @@ final appRouter = GoRouter(
         final historyEvent = state.extra as history.HistoryEvent?;
         return HistoryEventDetailScreen(
             profileId: profileId, historyEvent: historyEvent);
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.historyReadonlyDetail,
+      builder: (context, state) {
+        final historyEvent = state.extra as history.HistoryEvent;
+        return HistoryEventReadonlyDetail(event: historyEvent);
       },
     ),
     GoRoute(

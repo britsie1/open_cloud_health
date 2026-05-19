@@ -14,8 +14,10 @@ import 'package:open_cloud_health/providers/medications_provider.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/repositories/allergies_repository.dart';
 import 'package:open_cloud_health/repositories/attachment_repository.dart';
+import 'package:open_cloud_health/repositories/checkups_repository.dart';
 import 'package:open_cloud_health/repositories/history_repository.dart';
 import 'package:open_cloud_health/repositories/medications_repository.dart';
+import 'package:open_cloud_health/repositories/period_repository.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
 import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
@@ -43,6 +45,10 @@ class MockAttachmentRepository extends Mock implements AttachmentRepository {}
 
 class MockFileService extends Mock implements FileService {}
 
+class MockPeriodRepository extends Mock implements PeriodRepository {}
+
+class MockCheckupsRepository extends Mock implements CheckupsRepository {}
+
 void main() {
   late MockProfilesRepository mockProfilesRepository;
   late MockHistoryRepository mockHistoryRepository;
@@ -51,6 +57,8 @@ void main() {
   late MockAllergiesRepository mockAllergiesRepository;
   late MockAttachmentRepository mockAttachmentRepository;
   late MockFileService mockFileService;
+  late MockPeriodRepository mockPeriodRepository;
+  late MockCheckupsRepository mockCheckupsRepository;
   late ProviderContainer container;
 
   setUpAll(() {
@@ -69,6 +77,8 @@ void main() {
     mockAllergiesRepository = MockAllergiesRepository();
     mockAttachmentRepository = MockAttachmentRepository();
     mockFileService = MockFileService();
+    mockPeriodRepository = MockPeriodRepository();
+    mockCheckupsRepository = MockCheckupsRepository();
 
     when(() => mockNotificationService.cancelNotification(any()))
         .thenAnswer((_) async => {});
@@ -77,6 +87,12 @@ void main() {
         .thenAnswer((_) async => {});
     when(() => mockNotificationService.onMedicationMarkedTaken)
         .thenReturn(StreamController<String>.broadcast());
+    when(() => mockPeriodRepository.getCycles(any()))
+        .thenAnswer((_) async => []);
+    when(() => mockCheckupsRepository.loadCheckups(any()))
+        .thenAnswer((_) async => []);
+    when(() => mockCheckupsRepository.loadAllLogsForProfile(any()))
+        .thenAnswer((_) async => []);
 
     container = ProviderContainer(
       overrides: [
@@ -88,6 +104,8 @@ void main() {
         allergiesRepositoryProvider.overrideWithValue(mockAllergiesRepository),
         attachmentRepositoryProvider.overrideWithValue(mockAttachmentRepository),
         fileServiceProvider.overrideWithValue(mockFileService),
+        periodRepositoryProvider.overrideWithValue(mockPeriodRepository),
+        checkupsRepositoryProvider.overrideWithValue(mockCheckupsRepository),
       ],
     );
   });

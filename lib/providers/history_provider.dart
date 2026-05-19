@@ -6,6 +6,8 @@ import 'package:open_cloud_health/models/attachment.dart';
 import 'package:open_cloud_health/models/history_event.dart';
 import 'package:open_cloud_health/repositories/attachment_repository.dart';
 import 'package:open_cloud_health/repositories/history_repository.dart';
+import 'package:open_cloud_health/repositories/period_repository.dart';
+import 'package:open_cloud_health/repositories/checkups_repository.dart';
 import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/utils/result.dart';
 
@@ -85,6 +87,45 @@ class HistoryNotifier extends FamilyAsyncNotifier<List<HistoryEvent>, String> {
   Future<List<HistoryEvent>> _fetchEvents(String profileId) async {
     try {
       final historyEvents = await _repository.fetchEvents(profileId);
+
+      // Fetch Period logs
+      final periodRepo = ref.read(periodRepositoryProvider);
+      final cycles = await periodRepo.getCycles(profileId);
+      for (final cycle in cycles) {
+        final logs = await periodRepo.getLogsForCycle(cycle.id);
+        for (final log in logs) {
+          historyEvents.add(
+            HistoryEvent(
+              id: log.id,
+              profileId: profileId,
+              title: 'Period Log',
+              description: 'Flow: ${log.flowLevel?.name ?? "Unknown"}, Moods: ${log.moods.length}, Symptoms: ${log.physicalSymptoms.length}',
+              date: log.date,
+              eventType: EventType.period,
+            )
+          );
+        }
+      }
+
+      // Fetch Checkup logs
+      final checkupRepo = ref.read(checkupsRepositoryProvider);
+      final checkups = await checkupRepo.loadCheckups(profileId);
+      final checkupMap = {for (var c in checkups) c.id: c.name};
+      final checkupLogs = await checkupRepo.loadAllLogsForProfile(profileId);
+      for (final log in checkupLogs) {
+        final checkupName = checkupMap[log.checkupId] ?? 'Unknown Checkup';
+        historyEvents.add(
+          HistoryEvent(
+            id: log.id,
+            profileId: profileId,
+            title: 'Checkup: $checkupName',
+            description: 'Completed checkup',
+            date: log.dateCompleted,
+            eventType: EventType.checkup,
+          )
+        );
+      }
+
       historyEvents.sort((a, b) => b.date.compareTo(a.date));
       return historyEvents;
     } catch (error) {
