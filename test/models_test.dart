@@ -67,6 +67,34 @@ void main() {
       expect(profile.gender, Gender.female);
       expect(profile.isOrganDonor, false);
     });
+
+    test('Profile age calculation works correctly', () {
+      final dob = DateTime.now().subtract(const Duration(days: 365 * 30 + 10)); // ~30 years ago
+      final profile = Profile(
+        name: 'John',
+        middleNames: '',
+        surname: 'Doe',
+        dateOfBirth: dob,
+        gender: Gender.male,
+        bloodType: 'O+',
+        isOrganDonor: true,
+      );
+      expect(profile.age, 30);
+    });
+
+    test('Profile default archiving state should be false/null', () {
+      final profile = Profile(
+        name: 'John',
+        middleNames: '',
+        surname: 'Doe',
+        dateOfBirth: DateTime(1990),
+        gender: Gender.male,
+        bloodType: 'O+',
+        isOrganDonor: true,
+      );
+      expect(profile.isArchived, false);
+      expect(profile.archivedAt, isNull);
+    });
   });
 
   group('HistoryEvent Model Tests', () {

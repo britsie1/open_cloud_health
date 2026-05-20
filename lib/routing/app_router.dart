@@ -15,6 +15,9 @@ import 'package:open_cloud_health/screens/profile_detail.dart';
 import 'package:open_cloud_health/screens/profiles.dart';
 import 'package:open_cloud_health/screens/settings.dart';
 import 'package:open_cloud_health/screens/vital_detail_screen.dart';
+import 'package:open_cloud_health/screens/import_profile.dart';
+import 'package:open_cloud_health/screens/archived_profiles.dart';
+import 'package:open_cloud_health/screens/export_profile.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/screens/medication_editor.dart';
 import 'package:open_cloud_health/utils/constants.dart';
@@ -170,6 +173,21 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.settings,
       builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.importProfile,
+      builder: (context, state) => const ImportProfileScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.archivedProfiles,
+      builder: (context, state) => const ArchivedProfilesScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.exportProfile,
+      builder: (context, state) {
+        final profile = state.extra as Profile;
+        return ExportProfileScreen(profile: profile);
+      },
     ),
   ],
 );

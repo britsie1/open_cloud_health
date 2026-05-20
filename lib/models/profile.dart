@@ -17,6 +17,8 @@ class Profile {
       required this.bloodType,
       required this.isOrganDonor,
       this.trackOvulation = true,
+      this.isArchived = false,
+      this.archivedAt,
       String? id})
       : id = id ?? uuid.v4();
 
@@ -29,8 +31,20 @@ class Profile {
   final String bloodType;
   final bool isOrganDonor;
   final bool trackOvulation;
+  final bool isArchived;
+  final DateTime? archivedAt;
 
   String get formattedDate {
     return formatter.format(dateOfBirth);
+  }
+
+  int get age {
+    final today = DateTime.now();
+    int age = today.year - dateOfBirth.year;
+    if (today.month < dateOfBirth.month ||
+        (today.month == dateOfBirth.month && today.day < dateOfBirth.day)) {
+      age--;
+    }
+    return age;
   }
 }

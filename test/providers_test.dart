@@ -213,6 +213,137 @@ void main() {
       verify(() => mockProfilesRepository.updateProfile(any())).called(1);
       expect(container.read(profilesProvider).value!.first.name, 'John Updated');
     });
+
+    test('archiveProfile should archive profile and refresh state', () async {
+      when(() => mockProfilesRepository.fetchProfiles(includeArchived: any(named: 'includeArchived')))
+          .thenAnswer((_) async => tProfiles);
+      when(() => mockProfilesRepository.updateProfile(any()))
+          .thenAnswer((_) async => {});
+
+      await container.read(profilesProvider.future);
+
+      final notifier = container.read(profilesProvider.notifier);
+
+      // After archiving, fetchProfiles (which by default gets active profiles) returns empty
+      when(() => mockProfilesRepository.fetchProfiles(includeArchived: false))
+          .thenAnswer((_) async => []);
+
+      final result = await notifier.archiveProfile('1');
+
+      expect(result, isA<Success<void, Exception>>());
+      verify(() => mockProfilesRepository.updateProfile(any())).called(1);
+      expect(container.read(profilesProvider).value!.isEmpty, true);
+    });
+
+    test('restoreProfile should restore archived profile and refresh state', () async {
+      final archivedProfile = Profile(
+        id: '1',
+        name: 'John',
+        middleNames: '',
+        surname: 'Doe',
+        dateOfBirth: DateTime(1990),
+        gender: Gender.male,
+        bloodType: 'O+',
+        isOrganDonor: true,
+        isArchived: true,
+        archivedAt: DateTime.now(),
+      );
+
+      when(() => mockProfilesRepository.fetchProfiles(includeArchived: true))
+          .thenAnswer((_) async => [archivedProfile]);
+      when(() => mockProfilesRepository.fetchProfiles(includeArchived: false))
+          .thenAnswer((_) async => []);
+      when(() => mockProfilesRepository.updateProfile(any()))
+          .thenAnswer((_) async => {});
+
+      await container.read(profilesProvider.future);
+
+      final notifier = container.read(profilesProvider.notifier);
+
+      // After restoring, fetchProfiles(includeArchived: false) returns restored profile
+      final restoredProfile = Profile(
+        id: '1',
+        name: 'John',
+        middleNames: '',
+        surname: 'Doe',
+        dateOfBirth: DateTime(1990),
+        gender: Gender.male,
+        bloodType: 'O+',
+        isOrganDonor: true,
+        isArchived: false,
+        archivedAt: null,
+      );
+      when(() => mockProfilesRepository.fetchProfiles(includeArchived: false))
+          .thenAnswer((_) async => [restoredProfile]);
+
+      final result = await notifier.restoreProfile('1');
+
+      expect(result, isA<Success<void, Exception>>());
+      verify(() => mockProfilesRepository.updateProfile(any())).called(1);
+      expect(container.read(profilesProvider).value!.first.isArchived, false);
+    });
+
+    test('deleteProfilePermanently should delete profile from repository and refresh state', () async {
+      when(() => mockProfilesRepository.fetchProfiles(includeArchived: false))
+          .thenAnswer((_) async => tProfiles);
+      when(() => mockProfilesRepository.deleteProfile('1'))
+          .thenAnswer((_) async => {});
+
+      await container.read(profilesProvider.future);
+
+      final notifier = container.read(profilesProvider.notifier);
+
+      when(() => mockProfilesRepository.fetchProfiles(includeArchived: false))
+          .thenAnswer((_) async => []);
+
+      final result = await notifier.deleteProfilePermanently('1');
+
+      expect(result, isA<Success<void, Exception>>());
+      verify(() => mockProfilesRepository.deleteProfile('1')).called(1);
+      expect(container.read(profilesProvider).value!.isEmpty, true);
+    });
+
+    test('checkAndDeleteExpiredProfiles should delete expired profiles', () async {
+      final expiredProfile = Profile(
+        id: '1',
+        name: 'Expired',
+        middleNames: '',
+        surname: 'Doe',
+        dateOfBirth: DateTime(1990),
+        gender: Gender.male,
+        bloodType: 'O+',
+        isOrganDonor: true,
+        isArchived: true,
+        archivedAt: DateTime.now().subtract(const Duration(days: 35)),
+      );
+
+      final activeProfile = Profile(
+        id: '2',
+        name: 'Active',
+        middleNames: '',
+        surname: 'Doe',
+        dateOfBirth: DateTime(1990),
+        gender: Gender.male,
+        bloodType: 'O+',
+        isOrganDonor: true,
+        isArchived: true,
+        archivedAt: DateTime.now().subtract(const Duration(days: 10)),
+      );
+
+      when(() => mockProfilesRepository.fetchProfiles(includeArchived: true))
+          .thenAnswer((_) async => [expiredProfile, activeProfile]);
+      when(() => mockProfilesRepository.fetchProfiles(includeArchived: false))
+          .thenAnswer((_) async => []);
+      when(() => mockProfilesRepository.deleteProfile('1'))
+          .thenAnswer((_) async => {});
+
+      final notifier = container.read(profilesProvider.notifier);
+
+      await notifier.checkAndDeleteExpiredProfiles();
+
+      verify(() => mockProfilesRepository.deleteProfile('1')).called(1);
+      verifyNever(() => mockProfilesRepository.deleteProfile('2'));
+    });
   });
 
   group('HistoryProvider Tests', () {

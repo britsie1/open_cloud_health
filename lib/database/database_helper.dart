@@ -57,8 +57,12 @@ class DatabaseHelper {
           await db.execute("ALTER TABLE medications ADD COLUMN lowStockThreshold REAL DEFAULT 0.0");
           await db.execute("ALTER TABLE medication_logs ADD COLUMN dosage TEXT");
         }
+        if (oldVersion < 10) {
+          await db.execute("ALTER TABLE profiles ADD COLUMN isArchived TEXT DEFAULT 'false'");
+          await db.execute("ALTER TABLE profiles ADD COLUMN archivedAt TEXT");
+        }
       },
-      version: 9,
+      version: 10,
     );
 
     return db;
@@ -94,7 +98,9 @@ String createProfilesTable = '''
     bloodType TEXT, 
     gender TEXT,
     isOrganDonor TEXT,
-    trackOvulation TEXT
+    trackOvulation TEXT,
+    isArchived TEXT DEFAULT 'false',
+    archivedAt TEXT
   )''';
 
 String createHistoryTable = '''

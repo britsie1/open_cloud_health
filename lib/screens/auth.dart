@@ -98,6 +98,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
 
     if (isAuthenticated || _supportState == _SupportState.unsupported) {
+      await ref.read(profilesProvider.notifier).checkAndDeleteExpiredProfiles();
       await ref.read(profilesProvider.notifier).loadProfiles();
 
       if (!mounted) {

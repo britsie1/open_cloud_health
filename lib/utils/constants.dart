@@ -28,4 +28,7 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String periodTracker = '/period-tracker';
   static const String vitalTracker = '/vital-tracker';
+  static const String importProfile = '/import-profile';
+  static const String archivedProfiles = '/archived-profiles';
+  static const String exportProfile = '/export-profile';
 }

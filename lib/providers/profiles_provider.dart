@@ -67,7 +67,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
 
   Future<List<Profile>> _fetchProfiles() async {
     try {
-      return await _repository.fetchProfiles();
+      return await _repository.fetchProfiles(includeArchived: false);
     } catch (error) {
       debugPrint('Error: $error');
       rethrow;
@@ -118,6 +118,97 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
       return Success(newProfile.id);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));
+    }
+  }
+
+  Future<List<Profile>> fetchArchivedProfiles() async {
+    try {
+      return await _repository.fetchProfiles(includeArchived: true).then((profiles) {
+        return profiles.where((p) => p.isArchived).toList();
+      });
+    } catch (e) {
+      debugPrint('Error fetching archived profiles: $e');
+      return [];
+    }
+  }
+
+  Future<Result<void, Exception>> archiveProfile(String id) async {
+    try {
+      final activeProfiles = state.value ?? [];
+      final profile = activeProfiles.firstWhere((p) => p.id == id);
+      final archivedProfile = Profile(
+        id: profile.id,
+        name: profile.name,
+        middleNames: profile.middleNames,
+        surname: profile.surname,
+        dateOfBirth: profile.dateOfBirth,
+        gender: profile.gender,
+        bloodType: profile.bloodType,
+        isOrganDonor: profile.isOrganDonor,
+        trackOvulation: profile.trackOvulation,
+        isArchived: true,
+        archivedAt: DateTime.now(),
+      );
+
+      await _repository.updateProfile(archivedProfile);
+      await loadProfiles();
+      return const Success(null);
+    } catch (e) {
+      return Failure(e is Exception ? e : Exception(e.toString()));
+    }
+  }
+
+  Future<Result<void, Exception>> restoreProfile(String id) async {
+    try {
+      final allProfiles = await _repository.fetchProfiles(includeArchived: true);
+      final profile = allProfiles.firstWhere((p) => p.id == id);
+      final restoredProfile = Profile(
+        id: profile.id,
+        name: profile.name,
+        middleNames: profile.middleNames,
+        surname: profile.surname,
+        dateOfBirth: profile.dateOfBirth,
+        gender: profile.gender,
+        bloodType: profile.bloodType,
+        isOrganDonor: profile.isOrganDonor,
+        trackOvulation: profile.trackOvulation,
+        isArchived: false,
+        archivedAt: null,
+      );
+
+      await _repository.updateProfile(restoredProfile);
+      await loadProfiles();
+      return const Success(null);
+    } catch (e) {
+      return Failure(e is Exception ? e : Exception(e.toString()));
+    }
+  }
+
+  Future<Result<void, Exception>> deleteProfilePermanently(String id) async {
+    try {
+      await _repository.deleteProfile(id);
+      await loadProfiles();
+      return const Success(null);
+    } catch (e) {
+      return Failure(e is Exception ? e : Exception(e.toString()));
+    }
+  }
+
+  Future<void> checkAndDeleteExpiredProfiles() async {
+    try {
+      final allProfiles = await _repository.fetchProfiles(includeArchived: true);
+      final now = DateTime.now();
+      for (final profile in allProfiles) {
+        if (profile.isArchived && profile.archivedAt != null) {
+          final difference = now.difference(profile.archivedAt!);
+          if (difference.inDays >= 30) {
+            await _repository.deleteProfile(profile.id);
+            debugPrint('Automatically deleted expired profile: ${profile.name} ${profile.surname}');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error cleaning up archived profiles: $e');
     }
   }
 }

@@ -8,6 +8,7 @@ import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/services/backup_service.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:open_cloud_health/utils/constants.dart';
+import 'package:open_cloud_health/utils/result.dart';
 
 class ProfilesList extends ConsumerStatefulWidget {
   const ProfilesList({super.key, required this.profiles});
@@ -19,19 +20,43 @@ class ProfilesList extends ConsumerStatefulWidget {
 }
 
 class _ProfilesListState extends ConsumerState<ProfilesList> {
-  Future<ImageProvider> getProfileImage(Profile profile) async {
-    String filepath = await ref
-        .read(profilesProvider.notifier)
-        .getProfileImagePath(profile.id);
+  Map<String, String> _profileImagePaths = {};
+  bool _isLoadingImages = true;
+  bool _isRestoring = false;
 
-    if (filepath.isEmpty) {
-      return AssetImage(AppAssets.getGenderPlaceholder(profile.gender.name));
-    } else {
-      return FileImage(File(filepath));
+  @override
+  void initState() {
+    super.initState();
+    _loadAllProfileImages();
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfilesList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profiles != widget.profiles) {
+      _loadAllProfileImages();
     }
   }
 
-  bool _isRestoring = false;
+  Future<void> _loadAllProfileImages() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingImages = true;
+    });
+    final paths = <String, String>{};
+    await Future.wait(widget.profiles.map((profile) async {
+      final path = await ref
+          .read(profilesProvider.notifier)
+          .getProfileImagePath(profile.id);
+      paths[profile.id] = path;
+    }));
+    if (mounted) {
+      setState(() {
+        _profileImagePaths = paths;
+        _isLoadingImages = false;
+      });
+    }
+  }
 
   Future<void> restoreBackup() async {
     setState(() {
@@ -50,6 +75,12 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingImages) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
     final profiles = widget.profiles;
 
     void selectProfile(Profile profile) async {
@@ -70,50 +101,157 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
         Expanded(
           child: ListView.builder(
             itemCount: profiles.length,
-            itemBuilder: ((context, index) => FutureBuilder(
-                  future: getProfileImage(profiles[index]),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: Text('Loading...'));
-                    } else if (snapshot.hasError) {
-                      return const Center(child: Text('Error loading profile'));
-                    } else {
-                      return ListTile(
-                        contentPadding: const EdgeInsets.all(5),
-                        leading: CircleAvatar(
-                          radius: 30,
-                          backgroundImage: snapshot.data,
+            itemBuilder: ((context, index) {
+              final profile = profiles[index];
+              final imagePath = _profileImagePaths[profile.id] ?? '';
+              ImageProvider avatarImage;
+              if (imagePath.isEmpty) {
+                avatarImage = AssetImage(AppAssets.getGenderPlaceholder(profile.gender.name));
+              } else {
+                avatarImage = FileImage(File(imagePath));
+              }
+
+              return ListTile(
+                contentPadding: const EdgeInsets.all(5),
+                leading: CircleAvatar(
+                  radius: 30,
+                  backgroundImage: avatarImage,
+                ),
+                title: Text(
+                  '${profile.name} ${profile.surname}',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium!
+                      .copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onBackground,
+                          fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  'Age: ${profile.age} years • ${profile.gender.name}',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium!
+                      .copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onBackground
+                              .withOpacity(0.6)),
+                ),
+                trailing: PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (action) {
+                    if (action == 'export') {
+                      context.push(AppRoutes.exportProfile, extra: profile);
+                    } else if (action == 'edit') {
+                      context.push(AppRoutes.profileDetail, extra: profile);
+                    } else if (action == 'delete') {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Delete Profile'),
+                          content: Text(
+                              'Are you sure you want to delete ${profile.name}? The profile will be archived for 30 days and then automatically deleted.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: const Text('Cancel'),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).colorScheme.error,
+                                foregroundColor: Theme.of(context).colorScheme.onError,
+                              ),
+                              onPressed: () async {
+                                Navigator.of(ctx).pop();
+                                final result = await ref
+                                    .read(profilesProvider.notifier)
+                                    .archiveProfile(profile.id);
+                                
+                                if (!context.mounted) return;
+                                
+                                if (result is Success) {
+                                  ScaffoldMessenger.of(context).clearSnackBars();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('${profile.name} has been archived.'),
+                                    ),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).clearSnackBars();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Failed to delete profile.'),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: const Text('Delete'),
+                            ),
+                          ],
                         ),
-                        title: Text(
-                          profiles[index].name,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium!
-                              .copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onBackground),
-                        ),
-                        onTap: () {
-                          selectProfile(profiles[index]);
-                        },
                       );
                     }
                   },
-                )),
+                  itemBuilder: (ctx) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: ListTile(
+                        leading: Icon(Icons.edit_outlined),
+                        title: Text('Edit'),
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'export',
+                      child: ListTile(
+                        leading: Icon(Icons.download),
+                        title: Text('Export'),
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: ListTile(
+                        leading: Icon(Icons.delete_outline, color: Colors.red),
+                        title: Text('Delete', style: TextStyle(color: Colors.red)),
+                      ),
+                    ),
+                  ],
+                ),
+                onTap: () {
+                  selectProfile(profile);
+                },
+              );
+            }),
           ),
         ),
-        Center(
-          child: Container(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  context.push(AppRoutes.profileDetail);
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('Add or import a profile'),
-              )),
-        )
+        Padding(
+          padding: const EdgeInsets.only(bottom: 24, left: 16, right: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    context.push(AppRoutes.profileDetail);
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Create Profile'),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    context.push(AppRoutes.importProfile);
+                  },
+                  icon: const Icon(Icons.download),
+                  label: const Text('Import Profile'),
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
 
@@ -130,7 +268,7 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(
-                height: 16,
+                height: 24,
               ),
               ElevatedButton.icon(
                 onPressed: () {
@@ -139,6 +277,15 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
                 icon: const Icon(Icons.add),
                 label: const Text('Create a Profile'),
               ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () {
+                  context.push(AppRoutes.importProfile);
+                },
+                icon: const Icon(Icons.download),
+                label: const Text('Import a Profile'),
+              ),
+              const SizedBox(height: 12),
               ElevatedButton.icon(
                 onPressed: _isRestoring ? null : restoreBackup,
                 icon: _isRestoring

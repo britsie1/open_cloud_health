@@ -20,7 +20,7 @@ class _AccountAppBarActionsState extends State<AccountAppBarActions> {
           value: 'switch_profile',
           child: ListTile(
             leading: Icon(Icons.supervised_user_circle_outlined),
-            title: Text('Switch Profile'),
+            title: Text('Manage Profiles'),
           ),
         ),
         PopupMenuItem(
