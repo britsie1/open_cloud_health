@@ -6,6 +6,7 @@ import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/history_provider.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/utils/constants.dart';
+import 'package:open_cloud_health/utils/icon_utils.dart';
 import 'package:open_cloud_health/widgets/history_event_card.dart';
 import 'package:open_cloud_health/widgets/account_appbar_actions.dart';
 import 'package:timelines/timelines.dart';
@@ -23,7 +24,7 @@ class HistoryScreen extends ConsumerStatefulWidget {
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   Profile? _activeProfile;
   String _searchQuery = '';
-  final Set<EventType> _selectedTypes = {EventType.manual, EventType.period, EventType.checkup};
+  final Set<EventType> _selectedTypes = Set.from(EventType.values);
 
   void _initializeProfile() {
     Profile? profile = widget.profile;
@@ -47,6 +48,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     final historyAsync = ref.watch(historyProvider(_activeProfile!.id));
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -91,7 +93,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Search',
                     prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    ),
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -104,23 +108,39 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Wrap(
-                    spacing: 8.0,
-                    children: EventType.values.map((type) {
-                      return FilterChip(
-                        label: Text(type.name.toUpperCase()),
-                        selected: _selectedTypes.contains(type),
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              _selectedTypes.add(type);
-                            } else {
-                              _selectedTypes.remove(type);
-                            }
-                          });
-                        },
-                      );
-                    }).toList(),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: EventType.values.map((type) {
+                        final isSelected = _selectedTypes.contains(type);
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: FilterChip(
+                            avatar: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: getHistoryEventIcon(
+                                type,
+                                color: isSelected
+                                    ? theme.primaryColor
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
+                            label: Text(type.displayName),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setState(() {
+                                if (selected) {
+                                  _selectedTypes.add(type);
+                                } else {
+                                  _selectedTypes.remove(type);
+                                }
+                              });
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ),
                 ),
               ),

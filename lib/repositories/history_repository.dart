@@ -14,6 +14,10 @@ class HistoryRepository {
       'title': event.title,
       'description': event.description,
       'date': event.formattedDate,
+      'eventType': event.eventType.name,
+      'hasTime': event.hasTime ? 'true' : 'false',
+      'provider': event.provider,
+      'facility': event.facility,
     });
   }
 
@@ -25,6 +29,10 @@ class HistoryRepository {
           'title': event.title,
           'description': event.description,
           'date': event.formattedDate,
+          'eventType': event.eventType.name,
+          'hasTime': event.hasTime ? 'true' : 'false',
+          'provider': event.provider,
+          'facility': event.facility,
         },
         where: 'id = ?',
         whereArgs: [event.id]);
@@ -47,6 +55,15 @@ class HistoryRepository {
               title: row['title'] as String,
               description: row['description'] as String,
               date: DateTime.parse(row['date'] as String),
+              eventType: row['eventType'] != null
+                  ? EventType.values.firstWhere(
+                      (e) => e.name == row['eventType'] as String,
+                      orElse: () => EventType.other,
+                    )
+                  : EventType.other,
+              hasTime: row['hasTime'] == 'false' ? false : true,
+              provider: row['provider'] as String?,
+              facility: row['facility'] as String?,
               attachmentCount: row['attachmentCount'] as int,
             ))
         .toList();

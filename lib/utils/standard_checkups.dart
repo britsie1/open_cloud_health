@@ -28,7 +28,7 @@ final List<StandardCheckupTemplate> standardCheckups = [
   StandardCheckupTemplate(
     name: 'Annual Physical Exam',
     frequencyInMonths: 12,
-    iconName: 'monitor_heart',
+    iconName: 'stethoscope',
     appliesTo: (profile) => true,
   ),
   StandardCheckupTemplate(
@@ -40,7 +40,7 @@ final List<StandardCheckupTemplate> standardCheckups = [
   StandardCheckupTemplate(
     name: 'Blood Pressure Screening',
     frequencyInMonths: 12,
-    iconName: 'monitor_heart',
+    iconName: 'blood_pressure',
     appliesTo: (profile) => calculateAge(profile.dateOfBirth) >= 18,
   ),
   StandardCheckupTemplate(
@@ -58,7 +58,7 @@ final List<StandardCheckupTemplate> standardCheckups = [
   StandardCheckupTemplate(
     name: 'Diabetes Screening',
     frequencyInMonths: 36,
-    iconName: 'bloodtype',
+    iconName: 'diabetes',
     appliesTo: (profile) => calculateAge(profile.dateOfBirth) >= 35,
   ),
   StandardCheckupTemplate(

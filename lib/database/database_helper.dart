@@ -61,8 +61,14 @@ class DatabaseHelper {
           await db.execute("ALTER TABLE profiles ADD COLUMN isArchived TEXT DEFAULT 'false'");
           await db.execute("ALTER TABLE profiles ADD COLUMN archivedAt TEXT");
         }
+        if (oldVersion < 11) {
+          await db.execute("ALTER TABLE history ADD COLUMN eventType TEXT DEFAULT 'other'");
+          await db.execute("ALTER TABLE history ADD COLUMN hasTime TEXT DEFAULT 'true'");
+          await db.execute("ALTER TABLE history ADD COLUMN provider TEXT");
+          await db.execute("ALTER TABLE history ADD COLUMN facility TEXT");
+        }
       },
-      version: 10,
+      version: 11,
     );
 
     return db;
@@ -109,7 +115,11 @@ String createHistoryTable = '''
     profileId TEXT,
     title TEXT,
     description TEXT,
-    date TEXT
+    date TEXT,
+    eventType TEXT DEFAULT 'other',
+    hasTime TEXT DEFAULT 'true',
+    provider TEXT,
+    facility TEXT
   )''';
 
 String createAttachementsTable = '''

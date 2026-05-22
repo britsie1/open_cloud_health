@@ -2,13 +2,14 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_cupertino_datetime_picker/flutter_cupertino_datetime_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:open_cloud_health/models/attachment.dart';
 import 'package:open_cloud_health/models/history_event.dart' as history;
 import 'package:open_cloud_health/providers/attachment_provider.dart';
 import 'package:open_cloud_health/providers/history_provider.dart';
+import 'package:open_cloud_health/utils/icon_utils.dart';
 import 'package:open_cloud_health/utils/result.dart';
 import 'package:open_cloud_health/widgets/attachment_item.dart';
 import 'package:path/path.dart';
@@ -28,14 +29,21 @@ class HistoryEventDetailScreen extends ConsumerStatefulWidget {
 class _HistoryEventDetailScreenState
     extends ConsumerState<HistoryEventDetailScreen> {
   final _form = GlobalKey<FormState>();
-  final _selectedDateController = TextEditingController();
-  late var _enteredTitle = '';
-  var _enteredDescription = '';
+  late String _enteredTitle = '';
+  late String _enteredDescription = '';
+  late history.EventType _selectedEventType;
+  late bool _hasTime;
+  late DateTime _selectedDate;
+  late TimeOfDay? _selectedTime;
+  
+  final _providerController = TextEditingController();
+  final _facilityController = TextEditingController();
   List<Attachment> selectedFiles = [];
 
   @override
   void dispose() {
-    _selectedDateController.dispose();
+    _providerController.dispose();
+    _facilityController.dispose();
     super.dispose();
   }
 
@@ -50,22 +58,31 @@ class _HistoryEventDetailScreenState
     super.initState();
 
     if (widget.historyEvent != null) {
-      _enteredTitle = widget.historyEvent!.title;
-      _enteredDescription = widget.historyEvent!.description;
-      _selectedDateController.text = widget.historyEvent!.formattedDate;
+      final ev = widget.historyEvent!;
+      _enteredTitle = ev.title;
+      _enteredDescription = ev.description;
+      _selectedEventType = ev.eventType;
+      _hasTime = ev.hasTime;
+      _selectedDate = ev.date;
+      _selectedTime = ev.hasTime ? TimeOfDay.fromDateTime(ev.date) : null;
+      _providerController.text = ev.provider ?? '';
+      _facilityController.text = ev.facility ?? '';
 
-      fetchAttachments(widget.historyEvent!.id).then((value) {
+      fetchAttachments(ev.id).then((value) {
         setState(() {
           selectedFiles = value;
         });
       });
+    } else {
+      _selectedEventType = history.EventType.other;
+      _hasTime = true;
+      _selectedDate = DateTime.now();
+      _selectedTime = TimeOfDay.now();
     }
   }
 
   void _attachFiles() async {
     await [Permission.photos, Permission.videos, Permission.audio].request();
-
-    //TODO: show snackbar if permission is not granted.
 
     FilePickerResult? result =
         await FilePicker.platform.pickFiles(allowMultiple: true);
@@ -83,8 +100,6 @@ class _HistoryEventDetailScreenState
           )
           .toList();
 
-      //TODO: remove attachments with the same name
-
       setState(() {
         selectedFiles.addAll(newFiles);
       });
@@ -93,6 +108,13 @@ class _HistoryEventDetailScreenState
 
   @override
   Widget build(BuildContext context) {
+    // Filter out period and checkup as they are auto-logged, not manually selectable
+    final allowedEventTypes = history.EventType.values
+        .where((type) =>
+            type != history.EventType.period &&
+            type != history.EventType.checkup)
+        .toList();
+
     void saveEvent() async {
       final isValid = _form.currentState!.validate();
       if (!isValid) {
@@ -103,6 +125,23 @@ class _HistoryEventDetailScreenState
       final messenger = ScaffoldMessenger.of(context);
       final router = GoRouter.of(context);
 
+      DateTime finalDateTime;
+      if (_hasTime) {
+        finalDateTime = DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
+          _selectedTime?.hour ?? 0,
+          _selectedTime?.minute ?? 0,
+        );
+      } else {
+        finalDateTime = DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
+        );
+      }
+
       final result = await ref
           .read(historyProvider(widget.profileId).notifier)
           .saveEventWithAttachments(
@@ -110,7 +149,15 @@ class _HistoryEventDetailScreenState
             profileId: widget.profileId,
             title: _enteredTitle,
             description: _enteredDescription,
-            date: DateTime.parse(_selectedDateController.text),
+            date: finalDateTime,
+            eventType: _selectedEventType,
+            hasTime: _hasTime,
+            provider: _providerController.text.trim().isEmpty
+                ? null
+                : _providerController.text.trim(),
+            facility: _facilityController.text.trim().isEmpty
+                ? null
+                : _facilityController.text.trim(),
             attachments: selectedFiles,
           );
 
@@ -133,15 +180,19 @@ class _HistoryEventDetailScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.historyEvent == null ? 'New Event' : 'Edit Event'),
+        title: Text(widget.historyEvent == null ? 'Create Medical Event' : 'Edit Medical Event'),
+        elevation: 0,
         actions: [
           if (widget.historyEvent != null)
             IconButton(
-              icon: const Icon(Icons.delete),
+              icon: const Icon(Icons.delete_outline),
               onPressed: () {
                 showDialog(
                   context: context,
                   builder: (ctx) => AlertDialog(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     title: const Text('Delete Event'),
                     content:
                         const Text('Are you sure you want to delete this event?'),
@@ -153,7 +204,10 @@ class _HistoryEventDetailScreenState
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
-                            foregroundColor: Colors.white),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            )),
                         onPressed: () async {
                           final messenger = ScaffoldMessenger.of(context);
                           final router = GoRouter.of(context);
@@ -190,111 +244,336 @@ class _HistoryEventDetailScreenState
         ],
       ),
       body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Form(
-                key: _form,
-                child: Column(
-                  children: [
-                    TextFormField(
-                      initialValue: _enteredTitle,
-                      decoration: const InputDecoration(labelText: 'Title'),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter an event title';
-                        }
-                        return null;
-                      },
-                      onSaved: (newValue) {
-                        _enteredTitle = newValue!;
-                      },
-                    ),
-                    TextFormField(
-                      decoration:
-                          const InputDecoration(labelText: 'Event Date'),
-                      readOnly: true,
-                      controller: _selectedDateController,
-                      onTap: () {
-                        DatePicker.showDatePicker(
-                          context,
-                          dateFormat: 'yyyy-MMM-dd HH:mm',
-                          maxDateTime: DateTime.now(),
-                          initialDateTime: _selectedDateController.text.isEmpty
-                              ? DateTime.now()
-                              : DateTime.parse(_selectedDateController.text),
-                          onConfirm: (dateTime, selectedIndex) {
-                            _selectedDateController.text =
-                                history.formatter.format(dateTime);
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _form,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Event details card
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Event Details',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Event Type Dropdown
+                        DropdownButtonFormField<history.EventType>(
+                          value: _selectedEventType,
+                          decoration: InputDecoration(
+                            labelText: 'Event Type',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            prefixIcon: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: getHistoryEventIcon(
+                                  _selectedEventType,
+                                  color: Theme.of(context).primaryColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                          items: allowedEventTypes.map((type) {
+                            return DropdownMenuItem<history.EventType>(
+                              value: type,
+                              child: Text(type.displayName),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() {
+                                _selectedEventType = value;
+                              });
+                            }
                           },
-                        );
-                      },
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please select a date for the event';
-                        }
-                        return null;
-                      },
+                          validator: (value) {
+                            if (value == null) {
+                              return 'Please select an event type';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        // Title
+                        TextFormField(
+                          initialValue: _enteredTitle,
+                          decoration: InputDecoration(
+                            labelText: 'Title',
+                            hintText: 'e.g. Annual Blood Panel, Knee Surgery',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            prefixIcon: const Icon(Icons.title),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Please enter an event title';
+                            }
+                            return null;
+                          },
+                          onSaved: (newValue) {
+                            _enteredTitle = newValue!;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        // Include Time toggle
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Include Time'),
+                          subtitle: const Text('Specify the exact time of the event'),
+                          value: _hasTime,
+                          onChanged: (val) {
+                            setState(() {
+                              _hasTime = val;
+                              if (val && _selectedTime == null) {
+                                _selectedTime = TimeOfDay.now();
+                              }
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        // Date & Time pickers
+                        Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                onTap: () async {
+                                  final pickedDate = await showDatePicker(
+                                    context: context,
+                                    initialDate: _selectedDate,
+                                    firstDate: DateTime(1900),
+                                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                                  );
+                                  if (pickedDate != null) {
+                                    setState(() {
+                                      _selectedDate = pickedDate;
+                                    });
+                                  }
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: InputDecorator(
+                                  decoration: InputDecoration(
+                                    labelText: 'Date',
+                                    prefixIcon: const Icon(Icons.calendar_today),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    DateFormat('yyyy-MM-dd').format(_selectedDate),
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (_hasTime) ...[
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () async {
+                                    final pickedTime = await showTimePicker(
+                                      context: context,
+                                      initialTime: _selectedTime ?? TimeOfDay.now(),
+                                    );
+                                    if (pickedTime != null) {
+                                      setState(() {
+                                        _selectedTime = pickedTime;
+                                      });
+                                    }
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: InputDecorator(
+                                    decoration: InputDecoration(
+                                      labelText: 'Time',
+                                      prefixIcon: const Icon(Icons.access_time),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      _selectedTime != null
+                                          ? _selectedTime!.format(context)
+                                          : 'Select Time',
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
                     ),
-                    TextFormField(
-                      initialValue: _enteredDescription,
-                      maxLines: 5,
-                      textAlignVertical: TextAlignVertical.top,
-                      decoration: const InputDecoration(
-                          labelText: 'Description', alignLabelWithHint: true),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter an event description';
-                        }
-                        return null;
-                      },
-                      onSaved: (newValue) {
-                        _enteredDescription = newValue!;
-                      },
-                    ),
-                    const SizedBox(
-                      height: 20,
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: _attachFiles,
-                      icon: const Icon(Icons.attach_file),
-                      label: const Text('Attach Files'),
-                    ),
-                    const SizedBox(
-                      height: 20,
-                    ),
-                    SizedBox(
-                      width: double.infinity,
-                      child: Text(
-                        'Attachments',
-                        style: Theme.of(context).textTheme.titleMedium,
-                        textAlign: TextAlign.left,
-                      ),
-                    ),
-                    const SizedBox(
-                      height: 20,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 16),
+                // Provider & Facility Card
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Care Provider & Facility',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Healthcare Provider
+                        TextFormField(
+                          controller: _providerController,
+                          decoration: InputDecoration(
+                            labelText: 'Healthcare Provider',
+                            hintText: 'e.g. Dr. Jane Smith, Therapist',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            prefixIcon: const Icon(Icons.person_outline),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Facility / Clinic
+                        TextFormField(
+                          controller: _facilityController,
+                          decoration: InputDecoration(
+                            labelText: 'Facility / Clinic',
+                            hintText: 'e.g. City General Hospital, Dental Care',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            prefixIcon: const Icon(Icons.local_hospital_outlined),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Description Card
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Additional Notes',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          initialValue: _enteredDescription,
+                          maxLines: 4,
+                          textAlignVertical: TextAlignVertical.top,
+                          decoration: InputDecoration(
+                            labelText: 'Description',
+                            hintText: 'Detail the diagnosis, findings, or instructions...',
+                            alignLabelWithHint: true,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            prefixIcon: const Icon(Icons.notes),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Please enter an event description';
+                            }
+                            return null;
+                          },
+                          onSaved: (newValue) {
+                            _enteredDescription = newValue!;
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Attachments Card
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Attachments',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(context).primaryColor,
+                                  ),
+                            ),
+                            IconButton.filledTonal(
+                              onPressed: _attachFiles,
+                              icon: const Icon(Icons.add_photo_alternate_outlined),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        if (selectedFiles.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16.0),
+                            child: Center(
+                              child: Text(
+                                'No attachments for this event.',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ),
+                          ),
+                        if (selectedFiles.isNotEmpty)
+                          Column(
+                            children: selectedFiles.map((item) {
+                              return AttachmentItem(
+                                attachment: item,
+                                onRemoveAttachment: removeAttachment,
+                              );
+                            }).toList(),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-            if (selectedFiles.isEmpty)
-              const SizedBox(
-                width: double.infinity,
-                child: Padding(
-                  padding: EdgeInsets.only(left: 20),
-                  child: Text('There are no attachments for this event.'),
-                ),
-              ),
-            if (selectedFiles.isNotEmpty)
-              Column(
-                children: selectedFiles.map((item) {
-                  return AttachmentItem(
-                      attachment: item, onRemoveAttachment: removeAttachment);
-                }).toList(),
-              )
-          ],
+          ),
         ),
       ),
     );

@@ -43,7 +43,11 @@ void main() {
           profileId TEXT,
           title TEXT,
           description TEXT,
-          date TEXT
+          date TEXT,
+          eventType TEXT DEFAULT 'other',
+          hasTime TEXT DEFAULT 'true',
+          provider TEXT,
+          facility TEXT
         )''');
       await db.execute('''
         CREATE TABLE attachments(

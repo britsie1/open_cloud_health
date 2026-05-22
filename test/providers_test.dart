@@ -8,6 +8,8 @@ import 'package:open_cloud_health/models/history_event.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
 import 'package:open_cloud_health/models/profile.dart';
+import 'package:open_cloud_health/models/period_cycle.dart';
+import 'package:open_cloud_health/models/period_log.dart';
 import 'package:open_cloud_health/providers/allergies_provider.dart';
 import 'package:open_cloud_health/providers/history_provider.dart';
 import 'package:open_cloud_health/providers/medications_provider.dart';
@@ -394,6 +396,8 @@ void main() {
         title: 'Cough',
         description: 'Dry cough',
         date: DateTime(2023, 10, 11),
+        eventType: EventType.other,
+        hasTime: true,
         attachments: [],
       );
 
@@ -423,6 +427,57 @@ void main() {
 
       expect(container.read(historyProvider('p1')).value!.isEmpty, true);
       verify(() => mockHistoryRepository.deleteEvent('e1')).called(1);
+    });
+
+    test('fetchEvents should group consecutive period logs into a single HistoryEvent', () async {
+      final now = DateTime(2026, 5, 20);
+      final cycle = PeriodCycle(id: 'c1', profileId: 'p1', startDate: now);
+      final logs = [
+        PeriodLog(id: 'l1', cycleId: 'c1', date: now, flowLevel: FlowLevel.light, moods: [Mood.happy]),
+        PeriodLog(id: 'l2', cycleId: 'c1', date: now.add(const Duration(days: 1)), flowLevel: FlowLevel.medium, moods: [Mood.calm], physicalSymptoms: [PhysicalSymptom.cramps]),
+        PeriodLog(id: 'l3', cycleId: 'c1', date: now.add(const Duration(days: 2)), flowLevel: FlowLevel.medium, moods: [Mood.irritable]),
+      ];
+
+      when(() => mockHistoryRepository.fetchEvents('p1'))
+          .thenAnswer((_) async => []);
+      when(() => mockPeriodRepository.getCycles('p1'))
+          .thenAnswer((_) async => [cycle]);
+      when(() => mockPeriodRepository.getLogsForCycle('c1'))
+          .thenAnswer((_) async => logs);
+
+      final events = await container.read(historyProvider('p1').future);
+
+      expect(events.length, 1);
+      final periodEvent = events.first;
+      expect(periodEvent.eventType, EventType.period);
+      expect(periodEvent.title, 'Period (3 days)');
+      expect(periodEvent.hasTime, false);
+      expect(periodEvent.description, contains('3 consecutive days'));
+      expect(periodEvent.description, contains('Flow: light, medium'));
+      expect(periodEvent.description, contains('Moods: happy, calm, irritable'));
+      expect(periodEvent.description, contains('Symptoms: cramps'));
+    });
+
+    test('fetchEvents should not group non-consecutive period logs (gap handling)', () async {
+      final now = DateTime(2026, 5, 20);
+      final cycle = PeriodCycle(id: 'c1', profileId: 'p1', startDate: now);
+      final logs = [
+        PeriodLog(id: 'l1', cycleId: 'c1', date: now, flowLevel: FlowLevel.light),
+        PeriodLog(id: 'l3', cycleId: 'c1', date: now.add(const Duration(days: 2)), flowLevel: FlowLevel.medium),
+      ];
+
+      when(() => mockHistoryRepository.fetchEvents('p1'))
+          .thenAnswer((_) async => []);
+      when(() => mockPeriodRepository.getCycles('p1'))
+          .thenAnswer((_) async => [cycle]);
+      when(() => mockPeriodRepository.getLogsForCycle('c1'))
+          .thenAnswer((_) async => logs);
+
+      final events = await container.read(historyProvider('p1').future);
+
+      expect(events.length, 2);
+      expect(events[0].title, 'Period');
+      expect(events[1].title, 'Period');
     });
   });
 

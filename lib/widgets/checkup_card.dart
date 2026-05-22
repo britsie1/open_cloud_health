@@ -18,7 +18,7 @@ class CheckupCard extends StatelessWidget {
     final checkup = checkupWithStatus.checkup;
     final isOverdue = checkupWithStatus.isOverdue;
     final color = isOverdue ? Colors.red : Colors.blue;
-    final icon = getCheckupIcon(checkup.iconName);
+    final iconWidget = getCheckupIconWidget(checkup.iconName, checkupName: checkup.name, color: color, size: 28);
 
     return GestureDetector(
       onTap: onLogPressed,
@@ -46,7 +46,7 @@ class CheckupCard extends StatelessWidget {
                 color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(icon, color: color, size: 28),
+              child: Center(child: iconWidget),
             ),
 
             const SizedBox(width: 16),

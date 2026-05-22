@@ -5,8 +5,9 @@ import 'package:open_cloud_health/models/history_event.dart';
 import 'package:open_cloud_health/models/attachment.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
-
 import 'package:open_cloud_health/models/allergy.dart';
+import 'package:open_cloud_health/utils/icon_utils.dart';
+import 'package:healthicons_flutter/healthicons_flutter.dart';
 
 void main() {
   group('Allergy Model Tests', () {
@@ -262,6 +263,26 @@ void main() {
       
       final copied = log.copyWith(dosage: '10 Units');
       expect(copied.dosage, '10 Units');
+    });
+  });
+
+  group('Icon Utilities Tests', () {
+    test('getCheckupIconWidget returns stethoscope for physical checkups', () {
+      final widget = getCheckupIconWidget('some_old_icon', checkupName: 'Annual Physical Exam');
+      expect(widget, isA<StethoscopeOutline>());
+    });
+
+    test('getCheckupIconWidget returns blood pressure for BP screening', () {
+      final widget = getCheckupIconWidget(null, checkupName: 'Blood Pressure Screening');
+      expect(widget, isA<BloodPressureOutline>());
+    });
+
+    test('getCheckupIconWidget returns sugar cubes for diabetes screening', () {
+      final widget = getCheckupIconWidget('diabetes');
+      expect(widget, isA<SugarOutline>());
+
+      final widget2 = getCheckupIconWidget(null, checkupName: 'Diabetes Screening');
+      expect(widget2, isA<SugarOutline>());
     });
   });
 }

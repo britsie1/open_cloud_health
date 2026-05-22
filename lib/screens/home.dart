@@ -218,8 +218,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     final nextUp = checkups.first;
                     final overdueCount = checkups.where((c) => c.isOverdue).length;
                     final isOverdue = nextUp.isOverdue;
-                    final icon = getCheckupIcon(nextUp.checkup.iconName);
                     final color = isOverdue ? Colors.red : Colors.blue;
+                    final iconWidget = getCheckupIconWidget(nextUp.checkup.iconName, checkupName: nextUp.checkup.name, color: color, size: 28);
 
                     return GestureDetector(
                       onTap: () {
@@ -257,7 +257,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     color: color.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(16),
                                   ),
-                                  child: Icon(icon, color: color, size: 28),
+                                  child: Center(child: iconWidget),
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(
@@ -741,34 +741,34 @@ class _VitalsSection extends StatelessWidget {
         children: [
           if (showPeriodTracker)
             _VitalItem(
-              icon: Icons.water_drop,
+              icon: getVitalIcon('Period', color: Colors.redAccent, size: 28),
               color: Colors.redAccent,
               label: 'Period',
               onTap: () => context.push('${AppRoutes.periodTracker}/${profile.id}'),
             ),
           _VitalItem(
-            icon: Icons.favorite,
+            icon: getVitalIcon('BP', color: Colors.deepPurple, size: 28),
             color: Colors.deepPurple,
             label: 'BP',
             onTap: () => context.push(
                 '${AppRoutes.vitalTracker}/${profile.id}/${VitalType.bloodPressure.name}'),
           ),
           _VitalItem(
-            icon: Icons.monitor_heart,
+            icon: getVitalIcon('Heart', color: Colors.red, size: 28),
             color: Colors.red,
             label: 'Heart',
             onTap: () => context.push(
                 '${AppRoutes.vitalTracker}/${profile.id}/${VitalType.heartRate.name}'),
           ),
           _VitalItem(
-            icon: Icons.scale,
+            icon: getVitalIcon('Weight', color: Colors.blue, size: 28),
             color: Colors.blue,
             label: 'Weight',
             onTap: () => context.push(
                 '${AppRoutes.vitalTracker}/${profile.id}/${VitalType.weight.name}'),
           ),
           _VitalItem(
-            icon: Icons.bloodtype,
+            icon: getVitalIcon('Sugar', color: Colors.orange, size: 28),
             color: Colors.orange,
             label: 'Sugar',
             onTap: () => context.push(
@@ -788,7 +788,7 @@ class _VitalItem extends StatelessWidget {
     required this.onTap,
   });
 
-  final IconData icon;
+  final Widget icon;
   final Color color;
   final String label;
   final VoidCallback onTap;
@@ -809,7 +809,7 @@ class _VitalItem extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: color.withOpacity(0.2), width: 1),
               ),
-              child: Icon(icon, color: color, size: 28),
+              child: Center(child: icon),
             ),
             const SizedBox(height: 8),
             Text(
@@ -826,3 +826,4 @@ class _VitalItem extends StatelessWidget {
     );
   }
 }
+

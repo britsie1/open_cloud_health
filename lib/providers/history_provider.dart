@@ -2,8 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:open_cloud_health/models/attachment.dart';
 import 'package:open_cloud_health/models/history_event.dart';
+import 'package:open_cloud_health/models/period_log.dart';
 import 'package:open_cloud_health/repositories/attachment_repository.dart';
 import 'package:open_cloud_health/repositories/history_repository.dart';
 import 'package:open_cloud_health/repositories/period_repository.dart';
@@ -28,6 +30,10 @@ class HistoryNotifier extends FamilyAsyncNotifier<List<HistoryEvent>, String> {
     required String title,
     required String description,
     required DateTime date,
+    required EventType eventType,
+    required bool hasTime,
+    String? provider,
+    String? facility,
     required List<Attachment> attachments,
   }) async {
     try {
@@ -38,6 +44,10 @@ class HistoryNotifier extends FamilyAsyncNotifier<List<HistoryEvent>, String> {
         title: title,
         description: description,
         date: date,
+        eventType: eventType,
+        hasTime: hasTime,
+        provider: provider,
+        facility: facility,
         attachmentCount: attachments.length,
       );
 
@@ -93,15 +103,106 @@ class HistoryNotifier extends FamilyAsyncNotifier<List<HistoryEvent>, String> {
       final cycles = await periodRepo.getCycles(profileId);
       for (final cycle in cycles) {
         final logs = await periodRepo.getLogsForCycle(cycle.id);
+        if (logs.isEmpty) continue;
+
+        // Sort logs by date ascending
+        logs.sort((a, b) => a.date.compareTo(b.date));
+
+        // Group consecutive days where the gap is <= 1 day
+        final List<List<PeriodLog>> groups = [];
+        List<PeriodLog> currentGroup = [];
+
         for (final log in logs) {
+          if (currentGroup.isEmpty) {
+            currentGroup.add(log);
+          } else {
+            final lastLog = currentGroup.last;
+            final lastDate = DateTime(lastLog.date.year, lastLog.date.month, lastLog.date.day);
+            final thisDate = DateTime(log.date.year, log.date.month, log.date.day);
+            final difference = thisDate.difference(lastDate).inDays;
+
+            if (difference <= 1) {
+              currentGroup.add(log);
+            } else {
+              groups.add(currentGroup);
+              currentGroup = [log];
+            }
+          }
+        }
+        if (currentGroup.isNotEmpty) {
+          groups.add(currentGroup);
+        }
+
+        // Add a HistoryEvent for each consecutive group
+        for (final group in groups) {
+          if (group.isEmpty) continue;
+
+          final startLog = group.first;
+          final endLog = group.last;
+          final startDate = startLog.date;
+          final endDate = endLog.date;
+
+          final startOnly = DateTime(startDate.year, startDate.month, startDate.day);
+          final endOnly = DateTime(endDate.year, endDate.month, endDate.day);
+          final duration = endOnly.difference(startOnly).inDays + 1;
+
+          final String title = duration > 1 ? 'Period ($duration days)' : 'Period';
+
+          // Format Date Range beautifully
+          String durationText;
+          if (duration > 1) {
+            final monthDayFormat = DateFormat('MMMM d');
+            final dayOnlyFormat = DateFormat('d');
+            final fullDateFormat = DateFormat('MMMM d, yyyy');
+
+            if (startDate.year == endDate.year) {
+              if (startDate.month == endDate.month) {
+                durationText = '$duration consecutive days: ${monthDayFormat.format(startDate)} – ${dayOnlyFormat.format(endDate)}, ${startDate.year}';
+              } else {
+                durationText = '$duration consecutive days: ${monthDayFormat.format(startDate)} – ${monthDayFormat.format(endDate)}, ${startDate.year}';
+              }
+            } else {
+              durationText = '$duration consecutive days: ${fullDateFormat.format(startDate)} – ${fullDateFormat.format(endDate)}';
+            }
+          } else {
+            durationText = DateFormat('MMMM d, yyyy').format(startDate);
+          }
+
+          // Flow levels
+          final flows = group.map((l) => l.flowLevel).whereType<FlowLevel>().toList();
+          final flowText = flows.isNotEmpty 
+              ? 'Flow: ${flows.map((f) => f.name).toSet().join(', ')}' 
+              : 'Flow: None';
+
+          // Moods
+          final moodsSet = group.expand((l) => l.moods).toSet();
+          final moodText = moodsSet.isNotEmpty 
+              ? 'Moods: ${moodsSet.map((m) => m.name).join(', ')}' 
+              : null;
+
+          // Physical Symptoms
+          final symptomsSet = group.expand((l) => l.physicalSymptoms).toSet();
+          final symptomText = symptomsSet.isNotEmpty 
+              ? 'Symptoms: ${symptomsSet.map((s) => s.name).join(', ')}' 
+              : null;
+
+          final descriptionParts = [
+            durationText,
+            flowText,
+            if (moodText != null) moodText,
+            if (symptomText != null) symptomText,
+          ];
+          final description = descriptionParts.join('\n');
+
           historyEvents.add(
             HistoryEvent(
-              id: log.id,
+              id: startLog.id,
               profileId: profileId,
-              title: 'Period Log',
-              description: 'Flow: ${log.flowLevel?.name ?? "Unknown"}, Moods: ${log.moods.length}, Symptoms: ${log.physicalSymptoms.length}',
-              date: log.date,
+              title: title,
+              description: description,
+              date: startLog.date,
               eventType: EventType.period,
+              hasTime: false,
             )
           );
         }

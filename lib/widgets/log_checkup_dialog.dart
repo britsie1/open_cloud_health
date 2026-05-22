@@ -1,38 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/providers/checkups_provider.dart';
+import 'package:open_cloud_health/utils/icon_utils.dart';
 import 'package:open_cloud_health/utils/result.dart';
-
-IconData _getIconData(String? iconName) {
-  switch (iconName) {
-    case 'medical_services':
-      return Icons.medical_services;
-    case 'remove_red_eye':
-      return Icons.remove_red_eye;
-    case 'monitor_heart':
-      return Icons.monitor_heart;
-    case 'woman':
-      return Icons.woman;
-    case 'science':
-      return Icons.science;
-    case 'man':
-      return Icons.man;
-    case 'biotech':
-      return Icons.biotech;
-    case 'event':
-      return Icons.event;
-    case 'health_and_safety':
-      return Icons.health_and_safety;
-    case 'bloodtype':
-      return Icons.bloodtype;
-    case 'hearing':
-      return Icons.hearing;
-    case 'accessibility':
-      return Icons.accessibility;
-    default:
-      return Icons.health_and_safety;
-  }
-}
 
 class LogCheckupDialog extends ConsumerStatefulWidget {
   const LogCheckupDialog({
@@ -150,8 +120,9 @@ class _LogCheckupDialogState extends ConsumerState<LogCheckupDialog> {
       title: Row(
         children: [
           if (checkup != null) ...[
-            Icon(
-              _getIconData(checkup.checkup.iconName),
+            getCheckupIconWidget(
+              checkup.checkup.iconName,
+              checkupName: widget.checkupName,
               color: Colors.blue,
               size: 32,
             ),
