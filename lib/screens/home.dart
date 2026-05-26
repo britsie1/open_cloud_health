@@ -60,15 +60,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _initializeProfile();
   }
 
-  Future<ImageProvider> _getProfileImage() async {
-    if (_activeProfile == null) return const AssetImage(AppAssets.malePlaceholder);
-
+  Future<ImageProvider> _getProfileImage(Profile activeProfile) async {
     final filepath = await ref
         .read(profilesProvider.notifier)
-        .getProfileImagePath(_activeProfile!.id);
+        .getProfileImagePath(activeProfile.id);
 
     if (filepath.isEmpty) {
-      return AssetImage(AppAssets.getGenderPlaceholder(_activeProfile!.gender.name));
+      return AssetImage(AppAssets.getGenderPlaceholder(activeProfile.gender.name));
     } else {
       return FileImage(File(filepath));
     }
@@ -76,7 +74,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_activeProfile == null) {
+    final profilesAsync = ref.watch(profilesProvider);
+    final profileId = widget.profileId ?? widget.profile?.id ?? _activeProfile?.id;
+    
+    final activeProfile = profilesAsync.maybeWhen(
+      data: (profiles) {
+        try {
+          return profiles.firstWhere((p) => p.id == profileId);
+        } catch (_) {
+          return widget.profile ?? _activeProfile;
+        }
+      },
+      orElse: () => widget.profile ?? _activeProfile,
+    );
+
+    if (activeProfile == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
@@ -107,7 +119,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _activeProfile!.name,
+                        activeProfile.name,
                         style: const TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
@@ -118,11 +130,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 GestureDetector(
                   onTap: () {
-                    context.go('${AppRoutes.profileDetail}/${_activeProfile!.id}',
-                        extra: _activeProfile);
+                    context.go('${AppRoutes.profileDetail}/${activeProfile.id}',
+                        extra: activeProfile);
                   },
                   child: FutureBuilder<ImageProvider>(
-                    future: _getProfileImage(),
+                    future: _getProfileImage(activeProfile),
                     builder: (context, snapshot) {
                       return Container(
                         decoration: BoxDecoration(
@@ -165,12 +177,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _VitalsSection(profile: _activeProfile!),
+                _VitalsSection(profile: activeProfile),
               ],
             ),
 
             // Medication Section (Handles its own spacing/divider if visible)
-            _MedicationSummarySection(profileId: _activeProfile!.id),
+            _MedicationSummarySection(profileId: activeProfile.id),
 
             const SizedBox(height: 24),
             const Divider(height: 1),
@@ -192,7 +204,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 TextButton(
                   onPressed: () {
-                    context.push('${AppRoutes.checkups}/${_activeProfile!.id}');
+                    context.push('${AppRoutes.checkups}/${activeProfile.id}');
                   },
                   child: const Text('View All'),
                 ),
@@ -202,7 +214,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             
             Consumer(
               builder: (context, ref, child) {
-                final checkupsAsync = ref.watch(checkupsProvider(_activeProfile!.id));
+                final checkupsAsync = ref.watch(checkupsProvider(activeProfile.id));
                 
                 return checkupsAsync.when(
                   data: (checkups) {
@@ -226,7 +238,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         showDialog(
                           context: context,
                           builder: (ctx) => LogCheckupDialog(
-                            profileId: _activeProfile!.id,
+                            profileId: activeProfile.id,
                             checkupId: nextUp.checkup.id,
                             checkupName: nextUp.checkup.name,
                           ),

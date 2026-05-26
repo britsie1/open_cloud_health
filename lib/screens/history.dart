@@ -44,10 +44,24 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_activeProfile == null) {
+    final profilesAsync = ref.watch(profilesProvider);
+    final profileId = widget.profileId ?? widget.profile?.id ?? _activeProfile?.id;
+    
+    final activeProfile = profilesAsync.maybeWhen(
+      data: (profiles) {
+        try {
+          return profiles.firstWhere((p) => p.id == profileId);
+        } catch (_) {
+          return widget.profile ?? _activeProfile;
+        }
+      },
+      orElse: () => widget.profile ?? _activeProfile,
+    );
+
+    if (activeProfile == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    final historyAsync = ref.watch(historyProvider(_activeProfile!.id));
+    final historyAsync = ref.watch(historyProvider(activeProfile.id));
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -153,7 +167,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    context.push('${AppRoutes.historyDetail}/${_activeProfile!.id}');
+                    context.push('${AppRoutes.historyDetail}/${activeProfile.id}');
                   },
                   icon: const Icon(Icons.add),
                   label: const Text('Create event'),

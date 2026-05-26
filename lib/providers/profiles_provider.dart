@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
@@ -56,6 +56,10 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
 
       if (imageFile != null) {
         await _fileService.saveProfileImage(profileId, imageFile);
+        final filePath = await _fileService.getProfileImagePath(profileId);
+        if (filePath.isNotEmpty) {
+          await FileImage(File(filePath)).evict();
+        }
       }
 
       await loadProfiles();

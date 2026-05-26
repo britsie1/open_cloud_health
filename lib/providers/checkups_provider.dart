@@ -34,7 +34,7 @@ class CheckupsNotifier extends FamilyAsyncNotifier<List<CheckupWithStatus>, Stri
   @override
   Future<List<CheckupWithStatus>> build(String arg) async {
     // 1. Get the profile
-    final profiles = ref.read(profilesProvider).value;
+    final profiles = ref.watch(profilesProvider).value;
     if (profiles == null) return [];
     
     final profile = profiles.firstWhere((p) => p.id == arg, orElse: () => throw Exception('Profile not found'));
@@ -48,10 +48,25 @@ class CheckupsNotifier extends FamilyAsyncNotifier<List<CheckupWithStatus>, Stri
 
   Future<void> _syncStandardCheckups(Profile profile) async {
     final existingCheckups = await _repository.loadCheckups(profile.id);
-    final existingNames = existingCheckups.map((c) => c.name).toSet();
+    
+    // 1. Remove standard checkups that no longer apply
+    for (final checkup in existingCheckups) {
+      final templateIndex = standardCheckups.indexWhere((t) => t.name == checkup.name);
+      if (templateIndex != -1) {
+        final template = standardCheckups[templateIndex];
+        if (!template.appliesTo(profile)) {
+          await _repository.deleteCheckup(checkup.id);
+        }
+      }
+    }
 
+    // Load remaining existing checkups after deletion
+    final remainingCheckups = await _repository.loadCheckups(profile.id);
+    final remainingNames = remainingCheckups.map((c) => c.name).toSet();
+
+    // 2. Add standard checkups that now apply
     for (final template in standardCheckups) {
-      if (template.appliesTo(profile) && !existingNames.contains(template.name)) {
+      if (template.appliesTo(profile) && !remainingNames.contains(template.name)) {
         final newCheckup = Checkup(
           profileId: profile.id,
           name: template.name,
