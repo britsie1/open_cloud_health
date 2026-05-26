@@ -43,6 +43,80 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
     super.dispose();
   }
 
+  int _calculateAge(DateTime dob) {
+    final today = DateTime.now();
+    int age = today.year - dob.year;
+    if (today.month < dob.month ||
+        (today.month == dob.month && today.day < dob.day)) {
+      age--;
+    }
+    return age;
+  }
+
+  bool _isFertilityToggleVisible() {
+    if (_selectedGender != Gender.female) return false;
+    if (_selectedDateController.text.isEmpty) return true;
+    try {
+      final dob = DateTime.parse(_selectedDateController.text);
+      final age = _calculateAge(dob);
+      return age > 10;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  void _checkFertilityToggleConstraint() {
+    if (!_isFertilityToggleVisible()) {
+      _trackOvulation = false;
+    }
+  }
+
+  void _onGenderChanged(Gender? newGender) {
+    if (newGender == null) return;
+    setState(() {
+      final oldGender = _selectedGender;
+      _selectedGender = newGender;
+      
+      // If switching from male/null to female, and the age is > 10, default trackOvulation to true.
+      if (newGender == Gender.female && oldGender != Gender.female) {
+        if (_selectedDateController.text.isNotEmpty) {
+          try {
+            final dob = DateTime.parse(_selectedDateController.text);
+            if (_calculateAge(dob) > 10) {
+              _trackOvulation = true;
+            }
+          } catch (_) {
+            _trackOvulation = true;
+          }
+        } else {
+          _trackOvulation = true;
+        }
+      }
+      
+      _checkFertilityToggleConstraint();
+    });
+  }
+
+  void _onDateOfBirthChanged(DateTime dateTime) {
+    setState(() {
+      final dobStr = formatter.format(dateTime);
+      final ageBefore = _selectedDateController.text.isNotEmpty 
+          ? _calculateAge(DateTime.parse(_selectedDateController.text)) 
+          : null;
+      _selectedDateController.text = dobStr;
+      
+      final ageAfter = _calculateAge(dateTime);
+      
+      // If it becomes an adult female, and was previously a child female (where it was forced off),
+      // we can default trackOvulation back to true.
+      if (_selectedGender == Gender.female && ageAfter > 10 && (ageBefore != null && ageBefore <= 10)) {
+        _trackOvulation = true;
+      }
+      
+      _checkFertilityToggleConstraint();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -77,6 +151,8 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
       _selectedGender = _activeProfile!.gender;
       _selectedBloodType = _activeProfile!.bloodType;
       _isOrganDonor = _activeProfile!.isOrganDonor;
+      _trackOvulation = _activeProfile!.trackOvulation;
+      _checkFertilityToggleConstraint();
 
       ref
           .read(profilesProvider.notifier)
@@ -90,6 +166,9 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
           });
         }
       });
+    } else {
+      _trackOvulation = true;
+      _checkFertilityToggleConstraint();
     }
   }
 
@@ -109,6 +188,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
           gender: _selectedGender!,
           bloodType: _selectedBloodType,
           isOrganDonor: _isOrganDonor,
+          trackOvulation: _trackOvulation,
           imageFile: _isNewImagePicked ? _pickImageFile : null,
           isUpdate: _isEditing,
         );
@@ -266,8 +346,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                                         : DateTime.parse(
                                             _selectedDateController.text),
                                 onConfirm: (dateTime, selectedIndex) {
-                                  _selectedDateController.text =
-                                      formatter.format(dateTime);
+                                  _onDateOfBirthChanged(dateTime);
                                 },
                               );
                             },
@@ -305,11 +384,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                                 ),
                               );
                             }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedGender = value!;
-                              });
-                            },
+                            onChanged: _onGenderChanged,
                             validator: (value) {
                               if (value == null) {
                                 return 'Please select your medical gender.';
@@ -379,7 +454,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                         ),
                       ],
                     ),
-                    if (_selectedGender == Gender.female)
+                    if (_isFertilityToggleVisible())
                       Row(
                         children: [
                           const Icon(Icons.child_care),

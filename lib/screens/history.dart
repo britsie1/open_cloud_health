@@ -72,6 +72,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       body: historyAsync.when(
         data: (events) {
           final filteredEvents = events.where((event) {
+            if (activeProfile.gender == Gender.male && event.eventType == EventType.period) {
+              return false;
+            }
             if (!_selectedTypes.contains(event.eventType)) {
               return false;
             }
@@ -125,7 +128,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: EventType.values.map((type) {
+                      children: EventType.values
+                          .where((type) => !(activeProfile.gender == Gender.male && type == EventType.period))
+                          .map((type) {
                         final isSelected = _selectedTypes.contains(type);
                         return Padding(
                           padding: const EdgeInsets.only(right: 8.0),
