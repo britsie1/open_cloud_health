@@ -593,7 +593,7 @@ class _MedicationSummaryItem extends ConsumerWidget {
                   Icon(Icons.warning, size: 10, color: theme.colorScheme.onErrorContainer),
                   const SizedBox(width: 2),
                   Text(
-                    'Low Stock: ${med.stockQuantity.toInt()}',
+                    'Low Stock: ${med.stockQuantityFormatted}',
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.bold,
@@ -607,39 +607,54 @@ class _MedicationSummaryItem extends ConsumerWidget {
       ),
       subtitle: Text(
         med.trackInventory
-            ? '${med.dosage} at $timeFormatted • Stock: ${med.stockQuantity.toInt()} left'
+            ? '${med.dosage} at $timeFormatted • Stock: ${med.stockQuantityFormatted} left'
             : '${med.dosage} at $timeFormatted',
       ),
       value: isTaken,
       activeColor: Colors.blue,
       onChanged: (val) async {
-        Result<void, Exception> result;
         final now = DateTime.now();
         final targetTimestamp = DateTime(now.year, now.month, now.day, taskTime.hour, taskTime.minute);
 
         if (val == true) {
-          result = await ref
-              .read(medicationLogsProvider(profileId).notifier)
-              .addLog(
-                MedicationLog(
-                  medicationId: med.id,
-                  timestamp: targetTimestamp,
-                ),
+          if (med.dosage.trim().isEmpty) {
+            showDialog(
+              context: context,
+              builder: (ctx) => LogTrackedDoseDialog(
+                profileId: profileId,
+                medication: med,
+                initialTimestamp: targetTimestamp,
+              ),
+            );
+          } else {
+            final result = await ref
+                .read(medicationLogsProvider(profileId).notifier)
+                .addLog(
+                  MedicationLog(
+                    medicationId: med.id,
+                    timestamp: targetTimestamp,
+                    dosage: med.dosage,
+                  ),
+                );
+            if (result is Failure && context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to update log: ${result.exception}')),
               );
+            }
+          }
         } else {
-          result = await ref
+          final result = await ref
               .read(medicationLogsProvider(profileId).notifier)
               .removeLog(
                 med.id,
                 targetTimestamp,
                 time: taskTime,
               );
-        }
-
-        if (result is Failure && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update log: ${result.exception}')),
-          );
+          if (result is Failure && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to update log: ${result.exception}')),
+            );
+          }
         }
       },
     );
@@ -687,7 +702,7 @@ class _PRNMedicationSummaryItem extends ConsumerWidget {
                   Icon(Icons.warning, size: 10, color: theme.colorScheme.onErrorContainer),
                   const SizedBox(width: 2),
                   Text(
-                    'Low Stock: ${medication.stockQuantity.toInt()}',
+                    'Low Stock: ${medication.stockQuantityFormatted}',
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.bold,
@@ -701,7 +716,7 @@ class _PRNMedicationSummaryItem extends ConsumerWidget {
       ),
       subtitle: Text(
         medication.trackInventory
-            ? '${medication.dosage} • Stock: ${medication.stockQuantity.toInt()} left'
+            ? '${medication.dosage} • Stock: ${medication.stockQuantityFormatted} left'
             : medication.dosage,
       ),
       trailing: ElevatedButton.icon(

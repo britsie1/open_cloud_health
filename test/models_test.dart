@@ -244,6 +244,35 @@ void main() {
       expect(copied.stockQuantity, 95.0);
       expect(copied.isAsNeeded, true);
     });
+
+    test('Medication parseDosageQuantity parses numeric values correctly', () {
+      expect(parseDosageQuantity('2.5ml'), 2.5);
+      expect(parseDosageQuantity('5 ml'), 5.0);
+      expect(parseDosageQuantity('0.5 tablet'), 0.5);
+      expect(parseDosageQuantity('Take 1 pill'), 1.0);
+      expect(parseDosageQuantity('No numbers here'), 1.0);
+      expect(parseDosageQuantity(''), 1.0);
+    });
+
+    test('Medication formatStockQuantity and formatted getters format values cleanly', () {
+      final med = Medication(
+        profileId: 'p1',
+        name: 'Insulin',
+        dosage: '2.5ml',
+        trackInventory: true,
+        stockQuantity: 47.50,
+        lowStockThreshold: 10.0,
+      );
+
+      expect(med.stockQuantityFormatted, '47.5');
+      expect(med.lowStockThresholdFormatted, '10');
+
+      final med2 = med.copyWith(stockQuantity: 50.0);
+      expect(med2.stockQuantityFormatted, '50');
+
+      final med3 = med.copyWith(stockQuantity: 47.25);
+      expect(med3.stockQuantityFormatted, '47.25');
+    });
   });
 
   group('MedicationLog Model Tests', () {

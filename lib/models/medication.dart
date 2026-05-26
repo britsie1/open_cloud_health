@@ -47,6 +47,9 @@ class Medication {
     return '$hour:$minute';
   }
 
+  String get stockQuantityFormatted => formatStockQuantity(stockQuantity);
+  String get lowStockThresholdFormatted => formatStockQuantity(lowStockThreshold);
+
   Medication copyWith({
     String? id,
     String? profileId,
@@ -82,4 +85,26 @@ class Medication {
       lowStockThreshold: lowStockThreshold ?? this.lowStockThreshold,
     );
   }
+}
+
+double parseDosageQuantity(String dosage) {
+  final regex = RegExp(r'([0-9]+(?:\.[0-9]+)?)');
+  final match = regex.firstMatch(dosage);
+  if (match != null) {
+    return double.tryParse(match.group(1)!) ?? 1.0;
+  }
+  return 1.0;
+}
+
+String formatStockQuantity(double stock) {
+  if (stock == stock.roundToDouble()) {
+    return stock.round().toString();
+  }
+  final str = stock.toStringAsFixed(2);
+  if (str.endsWith('.00')) {
+    return str.substring(0, str.length - 3);
+  } else if (str.endsWith('0')) {
+    return str.substring(0, str.length - 1);
+  }
+  return str;
 }

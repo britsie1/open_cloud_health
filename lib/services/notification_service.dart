@@ -9,6 +9,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:open_cloud_health/database/database_helper.dart';
+import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -26,10 +27,18 @@ void notificationTapBackground(NotificationResponse response) async {
   final db = await dbHelper.getDatabase();
 
   if (response.actionId == 'mark_taken') {
+    final List<Map<String, dynamic>> meds = await db.query(
+      'medications',
+      where: 'id = ?',
+      whereArgs: [medicationId],
+    );
+    final String? medDosage = meds.isNotEmpty ? meds.first['dosage'] as String? : null;
+
     final log = MedicationLog(
       id: const Uuid().v4(),
       medicationId: medicationId,
       timestamp: DateTime.now(),
+      dosage: medDosage,
     );
 
     await db.insert('medication_logs', {
@@ -37,20 +46,17 @@ void notificationTapBackground(NotificationResponse response) async {
       'medicationId': log.medicationId,
       'timestamp': log.timestamp.toIso8601String(),
       'isTaken': log.isTaken.toString(),
+      'dosage': log.dosage,
     });
 
-    // Background stock decrement direct SQLite query
-    final List<Map<String, dynamic>> meds = await db.query(
-      'medications',
-      where: 'id = ?',
-      whereArgs: [medicationId],
-    );
+    // Background stock decrement direct SQLite query using parsed dosage quantity
     if (meds.isNotEmpty) {
       final med = meds.first;
       final trackInventory = med['trackInventory'] == 'true';
       if (trackInventory) {
         final currentStock = (med['stockQuantity'] as num?)?.toDouble() ?? 0.0;
-        final newStock = (currentStock - 1.0).clamp(0.0, double.infinity);
+        final dosageVal = parseDosageQuantity(med['dosage'] as String? ?? '');
+        final newStock = (currentStock - dosageVal).clamp(0.0, double.infinity);
         await db.update(
           'medications',
           {'stockQuantity': newStock},
@@ -184,10 +190,18 @@ class NotificationService {
     final dbHelper = DatabaseHelper();
     final db = await dbHelper.getDatabase();
     
+    final List<Map<String, dynamic>> meds = await db.query(
+      'medications',
+      where: 'id = ?',
+      whereArgs: [medicationId],
+    );
+    final String? medDosage = meds.isNotEmpty ? meds.first['dosage'] as String? : null;
+
     final log = MedicationLog(
       id: const Uuid().v4(),
       medicationId: medicationId,
       timestamp: DateTime.now(),
+      dosage: medDosage,
     );
 
     await db.insert('medication_logs', {
@@ -195,20 +209,17 @@ class NotificationService {
       'medicationId': log.medicationId,
       'timestamp': log.timestamp.toIso8601String(),
       'isTaken': log.isTaken.toString(),
+      'dosage': log.dosage,
     });
 
-    // Decrement stock in foreground directly
-    final List<Map<String, dynamic>> meds = await db.query(
-      'medications',
-      where: 'id = ?',
-      whereArgs: [medicationId],
-    );
+    // Decrement stock in foreground directly using parsed dosage quantity
     if (meds.isNotEmpty) {
       final med = meds.first;
       final trackInventory = med['trackInventory'] == 'true';
       if (trackInventory) {
         final currentStock = (med['stockQuantity'] as num?)?.toDouble() ?? 0.0;
-        final newStock = (currentStock - 1.0).clamp(0.0, double.infinity);
+        final dosageVal = parseDosageQuantity(med['dosage'] as String? ?? '');
+        final newStock = (currentStock - dosageVal).clamp(0.0, double.infinity);
         await db.update(
           'medications',
           {'stockQuantity': newStock},

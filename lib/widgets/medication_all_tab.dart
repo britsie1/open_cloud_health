@@ -46,7 +46,23 @@ class MedicationAllTab extends ConsumerWidget {
             return ListTile(
               leading: SizedBox(height: 32, width: 32, child: _getMedicationIcon(med.type)),
               title: Text(med.name),
-              subtitle: Text('${med.dosage} - ${med.timeFormatted}'),
+              subtitle: Builder(
+                builder: (context) {
+                  final List<String> parts = [];
+                  if (med.dosage.trim().isNotEmpty) {
+                    parts.add(med.dosage);
+                  }
+                  if (med.isAsNeeded) {
+                    parts.add('As needed');
+                  } else {
+                    parts.add(med.timeFormatted);
+                  }
+                  if (med.trackInventory) {
+                    parts.add('Stock: ${med.stockQuantityFormatted}');
+                  }
+                  return Text(parts.join(' • '));
+                },
+              ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [

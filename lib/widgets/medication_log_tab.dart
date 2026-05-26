@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:open_cloud_health/providers/medications_provider.dart';
+import 'package:open_cloud_health/models/medication.dart';
 
 class MedicationLogTab extends ConsumerStatefulWidget {
   const MedicationLogTab({super.key, required this.profileId});
@@ -60,22 +61,27 @@ class _MedicationLogTabState extends ConsumerState<MedicationLogTab> {
                 }
 
                 final log = logs[index];
-                final medication = medications.firstWhere(
-                  (m) => m.id == log.medicationId,
-                  // Fallback in case a medication was deleted but logs remain
-                  orElse: () => throw Exception('Medication not found'),
-                );
+                
+                Medication? medication;
+                try {
+                  medication = medications.firstWhere((m) => m.id == log.medicationId);
+                } catch (_) {}
+
+                final medName = medication?.name ?? 'Deleted Medication';
+                final dosageText = (log.dosage != null && log.dosage!.trim().isNotEmpty)
+                    ? log.dosage!
+                    : (medication?.dosage ?? '');
 
                 return ListTile(
                   leading: Icon(
                     log.isTaken ? Icons.check_circle : Icons.cancel,
                     color: log.isTaken ? Colors.green : Colors.red,
                   ),
-                  title: Text(medication.name),
+                  title: Text(medName),
                   subtitle: Text(
                     DateFormat('MMM d, y - h:mm a').format(log.timestamp),
                   ),
-                  trailing: Text(medication.dosage),
+                  trailing: Text(dosageText),
                 );
               },
             );

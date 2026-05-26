@@ -8,11 +8,13 @@ import 'package:open_cloud_health/utils/result.dart';
 class LogTrackedDoseDialog extends ConsumerStatefulWidget {
   final String profileId;
   final Medication medication;
+  final DateTime? initialTimestamp;
 
   const LogTrackedDoseDialog({
     super.key,
     required this.profileId,
     required this.medication,
+    this.initialTimestamp,
   });
 
   @override
@@ -23,12 +25,14 @@ class _LogTrackedDoseDialogState extends ConsumerState<LogTrackedDoseDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _dosageController;
   late DateTime _selectedTime;
+  bool _saveAsDefault = false;
 
   @override
   void initState() {
     super.initState();
     _dosageController = TextEditingController(text: widget.medication.dosage);
-    _selectedTime = DateTime.now();
+    _selectedTime = widget.initialTimestamp ?? DateTime.now();
+    _saveAsDefault = widget.medication.dosage.trim().isEmpty;
   }
 
   @override
@@ -69,6 +73,14 @@ class _LogTrackedDoseDialogState extends ConsumerState<LogTrackedDoseDialog> {
       dosage: dosage,
     );
 
+    // Save as default if requested
+    if (_saveAsDefault) {
+      final updatedMed = widget.medication.copyWith(dosage: dosage);
+      await ref
+          .read(medicationsProvider(widget.profileId).notifier)
+          .updateMedication(updatedMed);
+    }
+
     final result = await ref
         .read(medicationLogsProvider(widget.profileId).notifier)
         .addLog(log);
@@ -79,7 +91,9 @@ class _LogTrackedDoseDialogState extends ConsumerState<LogTrackedDoseDialog> {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Logged dose for ${widget.medication.name} ($dosage)'),
+          content: Text(_saveAsDefault
+              ? 'Saved default and logged dose for ${widget.medication.name} ($dosage)'
+              : 'Logged dose for ${widget.medication.name} ($dosage)'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -136,7 +150,19 @@ class _LogTrackedDoseDialogState extends ConsumerState<LogTrackedDoseDialog> {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Save as default dosage'),
+                subtitle: const Text('Use this amount as the default going forward'),
+                value: _saveAsDefault,
+                onChanged: (val) {
+                  setState(() {
+                    _saveAsDefault = val ?? false;
+                  });
+                },
+              ),
+              const SizedBox(height: 8),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.access_time),

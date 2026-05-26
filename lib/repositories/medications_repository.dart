@@ -186,7 +186,11 @@ class MedicationsRepository {
       final trackInventory = med['trackInventory'] == 'true';
       if (trackInventory) {
         final currentStock = (med['stockQuantity'] as num?)?.toDouble() ?? 0.0;
-        final newStock = (currentStock - 1.0).clamp(0.0, double.infinity);
+        final dosageToParse = (log.dosage != null && log.dosage!.trim().isNotEmpty)
+            ? log.dosage!
+            : (med['dosage'] as String? ?? '');
+        final decrementVal = parseDosageQuantity(dosageToParse);
+        final newStock = (currentStock - decrementVal).clamp(0.0, double.infinity);
         await db.update(
           'medications',
           {'stockQuantity': newStock},
@@ -243,7 +247,15 @@ class MedicationsRepository {
         final trackInventory = med['trackInventory'] == 'true';
         if (trackInventory) {
           final currentStock = (med['stockQuantity'] as num?)?.toDouble() ?? 0.0;
-          final newStock = currentStock + deleteCount;
+          double totalIncrement = 0.0;
+          for (final log in logsToDelete) {
+            final logDosage = log['dosage'] as String?;
+            final dosageToParse = (logDosage != null && logDosage.trim().isNotEmpty)
+                ? logDosage
+                : (med['dosage'] as String? ?? '');
+            totalIncrement += parseDosageQuantity(dosageToParse);
+          }
+          final newStock = currentStock + totalIncrement;
           await db.update(
             'medications',
             {'stockQuantity': newStock},

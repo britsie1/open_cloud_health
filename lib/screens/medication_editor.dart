@@ -304,7 +304,7 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
                         TextFormField(
                           controller: _dosageController,
                           decoration: InputDecoration(
-                            labelText: 'Dosage',
+                            labelText: 'Dosage (Optional)',
                             prefixIcon: const Icon(Icons.scale),
                             hintText: 'e.g., 200mg, 1 tablet',
                             border: OutlineInputBorder(
@@ -312,9 +312,6 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
                             ),
                           ),
                           validator: (val) {
-                            if (val == null || val.trim().isEmpty) {
-                              return 'Please enter dosage';
-                            }
                             return null;
                           },
                         ),
@@ -337,48 +334,51 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
                 const SizedBox(height: 20),
 
                 // Type selector card
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Medication Type',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary,
+                SizedBox(
+                  width: double.infinity,
+                  child: Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Medication Type',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: _medicationTypes.map((type) {
-                            final isSelected = _selectedType == type;
-                            return ChoiceChip(
-                              label: Text(type),
-                              selected: isSelected,
-                              selectedColor: theme.colorScheme.primary.withOpacity(0.2),
-                              labelStyle: TextStyle(
-                                color: isSelected 
-                                    ? theme.colorScheme.primary 
-                                    : theme.colorScheme.onSurface,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              ),
-                              onSelected: (selected) {
-                                if (selected) {
-                                  setState(() {
-                                    _selectedType = type;
-                                  });
-                                }
-                              },
-                            );
-                          }).toList(),
-                        ),
-                      ],
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _medicationTypes.map((type) {
+                              final isSelected = _selectedType == type;
+                              return ChoiceChip(
+                                label: Text(type),
+                                selected: isSelected,
+                                selectedColor: theme.colorScheme.primary.withOpacity(0.2),
+                                labelStyle: TextStyle(
+                                  color: isSelected 
+                                      ? theme.colorScheme.primary 
+                                      : theme.colorScheme.onSurface,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                ),
+                                onSelected: (selected) {
+                                  if (selected) {
+                                    setState(() {
+                                      _selectedType = type;
+                                    });
+                                  }
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
