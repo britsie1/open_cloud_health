@@ -23,8 +23,6 @@ class AppRoutes {
   static const String medicationBase = '/medication-base';
   static const String medicationEditor = '/medication-editor';
   static const String checkups = '/checkups';
-  static const String measurements = '/measurements';
-  static const String measurementsBase = '/measurements-base';
   static const String settings = '/settings';
   static const String periodTracker = '/period-tracker';
   static const String vitalTracker = '/vital-tracker';

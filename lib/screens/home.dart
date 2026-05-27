@@ -747,20 +747,10 @@ class _VitalsSection extends StatelessWidget {
 
   final Profile profile;
 
-  int _calculateAge(DateTime birthDate) {
-    final today = DateTime.now();
-    int age = today.year - birthDate.year;
-    if (today.month < birthDate.month ||
-        (today.month == birthDate.month && today.day < birthDate.day)) {
-      age--;
-    }
-    return age;
-  }
-
   @override
   Widget build(BuildContext context) {
     final showPeriodTracker =
-        profile.gender == Gender.female && _calculateAge(profile.dateOfBirth) >= 10;
+        profile.gender == Gender.female && profile.age >= 10;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,

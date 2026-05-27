@@ -23,16 +23,6 @@ class StandardCheckupTemplate {
   }
 }
 
-int calculateAge(DateTime birthDate) {
-  final today = DateTime.now();
-  int age = today.year - birthDate.year;
-  if (today.month < birthDate.month ||
-      (today.month == birthDate.month && today.day < birthDate.day)) {
-    age--;
-  }
-  return age;
-}
-
 final List<StandardCheckupTemplate> standardCheckups = [
   StandardCheckupTemplate(
     name: 'Annual Physical Exam',
@@ -51,7 +41,7 @@ final List<StandardCheckupTemplate> standardCheckups = [
     frequencyInMonths: 12,
     iconName: 'blood_pressure',
     appliesTo: (profile) =>
-        calculateAge(profile.dateOfBirth) >= 18 ||
+        profile.age >= 18 ||
         profile.chronicConditions.contains('Hypertension') ||
         profile.chronicConditions.contains('Coronary Artery Disease'),
     customFrequency: (profile) {
@@ -68,14 +58,14 @@ final List<StandardCheckupTemplate> standardCheckups = [
     name: 'Skin Exam',
     frequencyInMonths: 12,
     iconName: 'health_and_safety',
-    appliesTo: (profile) => calculateAge(profile.dateOfBirth) >= 18,
+    appliesTo: (profile) => profile.age >= 18,
   ),
   StandardCheckupTemplate(
     name: 'Cholesterol Screening',
     frequencyInMonths: 60,
     iconName: 'bloodtype',
     appliesTo: (profile) =>
-        calculateAge(profile.dateOfBirth) >= 20 ||
+        profile.age >= 20 ||
         profile.chronicConditions.contains('Hypercholesterolemia') ||
         profile.chronicConditions.contains('Coronary Artery Disease') ||
         profile.chronicConditions.contains('Polycystic Ovary Syndrome (PCOS)'),
@@ -93,7 +83,7 @@ final List<StandardCheckupTemplate> standardCheckups = [
     frequencyInMonths: 36,
     iconName: 'diabetes',
     appliesTo: (profile) =>
-        calculateAge(profile.dateOfBirth) >= 35 ||
+        profile.age >= 35 ||
         profile.chronicConditions.contains('Diabetes') ||
         profile.chronicConditions.contains('Polycystic Ovary Syndrome (PCOS)'),
     customFrequency: (profile) {
@@ -110,19 +100,19 @@ final List<StandardCheckupTemplate> standardCheckups = [
     name: 'Comprehensive Eye Exam',
     frequencyInMonths: 24,
     iconName: 'remove_red_eye',
-    appliesTo: (profile) => calculateAge(profile.dateOfBirth) < 65,
+    appliesTo: (profile) => profile.age < 65,
   ),
   StandardCheckupTemplate(
     name: 'Senior Eye Exam',
     frequencyInMonths: 12,
     iconName: 'remove_red_eye',
-    appliesTo: (profile) => calculateAge(profile.dateOfBirth) >= 65,
+    appliesTo: (profile) => profile.age >= 65,
   ),
   StandardCheckupTemplate(
     name: 'Hearing Test',
     frequencyInMonths: 12,
     iconName: 'hearing',
-    appliesTo: (profile) => calculateAge(profile.dateOfBirth) >= 65,
+    appliesTo: (profile) => profile.age >= 65,
   ),
   StandardCheckupTemplate(
     name: 'Pap Smear (Cervical Cancer Screening)',
@@ -130,23 +120,23 @@ final List<StandardCheckupTemplate> standardCheckups = [
     iconName: 'science',
     appliesTo: (profile) =>
         profile.gender == Gender.female &&
-        calculateAge(profile.dateOfBirth) >= 21 &&
-        calculateAge(profile.dateOfBirth) <= 65,
+        profile.age >= 21 &&
+        profile.age <= 65,
   ),
   StandardCheckupTemplate(
     name: 'Mammogram (Breast Cancer Screening)',
     frequencyInMonths: 24,
     iconName: 'woman',
     appliesTo: (profile) =>
-        profile.gender == Gender.female && calculateAge(profile.dateOfBirth) >= 40,
+        profile.gender == Gender.female && profile.age >= 40,
   ),
   StandardCheckupTemplate(
     name: 'Bone Density (DEXA) Scan',
     frequencyInMonths: 24,
     iconName: 'accessibility',
     appliesTo: (profile) =>
-        (profile.gender == Gender.female && calculateAge(profile.dateOfBirth) >= 65) ||
-        (profile.gender == Gender.male && calculateAge(profile.dateOfBirth) >= 70) ||
+        (profile.gender == Gender.female && profile.age >= 65) ||
+        (profile.gender == Gender.male && profile.age >= 70) ||
         profile.chronicConditions.contains('Osteoporosis'),
     customFrequency: (profile) {
       if (profile.chronicConditions.contains('Osteoporosis')) {
@@ -160,13 +150,13 @@ final List<StandardCheckupTemplate> standardCheckups = [
     frequencyInMonths: 12,
     iconName: 'man',
     appliesTo: (profile) =>
-        profile.gender == Gender.male && calculateAge(profile.dateOfBirth) >= 50,
+        profile.gender == Gender.male && profile.age >= 50,
   ),
   StandardCheckupTemplate(
     name: 'Colonoscopy (Colorectal Cancer Screening)',
     frequencyInMonths: 120,
     iconName: 'biotech',
-    appliesTo: (profile) => calculateAge(profile.dateOfBirth) >= 45,
+    appliesTo: (profile) => profile.age >= 45,
   ),
   // New chronic condition-specific checkups:
   StandardCheckupTemplate(
