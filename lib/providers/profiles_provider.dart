@@ -29,10 +29,17 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
     required String bloodType,
     required bool isOrganDonor,
     bool trackOvulation = true,
+    List<String> chronicConditions = const [],
     File? imageFile,
     bool isUpdate = false,
   }) async {
     try {
+      final resolvedConditions = List<String>.from(chronicConditions);
+      if (gender == Gender.male) {
+        resolvedConditions.remove('Endometriosis');
+        resolvedConditions.remove('Polycystic Ovary Syndrome (PCOS)');
+      }
+
       String profileId;
       final profile = Profile(
         id: id,
@@ -44,6 +51,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
         bloodType: bloodType,
         isOrganDonor: isOrganDonor,
         trackOvulation: trackOvulation,
+        chronicConditions: resolvedConditions,
       );
 
       if (!isUpdate) {
@@ -136,6 +144,40 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
     }
   }
 
+  Future<Result<void, Exception>> updateChronicConditions(String profileId, List<String> conditions) async {
+    try {
+      final activeProfiles = state.value ?? [];
+      final profile = activeProfiles.firstWhere((p) => p.id == profileId);
+      
+      final resolvedConditions = List<String>.from(conditions);
+      if (profile.gender == Gender.male) {
+        resolvedConditions.remove('Endometriosis');
+        resolvedConditions.remove('Polycystic Ovary Syndrome (PCOS)');
+      }
+
+      final updatedProfile = Profile(
+        id: profile.id,
+        name: profile.name,
+        middleNames: profile.middleNames,
+        surname: profile.surname,
+        dateOfBirth: profile.dateOfBirth,
+        gender: profile.gender,
+        bloodType: profile.bloodType,
+        isOrganDonor: profile.isOrganDonor,
+        trackOvulation: profile.trackOvulation,
+        isArchived: profile.isArchived,
+        archivedAt: profile.archivedAt,
+        chronicConditions: resolvedConditions,
+      );
+
+      await _repository.updateProfile(updatedProfile);
+      await loadProfiles();
+      return const Success(null);
+    } catch (e) {
+      return Failure(e is Exception ? e : Exception(e.toString()));
+    }
+  }
+
   Future<Result<void, Exception>> archiveProfile(String id) async {
     try {
       final activeProfiles = state.value ?? [];
@@ -152,6 +194,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
         trackOvulation: profile.trackOvulation,
         isArchived: true,
         archivedAt: DateTime.now(),
+        chronicConditions: profile.chronicConditions,
       );
 
       await _repository.updateProfile(archivedProfile);
@@ -178,6 +221,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
         trackOvulation: profile.trackOvulation,
         isArchived: false,
         archivedAt: null,
+        chronicConditions: profile.chronicConditions,
       );
 
       await _repository.updateProfile(restoredProfile);

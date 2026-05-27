@@ -67,8 +67,11 @@ class DatabaseHelper {
           await db.execute("ALTER TABLE history ADD COLUMN provider TEXT");
           await db.execute("ALTER TABLE history ADD COLUMN facility TEXT");
         }
+        if (oldVersion < 12) {
+          await db.execute("ALTER TABLE profiles ADD COLUMN chronicConditions TEXT DEFAULT ''");
+        }
       },
-      version: 11,
+      version: 12,
     );
 
     return db;
@@ -106,7 +109,8 @@ String createProfilesTable = '''
     isOrganDonor TEXT,
     trackOvulation TEXT,
     isArchived TEXT DEFAULT 'false',
-    archivedAt TEXT
+    archivedAt TEXT,
+    chronicConditions TEXT DEFAULT ''
   )''';
 
 String createHistoryTable = '''

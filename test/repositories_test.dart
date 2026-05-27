@@ -35,7 +35,8 @@ void main() {
           isOrganDonor TEXT,
           trackOvulation TEXT,
           isArchived TEXT DEFAULT 'false',
-          archivedAt TEXT
+          archivedAt TEXT,
+          chronicConditions TEXT DEFAULT ''
         )''');
       await db.execute('''
         CREATE TABLE history(

@@ -28,6 +28,18 @@ IconData getCheckupIcon(String? iconName) {
       return Icons.hearing;
     case 'accessibility':
       return Icons.accessibility;
+    case 'foot':
+      return Icons.healing;
+    case 'lungs':
+      return Icons.air;
+    case 'gynecology':
+      return Icons.female;
+    case 'female':
+      return Icons.female;
+    case 'thyroid':
+      return Icons.monitor_heart;
+    case 'kidneys':
+      return Icons.science;
     default:
       return Icons.health_and_safety;
   }
@@ -104,6 +116,18 @@ Widget getCheckupIconWidget(String? iconName, {String? checkupName, Color? color
       return UrologyOutline(color: color, width: size, height: size);
     case 'biotech':
       return IntestineOutline(color: color, width: size, height: size);
+    case 'foot':
+      return FootOutline(color: color, width: size, height: size);
+    case 'lungs':
+      return LungsOutline(color: color, width: size, height: size);
+    case 'gynecology':
+      return GynecologyOutline(color: color, width: size, height: size);
+    case 'female':
+      return FemaleOutline(color: color, width: size, height: size);
+    case 'thyroid':
+      return ThyroidOutline(color: color, width: size, height: size);
+    case 'kidneys':
+      return KidneysOutline(color: color, width: size, height: size);
     case 'event':
     default:
       return StethoscopeOutline(color: color, width: size, height: size);

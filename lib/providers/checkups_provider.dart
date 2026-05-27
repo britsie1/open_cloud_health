@@ -64,16 +64,32 @@ class CheckupsNotifier extends FamilyAsyncNotifier<List<CheckupWithStatus>, Stri
     final remainingCheckups = await _repository.loadCheckups(profile.id);
     final remainingNames = remainingCheckups.map((c) => c.name).toSet();
 
-    // 2. Add standard checkups that now apply
+    // 2. Add standard checkups that now apply, or update their frequency if it changed
     for (final template in standardCheckups) {
-      if (template.appliesTo(profile) && !remainingNames.contains(template.name)) {
-        final newCheckup = Checkup(
-          profileId: profile.id,
-          name: template.name,
-          frequencyInMonths: template.frequencyInMonths,
-          iconName: template.iconName,
-        );
-        await _repository.addCheckup(newCheckup);
+      if (template.appliesTo(profile)) {
+        final expectedFrequency = template.getFrequency(profile);
+        
+        if (!remainingNames.contains(template.name)) {
+          final newCheckup = Checkup(
+            profileId: profile.id,
+            name: template.name,
+            frequencyInMonths: expectedFrequency,
+            iconName: template.iconName,
+          );
+          await _repository.addCheckup(newCheckup);
+        } else {
+          final existing = remainingCheckups.firstWhere((c) => c.name == template.name);
+          if (existing.frequencyInMonths != expectedFrequency) {
+            final updatedCheckup = Checkup(
+              id: existing.id,
+              profileId: existing.profileId,
+              name: existing.name,
+              frequencyInMonths: expectedFrequency,
+              iconName: existing.iconName,
+            );
+            await _repository.updateCheckup(updatedCheckup);
+          }
+        }
       }
     }
   }

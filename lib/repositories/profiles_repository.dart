@@ -33,6 +33,9 @@ class ProfilesRepository {
             trackOvulation: row['trackOvulation'] != null ? bool.parse(row['trackOvulation'] as String) : true,
             isArchived: row['isArchived'] != null ? bool.parse(row['isArchived'] as String) : false,
             archivedAt: row['archivedAt'] != null ? DateTime.parse(row['archivedAt'] as String) : null,
+            chronicConditions: row['chronicConditions'] != null && (row['chronicConditions'] as String).isNotEmpty
+                ? (row['chronicConditions'] as String).split(',')
+                : [],
         ))
         .toList();
   }
@@ -52,6 +55,7 @@ class ProfilesRepository {
           'trackOvulation': profile.trackOvulation.toString(),
           'isArchived': profile.isArchived.toString(),
           'archivedAt': profile.archivedAt?.toIso8601String(),
+          'chronicConditions': profile.chronicConditions.join(','),
         },
         where: 'id = ?',
         whereArgs: [profile.id]);
@@ -71,6 +75,7 @@ class ProfilesRepository {
       'trackOvulation': profile.trackOvulation.toString(),
       'isArchived': profile.isArchived.toString(),
       'archivedAt': profile.archivedAt?.toIso8601String(),
+      'chronicConditions': profile.chronicConditions.join(','),
     });
   }
 

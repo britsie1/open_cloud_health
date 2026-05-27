@@ -10,6 +10,7 @@ import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/utils/result.dart';
 import 'package:open_cloud_health/widgets/allergy_list_section.dart';
 import 'package:open_cloud_health/widgets/profile_image_picker.dart';
+import 'package:open_cloud_health/widgets/chronic_conditions_section.dart';
 
 class ProfileDetailScreen extends ConsumerStatefulWidget {
   const ProfileDetailScreen({super.key, this.profile, this.profileId});
@@ -36,6 +37,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
   bool _isNewImagePicked = false;
   Profile? _activeProfile;
   bool _isEditing = false;
+  List<String> _selectedChronicConditions = [];
 
   @override
   void dispose() {
@@ -152,6 +154,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
       _selectedBloodType = _activeProfile!.bloodType;
       _isOrganDonor = _activeProfile!.isOrganDonor;
       _trackOvulation = _activeProfile!.trackOvulation;
+      _selectedChronicConditions = List.from(_activeProfile!.chronicConditions);
       _checkFertilityToggleConstraint();
 
       ref
@@ -168,6 +171,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
       });
     } else {
       _trackOvulation = true;
+      _selectedChronicConditions = [];
       _checkFertilityToggleConstraint();
     }
   }
@@ -189,6 +193,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
           bloodType: _selectedBloodType,
           isOrganDonor: _isOrganDonor,
           trackOvulation: _trackOvulation,
+          chronicConditions: _selectedChronicConditions,
           imageFile: _isNewImagePicked ? _pickImageFile : null,
           isUpdate: _isEditing,
         );
@@ -474,8 +479,20 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                           ),
                         ],
                       ),
-                    if (_activeProfile != null)
+                    if (_activeProfile != null) ...[
                       AllergyListSection(profileId: _activeProfile!.id),
+                      const SizedBox(height: 16),
+                      ChronicConditionsSection(
+                        profileId: _activeProfile!.id,
+                        chronicConditions: _selectedChronicConditions,
+                        gender: _selectedGender ?? Gender.male,
+                        onChanged: (newConditions) {
+                          setState(() {
+                            _selectedChronicConditions = newConditions;
+                          });
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),

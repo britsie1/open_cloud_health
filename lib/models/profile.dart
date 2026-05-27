@@ -19,6 +19,7 @@ class Profile {
       this.trackOvulation = true,
       this.isArchived = false,
       this.archivedAt,
+      this.chronicConditions = const [],
       String? id})
       : id = id ?? uuid.v4();
 
@@ -33,6 +34,7 @@ class Profile {
   final bool trackOvulation;
   final bool isArchived;
   final DateTime? archivedAt;
+  final List<String> chronicConditions;
 
   String get formattedDate {
     return formatter.format(dateOfBirth);
