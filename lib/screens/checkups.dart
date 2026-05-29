@@ -40,23 +40,88 @@ class CheckupsScreen extends ConsumerWidget {
       ),
       body: checkupsAsync.when(
         data: (checkups) {
-          if (checkups.isEmpty) {
+          final activeCheckups = checkups.where((c) => c.checkup.isActive).toList();
+          final inactiveCheckups = checkups.where((c) => !c.checkup.isActive).toList();
+
+          final activeCount = activeCheckups.length;
+          final inactiveCount = inactiveCheckups.length;
+
+          if (activeCount == 0 && inactiveCount == 0) {
             return const Center(child: Text('No checkups found.'));
           }
 
-          return ListView.builder(
-            itemCount: checkups.length,
-            itemBuilder: (context, index) {
-              final checkupWithStatus = checkups[index];
-              return CheckupCard(
-                checkupWithStatus: checkupWithStatus,
-                onLogPressed: () => _openLogCheckup(
-                  context,
-                  checkupWithStatus.checkup.id,
-                  checkupWithStatus.checkup.name,
+          return ListView(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            children: [
+              if (activeCount == 0)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 24),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle_outline, size: 56, color: Colors.grey.shade400),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No Active Checkups',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'All checkups are either completed, deactivated, or not applicable.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                ...activeCheckups.map((checkupWithStatus) {
+                  return CheckupCard(
+                    checkupWithStatus: checkupWithStatus,
+                    onLogPressed: () => _openLogCheckup(
+                      context,
+                      checkupWithStatus.checkup.id,
+                      checkupWithStatus.checkup.name,
+                    ),
+                  );
+                }),
+
+              if (inactiveCount > 0) ...[
+                const SizedBox(height: 16),
+                Theme(
+                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    title: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'Disabled Checkups ($inactiveCount)',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                    children: inactiveCheckups.map((checkupWithStatus) {
+                      return CheckupCard(
+                        checkupWithStatus: checkupWithStatus,
+                        onLogPressed: () => _openLogCheckup(
+                          context,
+                          checkupWithStatus.checkup.id,
+                          checkupWithStatus.checkup.name,
+                        ),
+                      );
+                    }).toList(),
+                  ),
                 ),
-              );
-            },
+              ],
+            ],
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),

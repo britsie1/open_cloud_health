@@ -74,8 +74,15 @@ class DatabaseHelper {
         if (oldVersion < 13) {
           await db.execute(createSettingsTable);
         }
+        if (oldVersion < 14) {
+          await db.execute("ALTER TABLE checkups ADD COLUMN isCustomInterval TEXT DEFAULT 'false'");
+          await db.execute("ALTER TABLE checkups ADD COLUMN isActive TEXT DEFAULT 'true'");
+          await db.execute("ALTER TABLE checkup_logs ADD COLUMN location TEXT");
+          await db.execute("ALTER TABLE checkup_logs ADD COLUMN doctorName TEXT");
+          await db.execute("ALTER TABLE checkup_logs ADD COLUMN notes TEXT");
+        }
       },
-      version: 13,
+      version: 14,
     );
 
     return db;
@@ -230,14 +237,19 @@ String createCheckupsTable = '''
     profileId TEXT,
     name TEXT,
     frequencyInMonths INTEGER,
-    iconName TEXT
+    iconName TEXT,
+    isCustomInterval TEXT DEFAULT 'false',
+    isActive TEXT DEFAULT 'true'
   )''';
 
 String createCheckupLogsTable = '''
   CREATE TABLE checkup_logs(
     id TEXT PRIMARY KEY,
     checkupId TEXT,
-    dateCompleted TEXT
+    dateCompleted TEXT,
+    location TEXT,
+    doctorName TEXT,
+    notes TEXT
   )''';
 
 String createPeriodCyclesTable = '''

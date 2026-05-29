@@ -19,6 +19,8 @@ class CheckupsRepository {
               name: row['name'] as String,
               frequencyInMonths: row['frequencyInMonths'] as int,
               iconName: row['iconName'] as String?,
+              isCustomInterval: row['isCustomInterval'] == 'true',
+              isActive: row['isActive'] != 'false',
             ))
         .toList();
   }
@@ -31,6 +33,8 @@ class CheckupsRepository {
       'name': checkup.name,
       'frequencyInMonths': checkup.frequencyInMonths,
       'iconName': checkup.iconName,
+      'isCustomInterval': checkup.isCustomInterval ? 'true' : 'false',
+      'isActive': checkup.isActive ? 'true' : 'false',
     });
   }
 
@@ -42,6 +46,8 @@ class CheckupsRepository {
           'name': checkup.name,
           'frequencyInMonths': checkup.frequencyInMonths,
           'iconName': checkup.iconName,
+          'isCustomInterval': checkup.isCustomInterval ? 'true' : 'false',
+          'isActive': checkup.isActive ? 'true' : 'false',
         },
         where: 'id = ?',
         whereArgs: [checkup.id]);
@@ -70,6 +76,9 @@ class CheckupsRepository {
       id: row['id'] as String,
       checkupId: row['checkupId'] as String,
       dateCompleted: DateTime.parse(row['dateCompleted'] as String),
+      location: row['location'] as String?,
+      doctorName: row['doctorName'] as String?,
+      notes: row['notes'] as String?,
     );
   }
 
@@ -79,6 +88,9 @@ class CheckupsRepository {
       'id': log.id,
       'checkupId': log.checkupId,
       'dateCompleted': log.dateCompleted.toIso8601String(),
+      'location': log.location,
+      'doctorName': log.doctorName,
+      'notes': log.notes,
     });
   }
 
@@ -94,7 +106,33 @@ class CheckupsRepository {
       id: row['id'] as String,
       checkupId: row['checkupId'] as String,
       dateCompleted: DateTime.parse(row['dateCompleted'] as String),
+      location: row['location'] as String?,
+      doctorName: row['doctorName'] as String?,
+      notes: row['notes'] as String?,
     )).toList();
+  }
+
+  Future<List<CheckupLog>> loadLogsForCheckup(String checkupId) async {
+    final db = await _dbHelper.getDatabase();
+    final data = await db.query(
+      'checkup_logs',
+      where: 'checkupId = ?',
+      orderBy: 'dateCompleted DESC',
+    );
+
+    return data.map((row) => CheckupLog(
+      id: row['id'] as String,
+      checkupId: row['checkupId'] as String,
+      dateCompleted: DateTime.parse(row['dateCompleted'] as String),
+      location: row['location'] as String?,
+      doctorName: row['doctorName'] as String?,
+      notes: row['notes'] as String?,
+    )).toList();
+  }
+
+  Future<void> deleteCheckupLog(String logId) async {
+    final db = await _dbHelper.getDatabase();
+    await db.delete('checkup_logs', where: 'id = ?', whereArgs: [logId]);
   }
 }
 

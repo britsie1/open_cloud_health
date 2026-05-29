@@ -6,6 +6,7 @@ import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/repositories/checkups_repository.dart';
 import 'package:open_cloud_health/utils/result.dart';
 import 'package:open_cloud_health/utils/standard_checkups.dart';
+import 'package:open_cloud_health/providers/history_provider.dart';
 
 enum CheckupStatus {
   dueNow,
@@ -79,13 +80,9 @@ class CheckupsNotifier extends FamilyAsyncNotifier<List<CheckupWithStatus>, Stri
           await _repository.addCheckup(newCheckup);
         } else {
           final existing = remainingCheckups.firstWhere((c) => c.name == template.name);
-          if (existing.frequencyInMonths != expectedFrequency) {
-            final updatedCheckup = Checkup(
-              id: existing.id,
-              profileId: existing.profileId,
-              name: existing.name,
+          if (!existing.isCustomInterval && existing.frequencyInMonths != expectedFrequency) {
+            final updatedCheckup = existing.copyWith(
               frequencyInMonths: expectedFrequency,
-              iconName: existing.iconName,
             );
             await _repository.updateCheckup(updatedCheckup);
           }
@@ -151,17 +148,83 @@ class CheckupsNotifier extends FamilyAsyncNotifier<List<CheckupWithStatus>, Stri
     return result;
   }
 
-  Future<Result<void, Exception>> logCheckup(String checkupId, DateTime dateCompleted) async {
+  Future<Result<void, Exception>> logCheckup(
+    String checkupId,
+    DateTime dateCompleted, {
+    String? doctorName,
+    String? location,
+    String? notes,
+  }) async {
     try {
       final log = CheckupLog(
         checkupId: checkupId,
         dateCompleted: dateCompleted,
+        doctorName: doctorName,
+        location: location,
+        notes: notes,
       );
       await _repository.addCheckupLog(log);
       
       // Refresh state
       state = const AsyncValue.loading();
       state = await AsyncValue.guard(() => _loadCheckupsWithStatus());
+      
+      // Invalidate history to display the new log
+      ref.invalidate(historyProvider(arg));
+      
+      return const Success(null);
+    } catch (e) {
+      return Failure(e is Exception ? e : Exception(e.toString()));
+    }
+  }
+
+  Future<Result<void, Exception>> updateCheckupSettings({
+    required String checkupId,
+    required int frequencyInMonths,
+    required bool isCustomInterval,
+    required bool isActive,
+  }) async {
+    try {
+      final currentCheckups = state.value;
+      if (currentCheckups == null) return Failure(Exception("Checkups not loaded"));
+      
+      final checkupWithStatus = currentCheckups.firstWhere((c) => c.checkup.id == checkupId);
+      final updatedCheckup = checkupWithStatus.checkup.copyWith(
+        frequencyInMonths: frequencyInMonths,
+        isCustomInterval: isCustomInterval,
+        isActive: isActive,
+      );
+      
+      await _repository.updateCheckup(updatedCheckup);
+      
+      // Refresh state
+      state = const AsyncValue.loading();
+      state = await AsyncValue.guard(() => _loadCheckupsWithStatus());
+      
+      // Also refresh the history provider since timeline display of inactive checkups may change
+      ref.invalidate(historyProvider(arg));
+      
+      return const Success(null);
+    } catch (e) {
+      return Failure(e is Exception ? e : Exception(e.toString()));
+    }
+  }
+
+  Future<List<CheckupLog>> loadLogsForCheckup(String checkupId) async {
+    return _repository.loadLogsForCheckup(checkupId);
+  }
+
+  Future<Result<void, Exception>> deleteCheckupLog(String logId) async {
+    try {
+      await _repository.deleteCheckupLog(logId);
+      
+      // Refresh state
+      state = const AsyncValue.loading();
+      state = await AsyncValue.guard(() => _loadCheckupsWithStatus());
+      
+      // Refresh history
+      ref.invalidate(historyProvider(arg));
+      
       return const Success(null);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));
@@ -194,6 +257,10 @@ class CheckupsNotifier extends FamilyAsyncNotifier<List<CheckupWithStatus>, Stri
       // Refresh state
       state = const AsyncValue.loading();
       state = await AsyncValue.guard(() => _loadCheckupsWithStatus());
+      
+      // Refresh history
+      ref.invalidate(historyProvider(arg));
+      
       return const Success(null);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));

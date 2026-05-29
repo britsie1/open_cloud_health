@@ -7,9 +7,15 @@ class CheckupLog {
     required this.checkupId,
     required this.dateCompleted,
     String? id,
+    this.location,
+    this.doctorName,
+    this.notes,
   }) : id = id ?? uuid.v4();
 
   final String id;
   final String checkupId;
   final DateTime dateCompleted;
+  final String? location;
+  final String? doctorName;
+  final String? notes;
 }

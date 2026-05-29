@@ -215,14 +215,22 @@ class HistoryNotifier extends FamilyAsyncNotifier<List<HistoryEvent>, String> {
       final checkupLogs = await checkupRepo.loadAllLogsForProfile(profileId);
       for (final log in checkupLogs) {
         final checkupName = checkupMap[log.checkupId] ?? 'Unknown Checkup';
+        
+        final descriptionParts = [
+          'Completed checkup',
+          if (log.notes != null && log.notes!.trim().isNotEmpty) 'Notes: ${log.notes}',
+        ];
+        
         historyEvents.add(
           HistoryEvent(
             id: log.id,
             profileId: profileId,
             title: 'Checkup: $checkupName',
-            description: 'Completed checkup',
+            description: descriptionParts.join('\n\n'),
             date: log.dateCompleted,
             eventType: EventType.checkup,
+            provider: log.doctorName,
+            facility: log.location,
           )
         );
       }
