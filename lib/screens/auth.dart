@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:open_cloud_health/database/database_helper.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:open_cloud_health/utils/constants.dart';
+import 'package:open_cloud_health/utils/security_utils.dart';
 
 enum _SupportState {
   unknown,
@@ -37,7 +39,53 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     // 1. Initialize Notifications in background
     await NotificationService().init();
 
-    // 2. Check Biometric Support
+    // 2. Check if local auth is enabled in settings
+    final isAuthEnabled = await ref.read(databaseHelperProvider).isLocalAuthEnabled();
+    final isDeviceSecure = await SecurityUtils.isDeviceSecure();
+
+    if (isAuthEnabled && !isDeviceSecure) {
+      // Auto-disable in database since the device lock was removed
+      await ref.read(databaseHelperProvider).setLocalAuthEnabled(false);
+    }
+
+    if (!isAuthEnabled || !isDeviceSecure) {
+      await ref.read(profilesProvider.notifier).checkAndDeleteExpiredProfiles();
+      await ref.read(profilesProvider.notifier).loadProfiles();
+
+      if (!mounted) {
+        return;
+      }
+
+      final profiles = ref.read(profilesProvider).value ?? [];
+
+      if (profiles.isEmpty) {
+        context.go(AppRoutes.welcome);
+        return;
+      }
+
+      final lastProfileId = await ref.read(secureStorageProvider).getLastProfileId();
+      if (!mounted) return;
+      if (lastProfileId != null) {
+        final lastProfile = profiles.where((p) => p.id == lastProfileId).firstOrNull;
+        if (lastProfile != null) {
+          context.go('${AppRoutes.home}/${lastProfile.id}', extra: lastProfile);
+          return;
+        }
+      }
+
+      if (profiles.length == 1) {
+        await ref.read(secureStorageProvider).saveLastProfileId(profiles[0].id);
+        if (!mounted) return;
+        context.go('${AppRoutes.home}/${profiles[0].id}', extra: profiles[0]);
+        return;
+      }
+
+      if (!mounted) return;
+      context.go(AppRoutes.profiles);
+      return;
+    }
+
+    // 3. Check Biometric Support (if enabled in DB)
     final isSupported = await auth.isDeviceSupported();
     if (!mounted) return;
 
@@ -54,7 +102,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       _isInitializing = false;
     });
 
-    // 3. Auto-authenticate if supported
+    // 4. Auto-authenticate if supported
     if (_supportState == _SupportState.supported && (_canCheckBiometrics ?? false)) {
       _authenticate();
     }
@@ -108,7 +156,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       final profiles = ref.read(profilesProvider).value ?? [];
 
       if (profiles.isEmpty) {
-        context.go(AppRoutes.profiles);
+        context.go(AppRoutes.welcome);
         return;
       }
 

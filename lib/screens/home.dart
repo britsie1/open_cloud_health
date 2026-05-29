@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:open_cloud_health/database/database_helper.dart';
+import 'package:open_cloud_health/utils/security_utils.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
 import 'package:open_cloud_health/models/profile.dart';
@@ -34,8 +36,12 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
   Profile? _activeProfile;
+  bool _isLocalAuthEnabled = true;
+  bool _isBannerDismissed = false;
+  bool _isDeviceSecure = false;
+  bool _isSecurityChecked = false;
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -54,10 +60,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
+  Future<void> _checkSecurityStatus() async {
+    try {
+      final isDeviceSecure = await SecurityUtils.isDeviceSecure();
+      final isEnabled = await ref.read(databaseHelperProvider).isLocalAuthEnabled();
+      final isDismissed = await ref.read(databaseHelperProvider).isSecurityBannerDismissed();
+      if (mounted) {
+        setState(() {
+          _isDeviceSecure = isDeviceSecure;
+          _isLocalAuthEnabled = isEnabled;
+          _isBannerDismissed = isDismissed;
+          _isSecurityChecked = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Security check error: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializeProfile();
+    _checkSecurityStatus();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkSecurityStatus();
+    }
   }
 
   Future<ImageProvider> _getProfileImage(Profile activeProfile) async {
@@ -70,6 +109,164 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     } else {
       return FileImage(File(filepath));
     }
+  }
+
+  Widget _buildSecurityBanner(BuildContext context) {
+    final isDeviceSecure = _isDeviceSecure;
+    final showBanner = _isSecurityChecked && (!_isLocalAuthEnabled || !isDeviceSecure) && !_isBannerDismissed;
+
+    if (!showBanner) {
+      return const SizedBox.shrink();
+    }
+
+    final String bannerText = !isDeviceSecure
+        ? 'Unsecured Device. No passcode is set up on this device. Your private medical history is vulnerable to physical theft.'
+        : 'Enable App Lock. Your health data is unprotected. Tap to secure this app with Face ID, Touch ID, or PIN.';
+
+    final String riskExplanation = !isDeviceSecure
+        ? 'Your device does not have a screen passcode. In the event of theft or loss, all of your highly sensitive medical logs will be completely exposed.'
+        : 'If you proceed without enabling App Lock, anyone who accesses your unlocked device can view your complete medical history, timelines, and vitals.';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isDeviceSecure ? Icons.lock_outline : Icons.gpp_maybe_outlined,
+            color: Colors.orange.shade800,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  bannerText,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
+                    color: Colors.orange.shade900,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        context.push(AppRoutes.securitySetup).then((_) {
+                          _checkSecurityStatus();
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange.shade800,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        'Enable Secure Lock',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  title: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
+                      const SizedBox(width: 8),
+                      const Text('Security Warning'),
+                    ],
+                  ),
+                  content: Text(
+                    riskExplanation,
+                    style: const TextStyle(fontSize: 14, height: 1.4),
+                  ),
+                  actions: [
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                            context.push(AppRoutes.securitySetup).then((_) {
+                              _checkSecurityStatus();
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange.shade800,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Enable Secure Lock',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: () async {
+                            Navigator.of(ctx).pop();
+                            await ref.read(databaseHelperProvider).setSecurityBannerDismissed(true);
+                            if (mounted) {
+                              setState(() {
+                                _isBannerDismissed = true;
+                              });
+                            }
+                          },
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: Text(
+                            'Proceed Without Protection',
+                            style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+            child: Icon(
+              Icons.close,
+              size: 20,
+              color: Colors.orange.shade700,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -102,6 +299,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _buildSecurityBanner(context),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -843,4 +1041,3 @@ class _VitalItem extends StatelessWidget {
     );
   }
 }
-

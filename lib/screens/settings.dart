@@ -135,6 +135,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: const Text('Backup to Google Drive')),
               Text('Last backup: $lastBackupDateTime'),
             ],
+            ElevatedButton.icon(
+              onPressed: () {
+                context.push(AppRoutes.securitySetup);
+              },
+              icon: const Icon(Icons.security),
+              label: const Text('App Lock & Security'),
+            ),
+            const SizedBox(height: 12),
             ElevatedButton(
               onPressed: resetDB,
               child: const Text('Reset Database'),

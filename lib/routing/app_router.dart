@@ -20,6 +20,8 @@ import 'package:open_cloud_health/screens/archived_profiles.dart';
 import 'package:open_cloud_health/screens/export_profile.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/screens/medication_editor.dart';
+import 'package:open_cloud_health/screens/welcome.dart';
+import 'package:open_cloud_health/screens/security_setup.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/widgets/scaffold_with_nav_bar.dart';
 import 'package:open_cloud_health/widgets/shell_route_redirector.dart';
@@ -188,6 +190,14 @@ final appRouter = GoRouter(
         final profile = state.extra as Profile;
         return ExportProfileScreen(profile: profile);
       },
+    ),
+    GoRoute(
+      path: AppRoutes.welcome,
+      builder: (context, state) => const WelcomeScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.securitySetup,
+      builder: (context, state) => const SecuritySetupScreen(),
     ),
   ],
 );

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
+import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/utils/result.dart';
 import 'package:open_cloud_health/widgets/allergy_list_section.dart';
@@ -201,14 +202,22 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
     if (!mounted) return;
 
     switch (result) {
-      case Success():
-        if (context.canPop()) {
-          context.pop();
+      case Success(value: final newProfileId):
+        if (!_isEditing) {
+          await ref.read(secureStorageProvider).saveLastProfileId(newProfileId);
+          await ref.read(profilesProvider.notifier).loadProfiles();
+          if (!mounted) return;
+          final profiles = ref.read(profilesProvider).value ?? [];
+          final newProfile = profiles.firstWhere((p) => p.id == newProfileId);
+          context.go('${AppRoutes.home}/$newProfileId', extra: newProfile);
         } else {
-          // If in tab, maybe show a success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile updated successfully')),
-          );
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Profile updated successfully')),
+            );
+          }
         }
         break;
       case Failure(:final exception):
@@ -493,6 +502,26 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                         },
                       ),
                     ],
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: _saveProfile,
+                        icon: const Icon(Icons.check),
+                        label: const Text(
+                          'Save Profile',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

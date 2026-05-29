@@ -22,6 +22,7 @@ class DatabaseHelper {
         await db.execute(createPeriodCyclesTable);
         await db.execute(createPeriodLogsTable);
         await db.execute(createVitalLogsTable);
+        await db.execute(createSettingsTable);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -70,8 +71,11 @@ class DatabaseHelper {
         if (oldVersion < 12) {
           await db.execute("ALTER TABLE profiles ADD COLUMN chronicConditions TEXT DEFAULT ''");
         }
+        if (oldVersion < 13) {
+          await db.execute(createSettingsTable);
+        }
       },
-      version: 12,
+      version: 13,
     );
 
     return db;
@@ -86,6 +90,55 @@ class DatabaseHelper {
     final dbPath = await sql.getDatabasesPath();
     final dbFilePath = path.join(dbPath, 'opencloudhealth.db');
     return File(dbFilePath).lengthSync();
+  }
+
+  // settings helper methods
+  Future<bool> isLocalAuthEnabled() async {
+    try {
+      final db = await getDatabase();
+      final result = await db.query(
+        'settings',
+        where: 'key = ?',
+        whereArgs: ['local_auth_enabled'],
+      );
+      if (result.isEmpty) return false;
+      return result.first['value'] == 'true';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> setLocalAuthEnabled(bool enabled) async {
+    final db = await getDatabase();
+    await db.insert(
+      'settings',
+      {'key': 'local_auth_enabled', 'value': enabled.toString()},
+      conflictAlgorithm: sql.ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<bool> isSecurityBannerDismissed() async {
+    try {
+      final db = await getDatabase();
+      final result = await db.query(
+        'settings',
+        where: 'key = ?',
+        whereArgs: ['security_banner_dismissed'],
+      );
+      if (result.isEmpty) return false;
+      return result.first['value'] == 'true';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> setSecurityBannerDismissed(bool dismissed) async {
+    final db = await getDatabase();
+    await db.insert(
+      'settings',
+      {'key': 'security_banner_dismissed', 'value': dismissed.toString()},
+      conflictAlgorithm: sql.ConflictAlgorithm.replace,
+    );
   }
 }
 
@@ -215,6 +268,12 @@ String createVitalLogsTable = '''
     value2 REAL,
     unit TEXT,
     note TEXT
+  )''';
+
+String createSettingsTable = '''
+  CREATE TABLE IF NOT EXISTS settings(
+    key TEXT PRIMARY KEY,
+    value TEXT
   )''';
 
 

@@ -29,4 +29,6 @@ class AppRoutes {
   static const String importProfile = '/import-profile';
   static const String archivedProfiles = '/archived-profiles';
   static const String exportProfile = '/export-profile';
+  static const String welcome = '/welcome';
+  static const String securitySetup = '/security-setup';
 }
