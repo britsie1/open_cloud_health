@@ -141,7 +141,7 @@ class ChronicConditionsSection extends StatelessWidget {
                   ),
                 );
               },
-              icon: const Icon(Icons.edit_outlined),
+              icon: const Icon(Icons.add),
             ),
           ],
         ),

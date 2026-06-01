@@ -477,7 +477,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                           ),
                           Expanded(
                             child: SwitchListTile(
-                              title: const Text('Track Ovulation/Pregnancy'),
+                              title: const Text('Track Fertility'),
                               value: _trackOvulation,
                               onChanged: (value) {
                                 setState(() {
