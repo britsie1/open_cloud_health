@@ -3,6 +3,9 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
+import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -180,6 +183,8 @@ class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
+
+  static const _emergencyNotificationChannel = MethodChannel('com.example.open_cloud_health/emergency_notification');
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
@@ -460,6 +465,238 @@ class NotificationService {
       for (int timeIdx = 0; timeIdx < 20; timeIdx++) {
         await cancelNotification(baseId + day * 100 + timeIdx);
       }
+    }
+  }
+
+  Future<void> showEmergencyNotification(String title, String body) async {
+    if (Platform.isAndroid) {
+      try {
+        await _emergencyNotificationChannel.invokeMethod('showNotification', {
+          'title': title,
+          'body': body,
+        });
+      } catch (e) {
+        debugPrint('Error showing native Android emergency notification: $e');
+      }
+    } else {
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+      await flutterLocalNotificationsPlugin.show(
+        999,
+        title,
+        body,
+        const NotificationDetails(android: null, iOS: iosDetails),
+      );
+    }
+  }
+
+  Future<void> cancelEmergencyNotification() async {
+    if (Platform.isAndroid) {
+      try {
+        await _emergencyNotificationChannel.invokeMethod('cancelNotification');
+      } catch (e) {
+        debugPrint('Error cancelling native Android emergency notification: $e');
+      }
+    } else {
+      await flutterLocalNotificationsPlugin.cancel(999);
+    }
+  }
+
+  Future<void> syncEmergencyNotification(String profileId) async {
+    try {
+      final dbHelper = DatabaseHelper();
+      final db = await dbHelper.getDatabase();
+
+      // Get all active lock screen settings
+      final activeSettings = await db.query('lock_screen_settings', where: 'isEnabled = ?', whereArgs: ['true']);
+      if (activeSettings.isEmpty) {
+        await cancelEmergencyNotification();
+        return;
+      }
+
+      if (activeSettings.length == 1) {
+        // Sync single profile (exact same logic as original)
+        final setRow = activeSettings.first;
+        final pId = setRow['profileId'] as String;
+        final showName = setRow['showName'] == 'true';
+        final showAge = setRow['showAge'] == 'true';
+        final showBloodType = setRow['showBloodType'] == 'true';
+        final showOrganDonor = setRow['showOrganDonor'] == 'true';
+        final showChronicConditions = setRow['showChronicConditions'] == 'true';
+        final showAllergies = setRow['showAllergies'] == 'true';
+        final showMedications = setRow['showMedications'] == 'true';
+        final showContacts = setRow['showContacts'] == 'true';
+
+        final profileData = await db.query('profiles', where: 'id = ?', whereArgs: [pId]);
+        if (profileData.isEmpty) {
+          await cancelEmergencyNotification();
+          return;
+        }
+        final p = profileData.first;
+        final name = '${p['name']} ${p['surname']}';
+        final dobStr = p['dateOfBirth'] as String;
+        final dob = DateTime.parse(dobStr);
+        final today = DateTime.now();
+        int age = today.year - dob.year;
+        if (today.month < dob.month || (today.month == dob.month && today.day < dob.day)) {
+          age--;
+        }
+        final bloodType = p['bloodType'] as String;
+        final isOrganDonor = p['isOrganDonor'] == 'true';
+        final chronicConditionsStr = p['chronicConditions'] as String? ?? '';
+        final chronicConditions = chronicConditionsStr.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+
+        final allergiesData = await db.query('allergy', where: 'profileId = ?', whereArgs: [pId]);
+        final allergies = allergiesData.map((row) => row['name'] as String).toList();
+
+        final medsData = await db.query('medications', where: 'profileId = ? AND isActive = ?', whereArgs: [pId, 'true']);
+        final medications = medsData.map((row) => row['name'] as String).toList();
+
+        final contactsData = await db.query('emergency_contacts', where: 'profileId = ?', whereArgs: [pId]);
+
+        final title = '🚨 Emergency Medical ID: ${showName ? name : "Medical Information"}';
+        final buffer = StringBuffer();
+
+        final details = <String>[];
+        if (showAge) {
+          details.add('Age: $age');
+        }
+        if (showBloodType) {
+          details.add('Blood: $bloodType');
+        }
+        if (showOrganDonor) {
+          details.add('Donor: ${isOrganDonor ? "Yes" : "No"}');
+        }
+        if (details.isNotEmpty) {
+          buffer.writeln(details.join(' | '));
+        }
+
+        if (showChronicConditions && chronicConditions.isNotEmpty) {
+          buffer.writeln('Conditions: ${chronicConditions.join(", ")}');
+        }
+        if (showAllergies && allergies.isNotEmpty) {
+          buffer.writeln('Allergies: ${allergies.join(", ")}');
+        }
+        if (showMedications && medications.isNotEmpty) {
+          buffer.writeln('Meds: ${medications.join(", ")}');
+        }
+        if (showContacts && contactsData.isNotEmpty) {
+          buffer.writeln('Emergency Contacts:');
+          for (final c in contactsData) {
+            buffer.writeln('• ${c['name']} (${c['relationship']}): ${c['phoneNumber']}');
+          }
+        }
+
+        final body = buffer.toString().trim();
+        if (body.isEmpty) {
+          await cancelEmergencyNotification();
+        } else {
+          await showEmergencyNotification(title, body);
+        }
+      } else {
+        // Sync multiple profiles
+        final List<String> namesList = [];
+        final buffer = StringBuffer();
+
+        for (final setRow in activeSettings) {
+          final pId = setRow['profileId'] as String;
+          final showName = setRow['showName'] == 'true';
+          final showAge = setRow['showAge'] == 'true';
+          final showBloodType = setRow['showBloodType'] == 'true';
+          final showOrganDonor = setRow['showOrganDonor'] == 'true';
+          final showChronicConditions = setRow['showChronicConditions'] == 'true';
+          final showAllergies = setRow['showAllergies'] == 'true';
+          final showMedications = setRow['showMedications'] == 'true';
+
+          final profileData = await db.query('profiles', where: 'id = ?', whereArgs: [pId]);
+          if (profileData.isEmpty) continue;
+          final p = profileData.first;
+          final name = '${p['name']} ${p['surname']}';
+          
+          if (showName) {
+            namesList.add(p['name'] as String);
+          }
+
+          final dobStr = p['dateOfBirth'] as String;
+          final dob = DateTime.parse(dobStr);
+          final today = DateTime.now();
+          int age = today.year - dob.year;
+          if (today.month < dob.month || (today.month == dob.month && today.day < dob.day)) {
+            age--;
+          }
+          final bloodType = p['bloodType'] as String;
+          final isOrganDonor = p['isOrganDonor'] == 'true';
+          final chronicConditionsStr = p['chronicConditions'] as String? ?? '';
+          final chronicConditions = chronicConditionsStr.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+
+          final allergiesData = await db.query('allergy', where: 'profileId = ?', whereArgs: [pId]);
+          final allergies = allergiesData.map((row) => row['name'] as String).toList();
+
+          final medsData = await db.query('medications', where: 'profileId = ? AND isActive = ?', whereArgs: [pId, 'true']);
+          final medications = medsData.map((row) => row['name'] as String).toList();
+
+          buffer.writeln('${showName ? name : "Profile"}:');
+          final details = <String>[];
+          if (showAge) details.add('Age: $age');
+          if (showBloodType) details.add('Blood: $bloodType');
+          if (showOrganDonor) details.add('Donor: ${isOrganDonor ? "Yes" : "No"}');
+          if (details.isNotEmpty) {
+            buffer.writeln('  ${details.join(" | ")}');
+          }
+
+          if (showChronicConditions && chronicConditions.isNotEmpty) {
+            buffer.writeln('  Conditions: ${chronicConditions.join(", ")}');
+          }
+          if (showAllergies && allergies.isNotEmpty) {
+            buffer.writeln('  Allergies: ${allergies.join(", ")}');
+          }
+          if (showMedications && medications.isNotEmpty) {
+            buffer.writeln('  Meds: ${medications.join(", ")}');
+          }
+        }
+
+        final title = namesList.isNotEmpty
+            ? '🚨 Emergency Medical IDs: ${namesList.join(" & ")}'
+            : '🚨 Emergency Medical IDs';
+        final body = buffer.toString().trim();
+        if (body.isEmpty) {
+          await cancelEmergencyNotification();
+        } else {
+          await showEmergencyNotification(title, body);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error syncing emergency notification: $e');
+    }
+  }
+
+  Future<bool> isEmergencyChannelEnabled() async {
+    if (Platform.isAndroid) {
+      try {
+        final bool? result = await _emergencyNotificationChannel.invokeMethod<bool>('isChannelEnabled');
+        return result ?? false;
+      } catch (e) {
+        debugPrint('Error checking native Android emergency channel status: $e');
+        return false;
+      }
+    }
+    final status = await Permission.notification.status;
+    return status.isGranted;
+  }
+
+  Future<void> openNotificationSettings() async {
+    if (Platform.isAndroid) {
+      try {
+        await _emergencyNotificationChannel.invokeMethod('openNotificationSettings');
+      } catch (e) {
+        debugPrint('Error opening native Android notification settings: $e');
+        await openAppSettings();
+      }
+    } else {
+      await openAppSettings();
     }
   }
 }

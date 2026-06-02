@@ -7,6 +7,9 @@ import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/repositories/allergies_repository.dart';
 import 'package:open_cloud_health/repositories/history_repository.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
+import 'package:open_cloud_health/repositories/emergency_repository.dart';
+import 'package:open_cloud_health/models/emergency_contact.dart';
+import 'package:open_cloud_health/models/lock_screen_setting.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class MockDatabaseHelper extends Mock implements DatabaseHelper {}
@@ -64,6 +67,27 @@ void main() {
           profileId TEXT,
           name TEXT,
           note TEXT
+        )''');
+      await db.execute('''
+        CREATE TABLE emergency_contacts(
+          id TEXT PRIMARY KEY,
+          profileId TEXT,
+          name TEXT,
+          relationship TEXT,
+          phoneNumber TEXT
+        )''');
+      await db.execute('''
+        CREATE TABLE lock_screen_settings(
+          profileId TEXT PRIMARY KEY,
+          showName TEXT DEFAULT 'true',
+          showAge TEXT DEFAULT 'true',
+          showBloodType TEXT DEFAULT 'true',
+          showOrganDonor TEXT DEFAULT 'true',
+          showChronicConditions TEXT DEFAULT 'true',
+          showAllergies TEXT DEFAULT 'true',
+          showMedications TEXT DEFAULT 'true',
+          showContacts TEXT DEFAULT 'true',
+          isEnabled TEXT DEFAULT 'false'
         )''');
     });
 
@@ -153,6 +177,90 @@ void main() {
       final result = await db.query('allergy');
       expect(result.length, 1);
       expect(result.first['name'], 'Peanuts');
+    });
+  });
+
+  group('EmergencyRepository Tests', () {
+    test('addEmergencyContact should insert contact into database', () async {
+      final repository = EmergencyRepository(mockDbHelper);
+      final contact = EmergencyContact(
+        id: 'c1',
+        profileId: 'p1',
+        name: 'Jane Doe',
+        relationship: 'Spouse',
+        phoneNumber: '123-456-7890',
+      );
+
+      await repository.addEmergencyContact(contact);
+
+      final result = await db.query('emergency_contacts');
+      expect(result.length, 1);
+      expect(result.first['id'], 'c1');
+      expect(result.first['name'], 'Jane Doe');
+    });
+
+    test('getEmergencyContacts should return contacts for specific profile', () async {
+      final repository = EmergencyRepository(mockDbHelper);
+      await db.insert('emergency_contacts', {
+        'id': 'c1',
+        'profileId': 'p1',
+        'name': 'Jane Doe',
+        'relationship': 'Spouse',
+        'phoneNumber': '123-456-7890',
+      });
+      await db.insert('emergency_contacts', {
+        'id': 'c2',
+        'profileId': 'p2',
+        'name': 'John Smith',
+        'relationship': 'Friend',
+        'phoneNumber': '987-654-3210',
+      });
+
+      final contacts = await repository.getEmergencyContacts('p1');
+      expect(contacts.length, 1);
+      expect(contacts.first.id, 'c1');
+      expect(contacts.first.name, 'Jane Doe');
+    });
+
+    test('deleteEmergencyContact should remove contact from database', () async {
+      final repository = EmergencyRepository(mockDbHelper);
+      await db.insert('emergency_contacts', {
+        'id': 'c1',
+        'profileId': 'p1',
+        'name': 'Jane Doe',
+        'relationship': 'Spouse',
+        'phoneNumber': '123-456-7890',
+      });
+
+      await repository.deleteEmergencyContact('c1');
+
+      final result = await db.query('emergency_contacts');
+      expect(result.isEmpty, true);
+    });
+
+    test('getLockScreenSetting should return default values if no row exists', () async {
+      final repository = EmergencyRepository(mockDbHelper);
+      final setting = await repository.getLockScreenSetting('p1');
+      expect(setting.profileId, 'p1');
+      expect(setting.showName, true);
+      expect(setting.isEnabled, false);
+    });
+
+    test('saveLockScreenSetting and getLockScreenSetting should save and retrieve setting', () async {
+      final repository = EmergencyRepository(mockDbHelper);
+      final setting = LockScreenSetting(
+        profileId: 'p1',
+        showName: false,
+        isEnabled: true,
+      );
+
+      await repository.saveLockScreenSetting(setting);
+
+      final retrieved = await repository.getLockScreenSetting('p1');
+      expect(retrieved.profileId, 'p1');
+      expect(retrieved.showName, false);
+      expect(retrieved.showAge, true);
+      expect(retrieved.isEnabled, true);
     });
   });
 }

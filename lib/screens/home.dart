@@ -18,6 +18,10 @@ import 'package:open_cloud_health/utils/result.dart';
 import 'package:open_cloud_health/widgets/account_appbar_actions.dart';
 import 'package:open_cloud_health/widgets/log_checkup_dialog.dart';
 import 'package:open_cloud_health/widgets/log_tracked_dose_dialog.dart';
+import 'package:open_cloud_health/providers/emergency_provider.dart';
+import 'package:open_cloud_health/repositories/emergency_repository.dart';
+import 'package:open_cloud_health/services/notification_service.dart';
+import 'package:open_cloud_health/models/lock_screen_setting.dart';
 
 class TodayMedicationTask {
   final Medication medication;
@@ -42,6 +46,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   bool _isBannerDismissed = false;
   bool _isDeviceSecure = false;
   bool _isSecurityChecked = false;
+  bool _isEmergencyChannelDisabledWarning = false;
+  String? _lastCheckedProfileId;
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -78,12 +84,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     }
   }
 
+  Future<void> _checkEmergencyChannelStatus(bool isSettingEnabled) async {
+    if (!isSettingEnabled) {
+      if (mounted) {
+        setState(() {
+          _isEmergencyChannelDisabledWarning = false;
+        });
+      }
+      return;
+    }
+    
+    final isChannelEnabled = await ref.read(notificationServiceProvider).isEmergencyChannelEnabled();
+    if (mounted) {
+      setState(() {
+        _isEmergencyChannelDisabledWarning = !isChannelEnabled;
+      });
+    }
+  }
+
+  Future<void> _checkEmergencyStatus() async {
+    try {
+      final profileId = widget.profileId ?? widget.profile?.id ?? _activeProfile?.id;
+      if (profileId == null) return;
+      
+      final settings = await ref.read(emergencyRepositoryProvider).getLockScreenSetting(profileId);
+      await _checkEmergencyChannelStatus(settings.isEnabled);
+    } catch (e) {
+      debugPrint('Emergency status check error: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initializeProfile();
     _checkSecurityStatus();
+    _checkEmergencyStatus();
   }
 
   @override
@@ -96,6 +133,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _checkSecurityStatus();
+      _checkEmergencyStatus();
     }
   }
 
@@ -269,6 +307,74 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     );
   }
 
+  Widget _buildEmergencyWarningBanner(BuildContext context) {
+    if (!_isEmergencyChannelDisabledWarning) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.red.withOpacity(0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.red.shade800,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Emergency Medical ID Disabled. The emergency notification channel is turned off in your system settings. First responders won\'t be able to access your critical medical info from the lock screen.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
+                    color: Colors.red.shade900,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () async {
+                        await ref.read(notificationServiceProvider).openNotificationSettings();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade800,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        'Re-enable in Settings',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final profilesAsync = ref.watch(profilesProvider);
@@ -289,6 +395,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    if (activeProfile.id != _lastCheckedProfileId) {
+      _lastCheckedProfileId = activeProfile.id;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkEmergencyStatus();
+      });
+    }
+
+    ref.listen<AsyncValue<LockScreenSetting>>(
+      lockScreenSettingsProvider(activeProfile.id),
+      (previous, next) {
+        next.whenData((settings) {
+          _checkEmergencyChannelStatus(settings.isEnabled);
+        });
+      },
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home'),
@@ -299,6 +421,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _buildEmergencyWarningBanner(context),
             _buildSecurityBanner(context),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

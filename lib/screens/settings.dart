@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import 'package:open_cloud_health/database/database_helper.dart';
 import 'package:open_cloud_health/services/backup_service.dart';
 import 'package:open_cloud_health/utils/constants.dart';
+import 'package:open_cloud_health/providers/profiles_provider.dart';
+import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -141,6 +143,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               },
               icon: const Icon(Icons.security),
               label: const Text('App Lock & Security'),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () async {
+                final lastProfileId = await ref.read(secureStorageProvider).getLastProfileId();
+                final profiles = ref.read(profilesProvider).value ?? [];
+                if (profiles.isNotEmpty) {
+                  final activeProfileId = lastProfileId ?? profiles.first.id;
+                  if (context.mounted) {
+                    context.push('${AppRoutes.emergencySettings}/$activeProfileId');
+                  }
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please create a profile first.')),
+                    );
+                  }
+                }
+              },
+              icon: const Icon(Icons.emergency, color: Colors.red),
+              label: const Text('Emergency Lock Screen Info'),
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.red.shade900,
+              ),
             ),
             const SizedBox(height: 12),
             ElevatedButton(

@@ -22,6 +22,7 @@ import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/screens/medication_editor.dart';
 import 'package:open_cloud_health/screens/welcome.dart';
 import 'package:open_cloud_health/screens/security_setup.dart';
+import 'package:open_cloud_health/screens/emergency_settings.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/widgets/scaffold_with_nav_bar.dart';
 import 'package:open_cloud_health/widgets/shell_route_redirector.dart';
@@ -198,6 +199,13 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.securitySetup,
       builder: (context, state) => const SecuritySetupScreen(),
+    ),
+    GoRoute(
+      path: '${AppRoutes.emergencySettings}/:profileId',
+      builder: (context, state) {
+        final profileId = state.pathParameters['profileId']!;
+        return EmergencySettingsScreen(profileId: profileId);
+      },
     ),
   ],
 );

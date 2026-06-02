@@ -9,6 +9,7 @@ import 'package:open_cloud_health/services/notification_service.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/utils/security_utils.dart';
+import 'package:open_cloud_health/widgets/emergency_card_view.dart';
 
 enum _SupportState {
   unknown,
@@ -256,9 +257,51 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   ? 'Open anyway'
                   : 'Login'),
             ),
+            const SizedBox(height: 24),
+            TextButton.icon(
+              onPressed: _showEmergencyCard,
+              icon: const Icon(Icons.emergency, color: Colors.red),
+              label: const Text(
+                'Emergency Medical ID',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
           ]),
         ),
       ),
+    );
+  }
+
+  Future<void> _showEmergencyCard() async {
+    final dbHelper = ref.read(databaseHelperProvider);
+    final db = await dbHelper.getDatabase();
+    
+    // Check if there are any active settings enabled
+    final settingsData = await db.query('lock_screen_settings', where: 'isEnabled = ?', whereArgs: ['true']);
+    
+    if (settingsData.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No emergency profiles enabled in settings.')),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Emergency Card',
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return const EmergencyCardView();
+      },
     );
   }
 }

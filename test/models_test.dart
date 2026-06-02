@@ -6,6 +6,8 @@ import 'package:open_cloud_health/models/attachment.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
 import 'package:open_cloud_health/models/allergy.dart';
+import 'package:open_cloud_health/models/emergency_contact.dart';
+import 'package:open_cloud_health/models/lock_screen_setting.dart';
 import 'package:open_cloud_health/utils/icon_utils.dart';
 import 'package:healthicons_flutter/healthicons_flutter.dart';
 
@@ -312,6 +314,72 @@ void main() {
 
       final widget2 = getCheckupIconWidget(null, checkupName: 'Diabetes Screening');
       expect(widget2, isA<SugarOutline>());
+    });
+  });
+
+  group('EmergencyContact Model Tests', () {
+    test('EmergencyContact generates a unique ID if none provided', () {
+      final contact = EmergencyContact(
+        profileId: 'p1',
+        name: 'Jane Doe',
+        relationship: 'Spouse',
+        phoneNumber: '123-456-7890',
+      );
+      expect(contact.id, isNotEmpty);
+      expect(contact.id, isA<String>());
+    });
+
+    test('EmergencyContact uses provided ID', () {
+      final contact = EmergencyContact(
+        id: 'custom-id',
+        profileId: 'p1',
+        name: 'Jane Doe',
+        relationship: 'Spouse',
+        phoneNumber: '123-456-7890',
+      );
+      expect(contact.id, 'custom-id');
+    });
+
+    test('EmergencyContact properties match values', () {
+      final contact = EmergencyContact(
+        id: 'c1',
+        profileId: 'p1',
+        name: 'Jane Doe',
+        relationship: 'Spouse',
+        phoneNumber: '123-456-7890',
+      );
+      expect(contact.profileId, 'p1');
+      expect(contact.name, 'Jane Doe');
+      expect(contact.relationship, 'Spouse');
+      expect(contact.phoneNumber, '123-456-7890');
+    });
+  });
+
+  group('LockScreenSetting Model Tests', () {
+    test('LockScreenSetting defaults are set correctly', () {
+      final setting = LockScreenSetting(profileId: 'p1');
+      expect(setting.profileId, 'p1');
+      expect(setting.showName, true);
+      expect(setting.showAge, true);
+      expect(setting.showBloodType, true);
+      expect(setting.showOrganDonor, true);
+      expect(setting.showChronicConditions, true);
+      expect(setting.showAllergies, true);
+      expect(setting.showMedications, true);
+      expect(setting.showContacts, true);
+      expect(setting.isEnabled, false);
+    });
+
+    test('LockScreenSetting copyWith works correctly', () {
+      final setting = LockScreenSetting(profileId: 'p1');
+      final updated = setting.copyWith(
+        showName: false,
+        isEnabled: true,
+      );
+      expect(updated.profileId, 'p1');
+      expect(updated.showName, false);
+      expect(updated.showAge, true);
+      expect(updated.isEnabled, true);
     });
   });
 }

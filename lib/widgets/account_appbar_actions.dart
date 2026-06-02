@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/utils/constants.dart';
+import 'package:open_cloud_health/storage/secure_storage.dart';
+import 'package:open_cloud_health/providers/profiles_provider.dart';
 
-class AccountAppBarActions extends StatefulWidget {
+class AccountAppBarActions extends ConsumerStatefulWidget {
   const AccountAppBarActions({super.key});
 
   @override
-  State<AccountAppBarActions> createState() => _AccountAppBarActionsState();
+  ConsumerState<AccountAppBarActions> createState() => _AccountAppBarActionsState();
 }
 
-class _AccountAppBarActionsState extends State<AccountAppBarActions> {
+class _AccountAppBarActionsState extends ConsumerState<AccountAppBarActions> {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton(
@@ -21,6 +24,13 @@ class _AccountAppBarActionsState extends State<AccountAppBarActions> {
           child: ListTile(
             leading: Icon(Icons.supervised_user_circle_outlined),
             title: Text('Manage Profiles'),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'emergency',
+          child: ListTile(
+            leading: Icon(Icons.emergency, color: Colors.red),
+            title: Text('Emergency Lock Screen'),
           ),
         ),
         PopupMenuItem(
@@ -45,10 +55,26 @@ class _AccountAppBarActionsState extends State<AccountAppBarActions> {
           ),
         ),
       ],
-      onSelected: (value) {
+      onSelected: (value) async {
         switch (value) {
           case 'switch_profile':
             context.go(AppRoutes.profiles);
+            break;
+          case 'emergency':
+            final lastProfileId = await ref.read(secureStorageProvider).getLastProfileId();
+            final profiles = ref.read(profilesProvider).value ?? [];
+            if (profiles.isNotEmpty) {
+              final activeProfileId = lastProfileId ?? profiles.first.id;
+              if (context.mounted) {
+                context.push('${AppRoutes.emergencySettings}/$activeProfileId');
+              }
+            } else {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please create a profile first.')),
+                );
+              }
+            }
             break;
           case AppRoutes.settings:
             context.push(AppRoutes.settings);
@@ -68,3 +94,4 @@ class _AccountAppBarActionsState extends State<AccountAppBarActions> {
     );
   }
 }
+

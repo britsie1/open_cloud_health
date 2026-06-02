@@ -31,4 +31,5 @@ class AppRoutes {
   static const String exportProfile = '/export-profile';
   static const String welcome = '/welcome';
   static const String securitySetup = '/security-setup';
+  static const String emergencySettings = '/emergency-settings';
 }

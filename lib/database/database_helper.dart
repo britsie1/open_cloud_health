@@ -23,6 +23,8 @@ class DatabaseHelper {
         await db.execute(createPeriodLogsTable);
         await db.execute(createVitalLogsTable);
         await db.execute(createSettingsTable);
+        await db.execute(createEmergencyContactsTable);
+        await db.execute(createLockScreenSettingsTable);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -81,8 +83,12 @@ class DatabaseHelper {
           await db.execute("ALTER TABLE checkup_logs ADD COLUMN doctorName TEXT");
           await db.execute("ALTER TABLE checkup_logs ADD COLUMN notes TEXT");
         }
+        if (oldVersion < 15) {
+          await db.execute(createEmergencyContactsTable);
+          await db.execute(createLockScreenSettingsTable);
+        }
       },
-      version: 14,
+      version: 15,
     );
 
     return db;
@@ -286,6 +292,29 @@ String createSettingsTable = '''
   CREATE TABLE IF NOT EXISTS settings(
     key TEXT PRIMARY KEY,
     value TEXT
+  )''';
+
+String createEmergencyContactsTable = '''
+  CREATE TABLE emergency_contacts(
+    id TEXT PRIMARY KEY,
+    profileId TEXT,
+    name TEXT,
+    relationship TEXT,
+    phoneNumber TEXT
+  )''';
+
+String createLockScreenSettingsTable = '''
+  CREATE TABLE lock_screen_settings(
+    profileId TEXT PRIMARY KEY,
+    showName TEXT DEFAULT 'true',
+    showAge TEXT DEFAULT 'true',
+    showBloodType TEXT DEFAULT 'true',
+    showOrganDonor TEXT DEFAULT 'true',
+    showChronicConditions TEXT DEFAULT 'true',
+    showAllergies TEXT DEFAULT 'true',
+    showMedications TEXT DEFAULT 'true',
+    showContacts TEXT DEFAULT 'true',
+    isEnabled TEXT DEFAULT 'false'
   )''';
 
 
