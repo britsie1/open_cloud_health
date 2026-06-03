@@ -1,4 +1,4 @@
-package com.example.open_cloud_health
+package com.opencloudhealth.app
 
 import android.app.KeyguardManager
 import android.app.NotificationChannel
@@ -13,8 +13,8 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity: FlutterFragmentActivity() {
-    private val CHANNEL = "com.example.open_cloud_health/security"
-    private val NOTIFICATION_CHANNEL = "com.example.open_cloud_health/emergency_notification"
+    private val CHANNEL = "com.opencloudhealth.app/security"
+    private val NOTIFICATION_CHANNEL = "com.opencloudhealth.app/emergency_notification"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

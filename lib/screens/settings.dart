@@ -173,6 +173,63 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               onPressed: resetDB,
               child: const Text('Reset Database'),
             ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    title: const Row(
+                      children: [
+                        Icon(Icons.privacy_tip_outlined, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text('Privacy & Disclaimer'),
+                      ],
+                    ),
+                    content: const SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Medical Disclaimer',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Open Cloud Health is an informational logbook application for tracking personal medical histories, medication times, checkup schedules, and cycles. It does not provide professional medical advice, diagnosis, or treatment. Always consult a qualified physician or healthcare provider with any questions you have regarding a medical condition or treatment.',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Privacy Policy',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            '• Local Storage: All medical histories, symptoms, medication logs, and biometrics are stored strictly on your local device. The developer has zero access to your information.\n\n'
+                            '• Cloud Backup: If you manually connect Google Drive, the database and attachments are stored directly in your personal Google Drive\'s secure App Data folder, accessible only by you. No data is shared with or sold to third parties.',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: const Text('Close'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              icon: const Icon(Icons.info_outline),
+              label: const Text('Privacy & Disclaimers'),
+            ),
+            const SizedBox(height: 16),
             Text('Database Size: ${databaseSize}kb'),
             Text(
                 'App Documents Size: ${documentsFileSize.toStringAsFixed(2)}kb'),

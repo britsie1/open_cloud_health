@@ -1,4 +1,4 @@
-package com.example.open_cloud_health
+package com.opencloudhealth.app
 
 import android.content.BroadcastReceiver
 import android.content.Context

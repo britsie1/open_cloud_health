@@ -345,7 +345,7 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text(
-                          'PLACEHOLDER',
+                          'COMING SOON',
                           style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
                         ),
                       ),

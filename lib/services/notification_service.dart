@@ -184,7 +184,7 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  static const _emergencyNotificationChannel = MethodChannel('com.example.open_cloud_health/emergency_notification');
+  static const _emergencyNotificationChannel = MethodChannel('com.opencloudhealth.app/emergency_notification');
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();

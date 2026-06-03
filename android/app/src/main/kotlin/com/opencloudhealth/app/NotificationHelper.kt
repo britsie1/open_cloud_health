@@ -1,4 +1,4 @@
-package com.example.open_cloud_health
+package com.opencloudhealth.app
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

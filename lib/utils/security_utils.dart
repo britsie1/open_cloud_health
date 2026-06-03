@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 
 class SecurityUtils {
-  static const MethodChannel _channel = MethodChannel('com.example.open_cloud_health/security');
+  static const MethodChannel _channel = MethodChannel('com.opencloudhealth.app/security');
 
   /// Returns true if the device has a secure lock screen enabled (PIN, passcode, pattern, or biometrics).
   static Future<bool> isDeviceSecure() async {
