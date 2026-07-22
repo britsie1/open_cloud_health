@@ -26,22 +26,47 @@ class BootReceiver : BroadcastReceiver() {
         try {
             db = SQLiteDatabase.openDatabase(dbFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
             
-            val settingsCursor = db.rawQuery("SELECT * FROM lock_screen_settings WHERE isEnabled = 'true' LIMIT 1", null)
+            val settingsCursor = db.rawQuery("SELECT * FROM lock_screen_settings WHERE isEnabled = 'true'", null)
             if (!settingsCursor.moveToFirst()) {
                 settingsCursor.close()
                 return
             }
-            
-            val profileId = settingsCursor.getString(settingsCursor.getColumnIndexOrThrow("profileId"))
-            val showName = settingsCursor.getString(settingsCursor.getColumnIndexOrThrow("showName")) == "true"
-            val showAge = settingsCursor.getString(settingsCursor.getColumnIndexOrThrow("showAge")) == "true"
-            val showBloodType = settingsCursor.getString(settingsCursor.getColumnIndexOrThrow("showBloodType")) == "true"
-            val showOrganDonor = settingsCursor.getString(settingsCursor.getColumnIndexOrThrow("showOrganDonor")) == "true"
-            val showChronicConditions = settingsCursor.getString(settingsCursor.getColumnIndexOrThrow("showChronicConditions")) == "true"
-            val showAllergies = settingsCursor.getString(settingsCursor.getColumnIndexOrThrow("showAllergies")) == "true"
-            val showMedications = settingsCursor.getString(settingsCursor.getColumnIndexOrThrow("showMedications")) == "true"
-            val showContacts = settingsCursor.getString(settingsCursor.getColumnIndexOrThrow("showContacts")) == "true"
+
+            var primaryProfileId: String? = null
+            val primaryCursor = db.rawQuery("SELECT value FROM settings WHERE key = 'primary_profile_id' LIMIT 1", null)
+            if (primaryCursor.moveToFirst()) {
+                primaryProfileId = primaryCursor.getString(0)
+            }
+            primaryCursor.close()
+
+            val settingsList = mutableListOf<Map<String, String>>()
+            do {
+                val settingsMap = mutableMapOf<String, String>()
+                for (col in settingsCursor.columnNames) {
+                    settingsMap[col] = settingsCursor.getString(settingsCursor.getColumnIndexOrThrow(col)) ?: ""
+                }
+                settingsList.add(settingsMap)
+            } while (settingsCursor.moveToNext())
             settingsCursor.close()
+
+            var targetRowIndex = 0
+            if (primaryProfileId != null) {
+                val idx = settingsList.indexOfFirst { it["profileId"] == primaryProfileId }
+                if (idx != -1) {
+                    targetRowIndex = idx
+                }
+            }
+            val setRow = settingsList[targetRowIndex]
+
+            val profileId = setRow["profileId"] ?: ""
+            val showName = setRow["showName"] == "true"
+            val showAge = setRow["showAge"] == "true"
+            val showBloodType = setRow["showBloodType"] == "true"
+            val showOrganDonor = setRow["showOrganDonor"] == "true"
+            val showChronicConditions = setRow["showChronicConditions"] == "true"
+            val showAllergies = setRow["showAllergies"] == "true"
+            val showMedications = setRow["showMedications"] == "true"
+            val showContacts = setRow["showContacts"] == "true"
 
             val profileCursor = db.rawQuery("SELECT * FROM profiles WHERE id = ?", arrayOf(profileId))
             if (!profileCursor.moveToFirst()) {
@@ -57,19 +82,21 @@ class BootReceiver : BroadcastReceiver() {
             profileCursor.close()
 
             val age = calculateAge(dateOfBirthStr)
+            val dobFormatted = dateOfBirthStr.split(" ")[0]
             val details = mutableListOf<String>()
-            if (showAge) details.add("Age: $age")
+            if (showAge) {
+                details.add("DOB: $dobFormatted")
+                details.add("Age: $age")
+            }
             if (showBloodType) details.add("Blood: $bloodType")
             if (showOrganDonor) details.add("Donor: ${if (isOrganDonor) "Yes" else "No"}")
 
             val bodyBuilder = StringBuilder()
             if (details.isNotEmpty()) bodyBuilder.append(details.joinToString(" | ")).append("\n")
 
-            if (showChronicConditions && chronicConditionsStr.isNotEmpty()) {
+            if (showChronicConditions) {
                 val conditions = chronicConditionsStr.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                if (conditions.isNotEmpty()) {
-                    bodyBuilder.append("Conditions: ").append(conditions.joinToString(", ")).append("\n")
-                }
+                bodyBuilder.append("Conditions: ").append(if (conditions.isNotEmpty()) conditions.joinToString(", ") else "None").append("\n")
             }
 
             if (showAllergies) {
@@ -81,9 +108,7 @@ class BootReceiver : BroadcastReceiver() {
                     } while (allergyCursor.moveToNext())
                 }
                 allergyCursor.close()
-                if (allergies.isNotEmpty()) {
-                    bodyBuilder.append("Allergies: ").append(allergies.joinToString(", ")).append("\n")
-                }
+                bodyBuilder.append("Allergies: ").append(if (allergies.isNotEmpty()) allergies.joinToString(", ") else "None").append("\n")
             }
 
             if (showMedications) {

@@ -71,3 +71,31 @@ class LockScreenSettingsNotifier extends FamilyAsyncNotifier<LockScreenSetting, 
 final lockScreenSettingsProvider =
     AsyncNotifierProvider.family<LockScreenSettingsNotifier, LockScreenSetting, String>(
         LockScreenSettingsNotifier.new);
+
+class PrimaryProfileIdNotifier extends AsyncNotifier<String?> {
+  EmergencyRepository get _repository => ref.read(emergencyRepositoryProvider);
+
+  @override
+  Future<String?> build() async {
+    return _repository.getPrimaryProfileId();
+  }
+
+  Future<void> setPrimaryProfileId(String? profileId) async {
+    state = const AsyncValue.loading();
+    try {
+      await _repository.setPrimaryProfileId(profileId);
+      state = AsyncValue.data(profileId);
+      // Sync emergency notification
+      if (profileId != null) {
+        await ref.read(notificationServiceProvider).syncEmergencyNotification(profileId);
+      } else {
+        await ref.read(notificationServiceProvider).syncEmergencyNotification('');
+      }
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+    }
+  }
+}
+
+final primaryProfileIdProvider = AsyncNotifierProvider<PrimaryProfileIdNotifier, String?>(PrimaryProfileIdNotifier.new);
+

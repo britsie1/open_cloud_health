@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/allergy.dart';
 import 'package:open_cloud_health/repositories/allergies_repository.dart';
+import 'package:open_cloud_health/services/notification_service.dart';
 import 'package:open_cloud_health/utils/result.dart';
 
 class AllergiesNotifier extends FamilyAsyncNotifier<List<Allergy>, String> {
@@ -15,6 +16,7 @@ class AllergiesNotifier extends FamilyAsyncNotifier<List<Allergy>, String> {
     try {
       await _repository.addAllergy(allergy);
       await refreshAllergies();
+      await ref.read(notificationServiceProvider).syncEmergencyNotification(arg);
       return const Success(null);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));
@@ -25,6 +27,7 @@ class AllergiesNotifier extends FamilyAsyncNotifier<List<Allergy>, String> {
     try {
       await _repository.deleteAllergy(id);
       await refreshAllergies();
+      await ref.read(notificationServiceProvider).syncEmergencyNotification(arg);
       return const Success(null);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));

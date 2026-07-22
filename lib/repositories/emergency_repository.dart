@@ -83,6 +83,14 @@ class EmergencyRepository {
       conflictAlgorithm: sql.ConflictAlgorithm.replace,
     );
   }
+
+  Future<String?> getPrimaryProfileId() async {
+    return _dbHelper.getPrimaryProfileId();
+  }
+
+  Future<void> setPrimaryProfileId(String? profileId) async {
+    await _dbHelper.setPrimaryProfileId(profileId);
+  }
 }
 
 final emergencyRepositoryProvider = Provider<EmergencyRepository>((ref) {

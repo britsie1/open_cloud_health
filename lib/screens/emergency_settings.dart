@@ -1,13 +1,7 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
-import 'package:open_cloud_health/models/allergy.dart';
-import 'package:open_cloud_health/models/medication.dart';
-import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/models/emergency_contact.dart';
-import 'package:open_cloud_health/models/lock_screen_setting.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/providers/allergies_provider.dart';
 import 'package:open_cloud_health/providers/medications_provider.dart';
@@ -15,7 +9,6 @@ import 'package:open_cloud_health/providers/emergency_provider.dart';
 import 'package:open_cloud_health/utils/result.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
-import 'package:open_cloud_health/widgets/emergency_card_view.dart';
 
 class EmergencySettingsScreen extends ConsumerStatefulWidget {
   final String profileId;
@@ -253,24 +246,6 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
     }
   }
 
-  void _showLockScreenSimulation(Profile profile, LockScreenSetting settings, List<Allergy> allergies, List<Medication> medications, List<EmergencyContact> contacts) {
-    showGeneralDialog(
-      context: context,
-      barrierColor: Colors.black,
-      barrierDismissible: false,
-      transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (context, animation, secondaryAnimation) {
-        return _LockScreenSimulationView(
-          profile: profile,
-          settings: settings,
-          allergies: allergies,
-          medications: medications,
-          contacts: contacts,
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final profilesAsync = ref.watch(profilesProvider);
@@ -288,6 +263,7 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
         final contactsAsync = ref.watch(emergencyContactsProvider(profile.id));
         final allergiesAsync = ref.watch(allergiesProvider(profile.id));
         final medicationsAsync = ref.watch(medicationsProvider(profile.id));
+        final primaryProfileIdAsync = ref.watch(primaryProfileIdProvider);
 
         return Scaffold(
           appBar: AppBar(
@@ -405,6 +381,28 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                                     ),
                                   ),
                                 ),
+                                if (profiles.length > 1) ...[
+                                  const SizedBox(height: 16),
+                                  primaryProfileIdAsync.when(
+                                    data: (primaryId) {
+                                      final isPrimary = primaryId == profile.id;
+                                      return Card(
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                        child: SwitchListTile.adaptive(
+                                          activeColor: Colors.blue.shade800,
+                                          title: const Text('Primary Account', style: TextStyle(fontWeight: FontWeight.bold)),
+                                          subtitle: const Text('Designate this profile as the primary owner of this device. It will be listed first on the emergency screen.'),
+                                          value: isPrimary,
+                                          onChanged: (val) {
+                                            ref.read(primaryProfileIdProvider.notifier).setPrimaryProfileId(val ? profile.id : null);
+                                          },
+                                        ),
+                                      );
+                                    },
+                                    loading: () => const SizedBox(),
+                                    error: (_, __) => const SizedBox(),
+                                  ),
+                                ],
                                 const SizedBox(height: 24),
 
                                 // Checklist customization
@@ -422,7 +420,7 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                                           settings.copyWith(showName: val),
                                         );
                                       }),
-                                      _buildCheckboxTile('Age / Birth Date', settings.showAge, (val) {
+                                      _buildCheckboxTile('Date of Birth', settings.showAge, (val) {
                                         ref.read(lockScreenSettingsProvider(profile.id).notifier).updateSettings(
                                           settings.copyWith(showAge: val),
                                         );
@@ -460,22 +458,7 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 28),
-
-
-                                // Test Lockscreen button
-                                Center(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () => _showLockScreenSimulation(profile, settings, allergies, medications, contacts),
-                                    icon: const Icon(Icons.screen_lock_portrait),
-                                    label: const Text('Test Lock Screen Simulation', style: TextStyle(fontWeight: FontWeight.bold)),
-                                    style: ElevatedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 32),
+                                const SizedBox(height: 24),
                                 const Divider(),
                                 const SizedBox(height: 24),
 
@@ -635,220 +618,4 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
       activeColor: Colors.red.shade900,
     );
   }
-
-
-}
-
-// Fullscreen Lock Screen Simulation
-class _LockScreenSimulationView extends StatelessWidget {
-  final Profile profile;
-  final LockScreenSetting settings;
-  final List<Allergy> allergies;
-  final List<Medication> medications;
-  final List<EmergencyContact> contacts;
-
-  const _LockScreenSimulationView({
-    required this.profile,
-    required this.settings,
-    required this.allergies,
-    required this.medications,
-    required this.contacts,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final timeStr = DateFormat('h:mm').format(DateTime.now());
-    final dateStr = DateFormat('EEEE, MMMM d').format(DateTime.now());
-
-    void showMedicalCard() {
-      showGeneralDialog(
-        context: context,
-        barrierDismissible: true,
-        barrierLabel: 'Simulation Card',
-        transitionDuration: const Duration(milliseconds: 350),
-        pageBuilder: (ctx, anim, secAnim) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 1),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-            child: const EmergencyCardView(),
-          );
-        },
-      );
-    }
-
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF1D1B26), Color(0xFF2C243B), Color(0xFF13111A)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              // Padlock and Clock
-              Align(
-                alignment: const Alignment(0, -0.85),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.lock, color: Colors.white70, size: 24),
-                    const SizedBox(height: 12),
-                    Text(
-                      timeStr,
-                      style: const TextStyle(
-                        fontSize: 80,
-                        fontWeight: FontWeight.w200,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      dateStr,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Lock Screen Emergency Widget or Notification
-              if (settings.isEnabled)
-                Align(
-                  alignment: const Alignment(0, 0.1),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: Colors.white.withOpacity(0.1)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.red,
-                                    ),
-                                    child: const Icon(Icons.emergency, color: Colors.white, size: 14),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'Emergency Medical ID Available',
-                                    style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
-                                  ),
-                                  const Spacer(),
-                                  const Text('now', style: TextStyle(color: Colors.white54, fontSize: 10)),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                settings.showName ? '🚨 Medical Alert: ${profile.name} ${profile.surname}' : '🚨 Medical Alert',
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                'Tapping "Emergency Medical ID" below reveals vital parameters and emergency contacts for first responders.',
-                                style: TextStyle(color: Colors.white70, fontSize: 11, height: 1.4),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-              // Close Simulation Button
-              Align(
-                alignment: Alignment.topRight,
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: TextButton.icon(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close, color: Colors.white70),
-                    label: const Text('Exit Test', style: TextStyle(color: Colors.white70)),
-                  ),
-                ),
-              ),
-
-              // Bottom Actions (Flashlight / Pulse Button / Camera)
-              Align(
-                alignment: const Alignment(0, 0.95),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Simulated Flashlight
-                      CircleAvatar(
-                        radius: 25,
-                        backgroundColor: Colors.white.withOpacity(0.1),
-                        child: const Icon(Icons.flashlight_on, color: Colors.white, size: 20),
-                      ),
-
-                      // Pulse Button
-                      GestureDetector(
-                        onTap: showMedicalCard,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade900,
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.red.withOpacity(0.4),
-                                blurRadius: 15,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.emergency, color: Colors.white, size: 16),
-                              SizedBox(width: 8),
-                              Text(
-                                'Emergency Medical ID',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // Simulated Camera
-                      CircleAvatar(
-                        radius: 25,
-                        backgroundColor: Colors.white.withOpacity(0.1),
-                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
 }

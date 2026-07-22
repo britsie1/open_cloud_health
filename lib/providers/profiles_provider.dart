@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
 import 'package:open_cloud_health/services/file_service.dart';
+import 'package:open_cloud_health/services/notification_service.dart';
 import 'package:open_cloud_health/utils/result.dart';
 
 class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
@@ -71,6 +72,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
       }
 
       await loadProfiles();
+      await ref.read(notificationServiceProvider).syncEmergencyNotification(profileId);
       return Success(profileId);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));
@@ -100,6 +102,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
     try {
       await _repository.updateProfile(profile);
       await loadProfiles();
+      await ref.read(notificationServiceProvider).syncEmergencyNotification(profile.id);
       return const Success(null);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));
@@ -126,6 +129,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
 
       await _repository.addProfile(newProfile);
       await loadProfiles();
+      await ref.read(notificationServiceProvider).syncEmergencyNotification(newProfile.id);
 
       return Success(newProfile.id);
     } catch (e) {
@@ -172,6 +176,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
 
       await _repository.updateProfile(updatedProfile);
       await loadProfiles();
+      await ref.read(notificationServiceProvider).syncEmergencyNotification(profileId);
       return const Success(null);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));
@@ -199,6 +204,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
 
       await _repository.updateProfile(archivedProfile);
       await loadProfiles();
+      await ref.read(notificationServiceProvider).syncEmergencyNotification(id);
       return const Success(null);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));
@@ -226,6 +232,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
 
       await _repository.updateProfile(restoredProfile);
       await loadProfiles();
+      await ref.read(notificationServiceProvider).syncEmergencyNotification(id);
       return const Success(null);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));
@@ -236,6 +243,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
     try {
       await _repository.deleteProfile(id);
       await loadProfiles();
+      await ref.read(notificationServiceProvider).syncEmergencyNotification(id);
       return const Success(null);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));
@@ -246,14 +254,19 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
     try {
       final allProfiles = await _repository.fetchProfiles(includeArchived: true);
       final now = DateTime.now();
+      bool deletedAny = false;
       for (final profile in allProfiles) {
         if (profile.isArchived && profile.archivedAt != null) {
           final difference = now.difference(profile.archivedAt!);
           if (difference.inDays >= 30) {
             await _repository.deleteProfile(profile.id);
+            deletedAny = true;
             debugPrint('Automatically deleted expired profile: ${profile.name} ${profile.surname}');
           }
         }
+      }
+      if (deletedAny) {
+        await ref.read(notificationServiceProvider).syncEmergencyNotification('');
       }
     } catch (e) {
       debugPrint('Error cleaning up archived profiles: $e');

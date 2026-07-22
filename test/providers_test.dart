@@ -23,6 +23,8 @@ import 'package:open_cloud_health/repositories/period_repository.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
 import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
+import 'package:open_cloud_health/providers/emergency_provider.dart';
+import 'package:open_cloud_health/repositories/emergency_repository.dart';
 import 'package:open_cloud_health/utils/result.dart';
 
 class MockProfilesRepository extends Mock implements ProfilesRepository {}
@@ -53,6 +55,8 @@ class MockPeriodRepository extends Mock implements PeriodRepository {}
 
 class MockCheckupsRepository extends Mock implements CheckupsRepository {}
 
+class MockEmergencyRepository extends Mock implements EmergencyRepository {}
+
 void main() {
   late MockProfilesRepository mockProfilesRepository;
   late MockHistoryRepository mockHistoryRepository;
@@ -63,6 +67,7 @@ void main() {
   late MockFileService mockFileService;
   late MockPeriodRepository mockPeriodRepository;
   late MockCheckupsRepository mockCheckupsRepository;
+  late MockEmergencyRepository mockEmergencyRepository;
   late ProviderContainer container;
 
   setUpAll(() {
@@ -84,10 +89,13 @@ void main() {
     mockFileService = MockFileService();
     mockPeriodRepository = MockPeriodRepository();
     mockCheckupsRepository = MockCheckupsRepository();
+    mockEmergencyRepository = MockEmergencyRepository();
 
     when(() => mockNotificationService.cancelNotification(any()))
         .thenAnswer((_) async => {});
     when(() => mockNotificationService.cancelMedicationNotifications(any()))
+        .thenAnswer((_) async => {});
+    when(() => mockNotificationService.syncEmergencyNotification(any()))
         .thenAnswer((_) async => {});
     when(() => mockNotificationService.scheduleDailyNotification(
             any(), any(), any(), any(), any()))
@@ -119,6 +127,7 @@ void main() {
         fileServiceProvider.overrideWithValue(mockFileService),
         periodRepositoryProvider.overrideWithValue(mockPeriodRepository),
         checkupsRepositoryProvider.overrideWithValue(mockCheckupsRepository),
+        emergencyRepositoryProvider.overrideWithValue(mockEmergencyRepository),
       ],
     );
   });
@@ -711,6 +720,32 @@ void main() {
       expect(container.read(allergiesProvider('p1')).value!.length, 1);
       expect(container.read(allergiesProvider('p1')).value!.first.name, 'Dust');
       verify(() => mockAllergiesRepository.addAllergy(any())).called(1);
+      verify(() => mockNotificationService.syncEmergencyNotification('p1')).called(1);
+    });
+
+    test('deleteAllergy should call repository, update state and sync notification', () async {
+      final initialAllergies = [
+        Allergy(id: 'a1', profileId: 'p1', name: 'Peanuts', note: 'Severe'),
+      ];
+      when(() => mockAllergiesRepository.getAllergies('p1'))
+          .thenAnswer((_) async => initialAllergies);
+      when(() => mockAllergiesRepository.deleteAllergy(any()))
+          .thenAnswer((_) async => {});
+
+      await container.read(allergiesProvider('p1').future);
+
+      // Update mock for the refresh call
+      when(() => mockAllergiesRepository.getAllergies('p1'))
+          .thenAnswer((_) async => []);
+
+      final result = await container
+          .read(allergiesProvider('p1').notifier)
+          .deleteAllergy('a1');
+
+      expect(result, isA<Success<void, Exception>>());
+      expect(container.read(allergiesProvider('p1')).value!.length, 0);
+      verify(() => mockAllergiesRepository.deleteAllergy('a1')).called(1);
+      verify(() => mockNotificationService.syncEmergencyNotification('p1')).called(1);
     });
   });
 
@@ -837,6 +872,33 @@ void main() {
 
       expect(adherence.adherenceRate, 0.0);
       expect(adherence.streakDays, 0);
+    });
+  });
+
+  group('PrimaryProfileIdProvider Tests', () {
+    test('initial state should fetch primary profile id from repository', () async {
+      when(() => mockEmergencyRepository.getPrimaryProfileId())
+          .thenAnswer((_) async => 'p1');
+
+      final value = await container.read(primaryProfileIdProvider.future);
+      expect(value, 'p1');
+      verify(() => mockEmergencyRepository.getPrimaryProfileId()).called(1);
+    });
+
+    test('setPrimaryProfileId should update repository and state', () async {
+      when(() => mockEmergencyRepository.getPrimaryProfileId())
+          .thenAnswer((_) async => null);
+      when(() => mockEmergencyRepository.setPrimaryProfileId(any()))
+          .thenAnswer((_) async => {});
+
+      final initial = await container.read(primaryProfileIdProvider.future);
+      expect(initial, isNull);
+
+      final notifier = container.read(primaryProfileIdProvider.notifier);
+      await notifier.setPrimaryProfileId('p2');
+
+      verify(() => mockEmergencyRepository.setPrimaryProfileId('p2')).called(1);
+      expect(container.read(primaryProfileIdProvider).value, 'p2');
     });
   });
 }

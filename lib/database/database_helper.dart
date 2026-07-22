@@ -153,6 +153,34 @@ class DatabaseHelper {
       conflictAlgorithm: sql.ConflictAlgorithm.replace,
     );
   }
+
+  Future<String?> getPrimaryProfileId() async {
+    try {
+      final db = await getDatabase();
+      final result = await db.query(
+        'settings',
+        where: 'key = ?',
+        whereArgs: ['primary_profile_id'],
+      );
+      if (result.isEmpty) return null;
+      return result.first['value'] as String?;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> setPrimaryProfileId(String? profileId) async {
+    final db = await getDatabase();
+    if (profileId == null) {
+      await db.delete('settings', where: 'key = ?', whereArgs: ['primary_profile_id']);
+    } else {
+      await db.insert(
+        'settings',
+        {'key': 'primary_profile_id', 'value': profileId},
+        conflictAlgorithm: sql.ConflictAlgorithm.replace,
+      );
+    }
+  }
 }
 
 final databaseHelperProvider = Provider<DatabaseHelper>((ref) {

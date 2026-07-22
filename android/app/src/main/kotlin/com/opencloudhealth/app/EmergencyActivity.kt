@@ -77,6 +77,22 @@ class EmergencyActivity : Activity() {
                 return
             }
 
+            // Check if there is a primary profile to sort first
+            var primaryProfileId: String? = null
+            val primaryCursor = db.rawQuery("SELECT value FROM settings WHERE key = 'primary_profile_id' LIMIT 1", null)
+            if (primaryCursor.moveToFirst()) {
+                primaryProfileId = primaryCursor.getString(0)
+            }
+            primaryCursor.close()
+
+            if (primaryProfileId != null) {
+                val primaryIndex = settingsList.indexOfFirst { it["profileId"] == primaryProfileId }
+                if (primaryIndex != -1) {
+                    val primarySettings = settingsList.removeAt(primaryIndex)
+                    settingsList.add(0, primarySettings)
+                }
+            }
+
             // Hide Error screen, show Content layout
             findViewById<View>(R.id.errorContainer).visibility = View.GONE
             findViewById<View>(R.id.scrollContainer).visibility = View.VISIBLE
@@ -129,6 +145,16 @@ class EmergencyActivity : Activity() {
                     nameTextView.visibility = View.VISIBLE
                 }
 
+                // Render DOB
+                val dobTextView = profileView.findViewById<TextView>(R.id.dobText)
+                if (showAge && dateOfBirthStr.isNotEmpty()) {
+                    val dobFormatted = dateOfBirthStr.split(" ")[0]
+                    dobTextView.text = "Date of Birth: $dobFormatted"
+                    dobTextView.visibility = View.VISIBLE
+                } else {
+                    dobTextView.visibility = View.GONE
+                }
+
                 // Render Quick Tags (Age, Blood, Donor)
                 val tagsLayout = profileView.findViewById<LinearLayout>(R.id.tagsLayout)
                 tagsLayout.removeAllViews()
@@ -148,15 +174,19 @@ class EmergencyActivity : Activity() {
                 val conditionsCard = profileView.findViewById<View>(R.id.conditionsCard)
                 val conditionsContainer = profileView.findViewById<LinearLayout>(R.id.conditionsContainer)
                 conditionsContainer.removeAllViews()
-                if (showChronicConditions && chronicConditionsStr.isNotEmpty()) {
-                    val conditions = chronicConditionsStr.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                if (showChronicConditions) {
+                    conditionsCard.visibility = View.VISIBLE
+                    val conditions = if (chronicConditionsStr.isNotEmpty()) {
+                        chronicConditionsStr.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                    } else {
+                        emptyList()
+                    }
                     if (conditions.isNotEmpty()) {
-                        conditionsCard.visibility = View.VISIBLE
                         for (cond in conditions) {
                             addConditionChip(conditionsContainer, cond)
                         }
                     } else {
-                        conditionsCard.visibility = View.GONE
+                        addConditionChip(conditionsContainer, "None")
                     }
                 } else {
                     conditionsCard.visibility = View.GONE
@@ -167,16 +197,16 @@ class EmergencyActivity : Activity() {
                 val allergiesContainer = profileView.findViewById<LinearLayout>(R.id.allergiesContainer)
                 allergiesContainer.removeAllViews()
                 if (showAllergies) {
+                    allergiesCard.visibility = View.VISIBLE
                     val allergyCursor = db.rawQuery("SELECT * FROM allergy WHERE profileId = ?", arrayOf(profileId))
                     if (allergyCursor.moveToFirst()) {
-                        allergiesCard.visibility = View.VISIBLE
                         do {
                             val allergyName = allergyCursor.getString(allergyCursor.getColumnIndexOrThrow("name"))
                             val note = allergyCursor.getString(allergyCursor.getColumnIndexOrThrow("note")) ?: ""
                             addAllergyRow(allergiesContainer, allergyName, note)
                         } while (allergyCursor.moveToNext())
                     } else {
-                        allergiesCard.visibility = View.GONE
+                        addAllergyRow(allergiesContainer, "None", "")
                     }
                     allergyCursor.close()
                 } else {
@@ -263,8 +293,43 @@ class EmergencyActivity : Activity() {
         view.setBackgroundResource(backgroundRes)
         view.findViewById<TextView>(R.id.tagLabel).text = label
         view.findViewById<TextView>(R.id.tagValue).run {
-            text = value
+            if (label == "DOB" && value.contains(" (Age ")) {
+                val spannable = android.text.SpannableStringBuilder(value)
+                val ageStart = value.indexOf(" (Age ")
+                val ageEnd = value.length
+                
+                // Make the age portion smaller (e.g. 75% of DOB text size)
+                spannable.setSpan(
+                    android.text.style.RelativeSizeSpan(0.75f),
+                    ageStart,
+                    ageEnd,
+                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                
+                // Make the age portion gray (e.g. #78909C)
+                spannable.setSpan(
+                    android.text.style.ForegroundColorSpan(0xFF78909C.toInt()),
+                    ageStart,
+                    ageEnd,
+                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                
+                // Make the age portion not bold (normal weight)
+                spannable.setSpan(
+                    android.text.style.StyleSpan(android.graphics.Typeface.NORMAL),
+                    ageStart,
+                    ageEnd,
+                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                
+                text = spannable
+            } else {
+                text = value
+            }
             setTextColor(textColor)
+            if (value.length > 8) {
+                textSize = 12f
+            }
         }
         container.addView(view)
     }

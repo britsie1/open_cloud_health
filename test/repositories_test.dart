@@ -89,6 +89,11 @@ void main() {
           showContacts TEXT DEFAULT 'true',
           isEnabled TEXT DEFAULT 'false'
         )''');
+      await db.execute('''
+        CREATE TABLE settings(
+          key TEXT PRIMARY KEY,
+          value TEXT
+        )''');
     });
 
     mockDbHelper = MockDatabaseHelper();
@@ -261,6 +266,24 @@ void main() {
       expect(retrieved.showName, false);
       expect(retrieved.showAge, true);
       expect(retrieved.isEnabled, true);
+    });
+
+    test('getPrimaryProfileId and setPrimaryProfileId should save and retrieve primary profile id', () async {
+      final repository = EmergencyRepository(mockDbHelper);
+      
+      String? primaryId;
+      when(() => mockDbHelper.getPrimaryProfileId()).thenAnswer((_) async => primaryId);
+      when(() => mockDbHelper.setPrimaryProfileId(any())).thenAnswer((invocation) async {
+        primaryId = invocation.positionalArguments[0] as String?;
+      });
+
+      expect(await repository.getPrimaryProfileId(), isNull);
+      
+      await repository.setPrimaryProfileId('p1');
+      expect(await repository.getPrimaryProfileId(), 'p1');
+      
+      await repository.setPrimaryProfileId(null);
+      expect(await repository.getPrimaryProfileId(), isNull);
     });
   });
 }

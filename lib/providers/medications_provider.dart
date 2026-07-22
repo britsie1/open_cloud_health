@@ -51,6 +51,7 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
       }
       
       await refreshMedications();
+      await _notificationService.syncEmergencyNotification(arg);
       return const Success(null);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));
@@ -93,6 +94,7 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
       }
       
       await refreshMedications();
+      await _notificationService.syncEmergencyNotification(arg);
       return const Success(null);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));
@@ -106,6 +108,7 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
       await _notificationService.cancelMedicationNotifications(id);
       
       await refreshMedications();
+      await _notificationService.syncEmergencyNotification(arg);
       return const Success(null);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));
@@ -151,6 +154,7 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
       }
       
       await refreshMedications();
+      await _notificationService.syncEmergencyNotification(arg);
       return const Success(null);
     } catch (e) {
       return Failure(e is Exception ? e : Exception(e.toString()));

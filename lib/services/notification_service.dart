@@ -539,6 +539,7 @@ class NotificationService {
         final name = '${p['name']} ${p['surname']}';
         final dobStr = p['dateOfBirth'] as String;
         final dob = DateTime.parse(dobStr);
+        final dobFormatted = dobStr.split(' ').first;
         final today = DateTime.now();
         int age = today.year - dob.year;
         if (today.month < dob.month || (today.month == dob.month && today.day < dob.day)) {
@@ -562,6 +563,7 @@ class NotificationService {
 
         final details = <String>[];
         if (showAge) {
+          details.add('DOB: $dobFormatted');
           details.add('Age: $age');
         }
         if (showBloodType) {
@@ -574,11 +576,11 @@ class NotificationService {
           buffer.writeln(details.join(' | '));
         }
 
-        if (showChronicConditions && chronicConditions.isNotEmpty) {
-          buffer.writeln('Conditions: ${chronicConditions.join(", ")}');
+        if (showChronicConditions) {
+          buffer.writeln('Conditions: ${chronicConditions.isNotEmpty ? chronicConditions.join(", ") : "None"}');
         }
-        if (showAllergies && allergies.isNotEmpty) {
-          buffer.writeln('Allergies: ${allergies.join(", ")}');
+        if (showAllergies) {
+          buffer.writeln('Allergies: ${allergies.isNotEmpty ? allergies.join(", ") : "None"}');
         }
         if (showMedications && medications.isNotEmpty) {
           buffer.writeln('Meds: ${medications.join(", ")}');
@@ -601,7 +603,18 @@ class NotificationService {
         final List<String> namesList = [];
         final buffer = StringBuffer();
 
-        for (final setRow in activeSettings) {
+        // Get primary profile ID to list first
+        final primaryId = await dbHelper.getPrimaryProfileId();
+        final settingsList = List<Map<String, dynamic>>.from(activeSettings);
+        if (primaryId != null) {
+          settingsList.sort((a, b) {
+            if (a['profileId'] == primaryId) return -1;
+            if (b['profileId'] == primaryId) return 1;
+            return 0;
+          });
+        }
+
+        for (final setRow in settingsList) {
           final pId = setRow['profileId'] as String;
           final showName = setRow['showName'] == 'true';
           final showAge = setRow['showAge'] == 'true';
@@ -622,6 +635,7 @@ class NotificationService {
 
           final dobStr = p['dateOfBirth'] as String;
           final dob = DateTime.parse(dobStr);
+          final dobFormatted = dobStr.split(' ').first;
           final today = DateTime.now();
           int age = today.year - dob.year;
           if (today.month < dob.month || (today.month == dob.month && today.day < dob.day)) {
@@ -640,18 +654,21 @@ class NotificationService {
 
           buffer.writeln('${showName ? name : "Profile"}:');
           final details = <String>[];
-          if (showAge) details.add('Age: $age');
+          if (showAge) {
+            details.add('DOB: $dobFormatted');
+            details.add('Age: $age');
+          }
           if (showBloodType) details.add('Blood: $bloodType');
           if (showOrganDonor) details.add('Donor: ${isOrganDonor ? "Yes" : "No"}');
           if (details.isNotEmpty) {
             buffer.writeln('  ${details.join(" | ")}');
           }
 
-          if (showChronicConditions && chronicConditions.isNotEmpty) {
-            buffer.writeln('  Conditions: ${chronicConditions.join(", ")}');
+          if (showChronicConditions) {
+            buffer.writeln('  Conditions: ${chronicConditions.isNotEmpty ? chronicConditions.join(", ") : "None"}');
           }
-          if (showAllergies && allergies.isNotEmpty) {
-            buffer.writeln('  Allergies: ${allergies.join(", ")}');
+          if (showAllergies) {
+            buffer.writeln('  Allergies: ${allergies.isNotEmpty ? allergies.join(", ") : "None"}');
           }
           if (showMedications && medications.isNotEmpty) {
             buffer.writeln('  Meds: ${medications.join(", ")}');

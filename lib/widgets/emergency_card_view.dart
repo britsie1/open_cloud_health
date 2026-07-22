@@ -94,6 +94,17 @@ class EmergencyCardView extends ConsumerWidget {
                                 color: Colors.red,
                               ),
                             ),
+                            if (settings.showAge) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Date of Birth: ${profile.formattedDate}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -113,38 +124,57 @@ class EmergencyCardView extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  if (settings.showChronicConditions && profile.chronicConditions.isNotEmpty) ...[
+                  if (settings.showChronicConditions) ...[
                     _buildSectionTitle('CHRONIC CONDITIONS'),
                     const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: profile.chronicConditions
-                          .map((cond) => Chip(
-                                label: Text(
-                                  cond,
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                ),
-                                backgroundColor: Colors.red.shade800,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ))
-                          .toList(),
-                    ),
+                    profile.chronicConditions.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Text(
+                              'None',
+                              style: TextStyle(color: Colors.grey.shade600, fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                          )
+                        : Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: profile.chronicConditions
+                                .map((cond) => Chip(
+                                      label: Text(
+                                        cond,
+                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                      ),
+                                      backgroundColor: Colors.red.shade800,
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    ))
+                                .toList(),
+                          ),
                     const SizedBox(height: 24),
                   ],
-                  if (settings.showAllergies && allergies.isNotEmpty) ...[
+                  if (settings.showAllergies) ...[
                     _buildSectionTitle('ALLERGIES & REACTION NOTES'),
                     const SizedBox(height: 8),
-                    ...allergies.map((allergy) => Card(
-                          margin: const EdgeInsets.symmetric(vertical: 4),
-                          color: Colors.red.shade50,
-                          child: ListTile(
-                            leading: Icon(Icons.warning, color: Colors.red.shade800),
-                            title: Text(allergy.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: allergy.note.isNotEmpty ? Text(allergy.note) : null,
+                    allergies.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Text(
+                              'None',
+                              style: TextStyle(color: Colors.grey.shade600, fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: allergies.map((allergy) => Card(
+                                  margin: const EdgeInsets.symmetric(vertical: 4),
+                                  color: Colors.red.shade50,
+                                  child: ListTile(
+                                    leading: Icon(Icons.warning, color: Colors.red.shade800),
+                                    title: Text(allergy.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    subtitle: allergy.note.isNotEmpty ? Text(allergy.note) : null,
+                                  ),
+                                )).toList(),
                           ),
-                        )),
                     const SizedBox(height: 24),
                   ],
                   if (settings.showMedications && activeMeds.isNotEmpty) ...[
@@ -190,35 +220,66 @@ class EmergencyCardView extends ConsumerWidget {
   }
 
   Widget _buildInfoTag(String label, String value, IconData icon, {Color? color}) {
+    final themeColor = color ?? Colors.purple;
+    final List<Widget> children = [
+      Icon(icon, size: 16, color: themeColor),
+      Text(
+        '$label: ',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey.shade600,
+        ),
+      ),
+    ];
+
+    if (label == 'DOB' && value.contains(' (Age ')) {
+      final parts = value.split(' (Age ');
+      final dobPart = parts[0];
+      final agePart = parts[1].replaceAll(')', '');
+      children.addAll([
+        Text(
+          dobPart,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: themeColor,
+          ),
+        ),
+        Text(
+          '(Age $agePart)',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.normal,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ]);
+    } else {
+      children.add(
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: themeColor,
+          ),
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: (color ?? Colors.purple).withOpacity(0.1),
+        color: themeColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: (color ?? Colors.purple).withOpacity(0.3)),
+        border: Border.all(color: themeColor.withOpacity(0.3)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color ?? Colors.purple),
-          const SizedBox(width: 6),
-          Text(
-            '$label: ',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade600,
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: color ?? Colors.purple,
-            ),
-          ),
-        ],
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 6,
+        runSpacing: 4,
+        children: children,
       ),
     );
   }
@@ -330,6 +391,17 @@ class EmergencyCardView extends ConsumerWidget {
         'medications': medications,
         'contacts': contacts,
         'imagePath': imagePath,
+      });
+    }
+
+    final primaryId = await dbHelper.getPrimaryProfileId();
+    if (primaryId != null) {
+      results.sort((a, b) {
+        final aId = (a['settings'] as LockScreenSetting).profileId;
+        final bId = (b['settings'] as LockScreenSetting).profileId;
+        if (aId == primaryId) return -1;
+        if (bId == primaryId) return 1;
+        return 0;
       });
     }
 
