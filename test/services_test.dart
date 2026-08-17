@@ -1,13 +1,17 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:open_cloud_health/services/backup_service.dart';
 import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
 import 'package:path/path.dart' as path;
 
 class MockFileService extends Mock implements FileService {}
 class MockRef extends Mock implements Ref {}
+
+class MockGoogleSignIn extends Mock implements GoogleSignIn {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -91,18 +95,17 @@ void main() {
   group('BackupService Mock Tests', () {
     late MockFileService mockFileService;
     late MockRef mockRef;
+    late MockGoogleSignIn mockGoogleSignIn;
 
     setUp(() {
       mockFileService = MockFileService();
       mockRef = MockRef();
-      
+      mockGoogleSignIn = MockGoogleSignIn();
+
       when(() => mockRef.read(fileServiceProvider)).thenReturn(mockFileService);
     });
 
     test('BackupService correctly requests directories from FileService', () async {
-      // We are only testing that BackupService calls FileService correctly
-      // We don't execute the full backupToGoogleDrive because of GoogleSignIn dependency
-      
       when(() => mockFileService.getProfileImagesDirectory())
           .thenAnswer((_) async => Directory('fake_profiles'));
       when(() => mockFileService.getAttachmentsDirectory())
@@ -110,9 +113,26 @@ void main() {
 
       // Verify the service-to-service connection via Riverpod
       expect(mockRef.read(fileServiceProvider), mockFileService);
-      
-      // Note: We can't easily test backupToGoogleDrive() itself without mocking 
-      // the entire Google Drive API and Google Sign In.
+    });
+
+    test('BackupService getConnectedUser returns null if no user signed in', () async {
+      when(() => mockGoogleSignIn.currentUser).thenReturn(null);
+      when(() => mockGoogleSignIn.signInSilently()).thenAnswer((_) async => null);
+
+      final backupService = BackupService(mockRef, googleSignIn: mockGoogleSignIn);
+      final user = await backupService.getConnectedUser();
+
+      expect(user, isNull);
+      verify(() => mockGoogleSignIn.signInSilently()).called(1);
+    });
+
+    test('BackupService signOut triggers googleSignIn signOut', () async {
+      when(() => mockGoogleSignIn.signOut()).thenAnswer((_) async => null);
+
+      final backupService = BackupService(mockRef, googleSignIn: mockGoogleSignIn);
+      await backupService.signOut();
+
+      verify(() => mockGoogleSignIn.signOut()).called(1);
     });
   });
 

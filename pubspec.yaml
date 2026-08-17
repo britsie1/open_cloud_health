@@ -62,6 +62,7 @@ dependencies:
   healthicons_flutter: ^3.5.0
   android_intent_plus: ^5.0.0
   flutter_timezone: ^1.0.8
+  url_launcher: ^6.2.5
 
 dev_dependencies:
   flutter_test:

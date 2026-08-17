@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:intl/intl.dart';
+import 'package:open_cloud_health/models/storage_info.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/storage/google_auth_client.dart';
@@ -12,26 +13,111 @@ import 'package:sqflite/sqflite.dart' as sql;
 
 class BackupService {
   final Ref _ref;
-  final GoogleSignIn _googleSignIn = GoogleSignIn.standard(scopes: [
-    drive.DriveApi.driveAppdataScope,
-  ]);
+  final GoogleSignIn _googleSignIn;
 
-  BackupService(this._ref);
+  BackupService(this._ref, {GoogleSignIn? googleSignIn})
+      : _googleSignIn = googleSignIn ??
+            GoogleSignIn.standard(scopes: [
+              drive.DriveApi.driveAppdataScope,
+            ]);
 
   FileService get _fileService => _ref.read(fileServiceProvider);
 
-  Future<drive.DriveApi?> _getDriveApi() async {
+  Future<drive.DriveApi?> _getDriveApi({bool interactive = true}) async {
     try {
-      final googleUser = await _googleSignIn.signIn();
-      final headers = await googleUser?.authHeaders;
-      if (headers == null) {
+      GoogleSignInAccount? googleUser = _googleSignIn.currentUser;
+      if (googleUser == null) {
+        if (interactive) {
+          googleUser = await _googleSignIn.signIn();
+        } else {
+          googleUser = await _googleSignIn.signInSilently();
+        }
+      }
+      if (googleUser == null) {
         return null;
       }
 
+      final headers = await googleUser.authHeaders;
       final client = GoogleAuthClient(headers);
       return drive.DriveApi(client);
     } catch (e) {
       debugPrint('Error getting Drive API: $e');
+      return null;
+    }
+  }
+
+  Future<GoogleSignInAccount?> getConnectedUser() async {
+    try {
+      return _googleSignIn.currentUser ?? await _googleSignIn.signInSilently();
+    } catch (e) {
+      debugPrint('Error checking Google user: $e');
+      return null;
+    }
+  }
+
+  Future<void> signOut() async {
+    try {
+      await _googleSignIn.signOut();
+    } catch (e) {
+      debugPrint('Error signing out: $e');
+    }
+  }
+
+  Future<GoogleStorageInfo?> getGoogleStorageInfo({bool interactive = false}) async {
+    final driveApi = await _getDriveApi(interactive: interactive);
+    if (driveApi == null) {
+      return null;
+    }
+
+    try {
+      final about = await driveApi.about.get($fields: 'storageQuota, user');
+      final currentUser = _googleSignIn.currentUser;
+
+      final totalBytes = int.tryParse(about.storageQuota?.limit ?? '') ?? -1;
+      final usedBytes = int.tryParse(about.storageQuota?.usage ?? '') ?? 0;
+      final driveUsedBytes =
+          int.tryParse(about.storageQuota?.usageInDrive ?? '') ?? 0;
+      final trashUsedBytes =
+          int.tryParse(about.storageQuota?.usageInDriveTrash ?? '') ?? 0;
+
+      int appBackupBytes = 0;
+      String? lastBackupTime;
+
+      try {
+        final fileList = await driveApi.files.list(
+          spaces: 'appDataFolder',
+          $fields: 'files(id, name, size, modifiedTime)',
+          pageSize: 1000,
+        );
+
+        if (fileList.files != null) {
+          for (var f in fileList.files!) {
+            if (f.size != null) {
+              appBackupBytes += int.tryParse(f.size!) ?? 0;
+            }
+            if (f.name == 'opencloudhealth.db' && f.modifiedTime != null) {
+              lastBackupTime = DateFormat('yyyy-MM-dd HH:mm')
+                  .format(f.modifiedTime!.toLocal());
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error getting appData files list: $e');
+      }
+
+      return GoogleStorageInfo(
+        totalBytes: totalBytes,
+        usedBytes: usedBytes,
+        driveUsedBytes: driveUsedBytes,
+        trashUsedBytes: trashUsedBytes,
+        appBackupBytes: appBackupBytes,
+        userEmail: currentUser?.email ?? about.user?.emailAddress,
+        displayName: currentUser?.displayName ?? about.user?.displayName,
+        photoUrl: currentUser?.photoUrl ?? about.user?.photoLink,
+        lastBackupDateTime: lastBackupTime ?? 'Never',
+      );
+    } catch (e) {
+      debugPrint('Error getting Google storage info: $e');
       return null;
     }
   }
@@ -41,7 +127,7 @@ class BackupService {
     try {
       final fileName = path.basename(file.path);
       debugPrint('Uploading file: $fileName to folder: $parentDirId');
-      
+
       final media = drive.Media(file.openRead(), await file.length());
       final driveFile = drive.File();
       driveFile.name = fileName;
@@ -63,7 +149,8 @@ class BackupService {
         debugPrint('Found existing file $fileName (ID: $oldFileId), will replace.');
       }
 
-      final uploadedFile = await driveApi.files.create(driveFile, uploadMedia: media);
+      final uploadedFile =
+          await driveApi.files.create(driveFile, uploadMedia: media);
       debugPrint('Successfully uploaded $fileName (ID: ${uploadedFile.id})');
 
       if (oldFileId != null) {
@@ -110,7 +197,7 @@ class BackupService {
 
   Future<String> backupToGoogleDrive() async {
     debugPrint('Starting backup to Google Drive...');
-    final driveApi = await _getDriveApi();
+    final driveApi = await _getDriveApi(interactive: true);
     if (driveApi == null) {
       debugPrint('Failed to get Drive API');
       return '';
@@ -178,7 +265,7 @@ class BackupService {
   }
 
   Future<String> getLastBackupDateTime() async {
-    final driveApi = await _getDriveApi();
+    final driveApi = await _getDriveApi(interactive: true);
     if (driveApi == null) {
       return '';
     }
@@ -195,7 +282,8 @@ class BackupService {
       }
 
       final databaseFile = fileList.files!.first;
-      return DateFormat('yyyy-MM-dd HH:mm').format(databaseFile.modifiedTime!.toLocal());
+      return DateFormat('yyyy-MM-dd HH:mm')
+          .format(databaseFile.modifiedTime!.toLocal());
     } catch (e) {
       debugPrint('Error getting last backup date: $e');
       return 'Error';
@@ -217,7 +305,7 @@ class BackupService {
       final IOSink sink = file.openWrite();
       await sink.addStream(media.stream);
       await sink.close();
-      
+
       debugPrint('Successfully downloaded $fileName');
     } catch (e) {
       debugPrint('Error downloading file $fileName: $e');
@@ -250,7 +338,7 @@ class BackupService {
 
   Future<void> restoreFromBackup() async {
     debugPrint('Starting restore from backup...');
-    final driveApi = await _getDriveApi();
+    final driveApi = await _getDriveApi(interactive: true);
     if (driveApi == null) {
       debugPrint('Failed to get Drive API');
       return;

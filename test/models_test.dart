@@ -8,6 +8,8 @@ import 'package:open_cloud_health/models/medication_log.dart';
 import 'package:open_cloud_health/models/allergy.dart';
 import 'package:open_cloud_health/models/emergency_contact.dart';
 import 'package:open_cloud_health/models/lock_screen_setting.dart';
+import 'package:open_cloud_health/models/storage_info.dart';
+import 'package:open_cloud_health/utils/format_utils.dart';
 import 'package:open_cloud_health/utils/icon_utils.dart';
 import 'package:healthicons_flutter/healthicons_flutter.dart';
 
@@ -382,4 +384,100 @@ void main() {
       expect(updated.isEnabled, true);
     });
   });
+
+  group('FormatUtils Tests', () {
+    test('formatBytes handles 0 and negative bytes', () {
+      expect(FormatUtils.formatBytes(0), '0 B');
+      expect(FormatUtils.formatBytes(-50), '0 B');
+    });
+
+    test('formatBytes formats bytes correctly without decimals', () {
+      expect(FormatUtils.formatBytes(512), '512 B');
+      expect(FormatUtils.formatBytes(1023), '1023 B');
+    });
+
+    test('formatBytes formats KB, MB, GB correctly', () {
+      expect(FormatUtils.formatBytes(1024), '1.0 KB');
+      expect(FormatUtils.formatBytes(1536), '1.5 KB');
+      expect(FormatUtils.formatBytes(1048576), '1.0 MB');
+      expect(FormatUtils.formatBytes(1073741824), '1.0 GB');
+      expect(FormatUtils.formatBytes(16106127360), '15.0 GB');
+    });
+
+    test('formatPercentage formats fractions correctly', () {
+      expect(FormatUtils.formatPercentage(0.0), '0%');
+      expect(FormatUtils.formatPercentage(1.0), '100%');
+      expect(FormatUtils.formatPercentage(0.333), '33.3%');
+      expect(FormatUtils.formatPercentage(0.75), '75%');
+      expect(FormatUtils.formatPercentage(1.5), '100%');
+    });
+  });
+
+  group('GoogleStorageInfo Model Tests', () {
+    test('Calculates available bytes and usage fraction correctly for standard quotas', () {
+      const info = GoogleStorageInfo(
+        totalBytes: 15 * 1024 * 1024 * 1024, // 15 GB
+        usedBytes: 5 * 1024 * 1024 * 1024,  // 5 GB
+        driveUsedBytes: 2 * 1024 * 1024 * 1024,
+        trashUsedBytes: 500 * 1024 * 1024,
+        appBackupBytes: 50 * 1024 * 1024,
+        userEmail: 'user@example.com',
+        displayName: 'Test User',
+      );
+
+      expect(info.isUnlimited, false);
+      expect(info.availableBytes, 10 * 1024 * 1024 * 1024);
+      expect(info.usageFraction, closeTo(0.333, 0.001));
+      expect(info.formattedTotal, '15.0 GB');
+      expect(info.formattedUsed, '5.0 GB');
+      expect(info.formattedAvailable, '10.0 GB');
+      expect(info.formattedAppBackup, '50.0 MB');
+      expect(info.userEmail, 'user@example.com');
+      expect(info.displayName, 'Test User');
+    });
+
+    test('Handles unlimited total storage correctly', () {
+      const info = GoogleStorageInfo(
+        totalBytes: -1,
+        usedBytes: 10 * 1024 * 1024 * 1024,
+      );
+
+      expect(info.isUnlimited, true);
+      expect(info.availableBytes, -1);
+      expect(info.usageFraction, 0.0);
+      expect(info.formattedTotal, 'Unlimited');
+      expect(info.formattedAvailable, 'Unlimited');
+      expect(info.formattedUsed, '10.0 GB');
+    });
+
+    test('Handles full storage gracefully without negative available bytes', () {
+      const info = GoogleStorageInfo(
+        totalBytes: 15 * 1024 * 1024 * 1024,
+        usedBytes: 16 * 1024 * 1024 * 1024, // Over quota
+      );
+
+      expect(info.availableBytes, 0);
+      expect(info.usageFraction, 1.0);
+    });
+
+    test('copyWith works correctly', () {
+      const info = GoogleStorageInfo(
+        totalBytes: 15000,
+        usedBytes: 5000,
+        userEmail: 'old@example.com',
+      );
+
+      final updated = info.copyWith(
+        usedBytes: 6000,
+        userEmail: 'new@example.com',
+        appBackupBytes: 200,
+      );
+
+      expect(updated.totalBytes, 15000);
+      expect(updated.usedBytes, 6000);
+      expect(updated.userEmail, 'new@example.com');
+      expect(updated.appBackupBytes, 200);
+    });
+  });
 }
+
