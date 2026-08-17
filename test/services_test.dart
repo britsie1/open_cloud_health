@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:open_cloud_health/services/file_service.dart';
+import 'package:open_cloud_health/services/notification_service.dart';
 import 'package:path/path.dart' as path;
 
 class MockFileService extends Mock implements FileService {}
 class MockRef extends Mock implements Ref {}
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Directory tempDir;
   late FileService fileService;
 
@@ -111,6 +113,25 @@ void main() {
       
       // Note: We can't easily test backupToGoogleDrive() itself without mocking 
       // the entire Google Drive API and Google Sign In.
+    });
+  });
+
+  group('NotificationService Battery Optimization Tests', () {
+    test('isBatteryOptimizationDisabled returns boolean on non-Android platform', () async {
+      final notificationService = NotificationService();
+      final isDisabled = await notificationService.isBatteryOptimizationDisabled();
+      expect(isDisabled, isA<bool>());
+      expect(isDisabled, true);
+    });
+
+    test('requestDisableBatteryOptimization completes without throwing', () async {
+      final notificationService = NotificationService();
+      await expectLater(notificationService.requestDisableBatteryOptimization(), completes);
+    });
+
+    test('openAutoStartSettings completes without throwing on test runner', () async {
+      final notificationService = NotificationService();
+      await expectLater(notificationService.openAutoStartSettings(), completes);
     });
   });
 }

@@ -716,6 +716,34 @@ class NotificationService {
       await openAppSettings();
     }
   }
+
+  Future<bool> isBatteryOptimizationDisabled() async {
+    if (!Platform.isAndroid) return true;
+    final status = await Permission.ignoreBatteryOptimizations.status;
+    return status.isGranted;
+  }
+
+  Future<void> requestDisableBatteryOptimization() async {
+    if (!Platform.isAndroid) return;
+    await Permission.ignoreBatteryOptimizations.request();
+  }
+
+  Future<void> openAutoStartSettings() async {
+    if (Platform.isAndroid) {
+      try {
+        await _emergencyNotificationChannel.invokeMethod('openAutoStartSettings');
+      } catch (e) {
+        debugPrint('Error opening native Android OEM auto-start settings: $e');
+        try {
+          await openAppSettings();
+        } catch (_) {}
+      }
+    } else {
+      try {
+        await openAppSettings();
+      } catch (_) {}
+    }
+  }
 }
 
 final notificationServiceProvider = Provider<NotificationService>((ref) {

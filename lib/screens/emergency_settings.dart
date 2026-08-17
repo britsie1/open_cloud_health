@@ -24,6 +24,7 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
   final _contactPhoneController = TextEditingController();
   String _selectedRelationship = 'Spouse';
   bool _notificationsEnabled = true;
+  bool _batteryOptimizationDisabled = true;
 
   final List<String> _relationships = [
     'Spouse',
@@ -42,6 +43,7 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
     WidgetsBinding.instance.addObserver(this);
     _currentProfileId = widget.profileId;
     _checkNotificationPermission();
+    _checkBatteryOptimizationStatus();
   }
 
   @override
@@ -56,6 +58,7 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _checkNotificationPermission();
+      _checkBatteryOptimizationStatus();
     }
   }
 
@@ -69,6 +72,15 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
     if (mounted) {
       setState(() {
         _notificationsEnabled = isEnabled;
+      });
+    }
+  }
+
+  Future<void> _checkBatteryOptimizationStatus() async {
+    final isDisabled = await ref.read(notificationServiceProvider).isBatteryOptimizationDisabled();
+    if (mounted) {
+      setState(() {
+        _batteryOptimizationDisabled = isDisabled;
       });
     }
   }
@@ -325,6 +337,106 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                                       trailing: TextButton(
                                         onPressed: () => ref.read(notificationServiceProvider).openNotificationSettings(),
                                         child: const Text('ENABLE'),
+                                      ),
+                                    ),
+                                  ),
+                                if (!_batteryOptimizationDisabled)
+                                  Card(
+                                    color: Colors.orange.shade50,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    margin: const EdgeInsets.only(bottom: 20),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(Icons.battery_alert, color: Colors.orange.shade900),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Text(
+                                                  'Battery Optimization Enabled',
+                                                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange.shade900),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          const Text(
+                                            'Android battery optimization may periodically dismiss your emergency notification or prevent your Medical ID from remaining active on the lock screen. Turn off battery optimization for Open Cloud Health to keep your Medical ID reliably visible.',
+                                            style: TextStyle(fontSize: 12, color: Colors.black87),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Align(
+                                            alignment: Alignment.centerRight,
+                                            child: Wrap(
+                                              alignment: WrapAlignment.end,
+                                              spacing: 8,
+                                              runSpacing: 8,
+                                              children: [
+                                                TextButton.icon(
+                                                  onPressed: () => ref.read(notificationServiceProvider).openAutoStartSettings(),
+                                                  icon: const Icon(Icons.settings_suggest, size: 18),
+                                                  label: const Text('OEM Auto-Start Settings'),
+                                                ),
+                                                ElevatedButton.icon(
+                                                  onPressed: () async {
+                                                    await ref.read(notificationServiceProvider).requestDisableBatteryOptimization();
+                                                    await _checkBatteryOptimizationStatus();
+                                                  },
+                                                  icon: const Icon(Icons.battery_saver, size: 18),
+                                                  label: const Text('Turn Off Battery Optimization'),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: Colors.orange.shade800,
+                                                    foregroundColor: Colors.white,
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  Card(
+                                    color: Colors.blueGrey.shade50,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    margin: const EdgeInsets.only(bottom: 20),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.check_circle, color: Colors.green),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Text(
+                                                  'Battery Optimization Disabled',
+                                                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade900),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          const Text(
+                                            'Battery optimization is turned off for this app. On devices like Xiaomi, Samsung, Huawei, Oppo, or Vivo, ensure "Auto-start" or "Allow background activity" is enabled in App Settings so your Medical ID stays active after rebooting.',
+                                            style: TextStyle(fontSize: 12, color: Colors.black87),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Align(
+                                            alignment: Alignment.centerRight,
+                                            child: TextButton.icon(
+                                              onPressed: () => ref.read(notificationServiceProvider).openAutoStartSettings(),
+                                              icon: const Icon(Icons.settings_suggest, size: 18),
+                                              label: const Text('OEM Auto-Start / App Settings'),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),

@@ -8,19 +8,62 @@ import android.util.Log
 import java.text.SimpleDateFormat
 import java.util.*
 
+import android.os.Build
+import android.os.UserManager
+
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED || 
-            intent.action == "android.intent.action.QUICKBOOT_POWERON" ||
-            intent.action == "com.htc.intent.action.QUICKBOOT_POWERON") {
-            Log.d("BootReceiver", "Device booted. Syncing emergency notification.")
-            syncEmergencyNotification(context)
+        val action = intent.action
+        if (action == Intent.ACTION_LOCKED_BOOT_COMPLETED ||
+            action == Intent.ACTION_BOOT_COMPLETED || 
+            action == "android.intent.action.QUICKBOOT_POWERON" ||
+            action == "com.htc.intent.action.QUICKBOOT_POWERON") {
+            Log.d("BootReceiver", "Device boot event: $action")
+
+            val isUserUnlocked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                val userManager = context.getSystemService(Context.USER_SERVICE) as? UserManager
+                userManager?.isUserUnlocked ?: true
+            } else {
+                true
+            }
+
+            if (!isUserUnlocked) {
+                Log.d("BootReceiver", "User is locked (Direct Boot state). Restoring notification from Device-Protected storage.")
+                restoreFromDeviceProtectedStorage(context)
+            } else {
+                val synced = syncEmergencyNotification(context)
+                if (!synced) {
+                    Log.d("BootReceiver", "Database sync did not post notification. Falling back to Device-Protected storage.")
+                    restoreFromDeviceProtectedStorage(context)
+                }
+            }
         }
     }
 
-    private fun syncEmergencyNotification(context: Context) {
+    private fun restoreFromDeviceProtectedStorage(context: Context): Boolean {
+        try {
+            val dpContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                context.createDeviceProtectedStorageContext()
+            } else {
+                context
+            }
+            val prefs = dpContext.getSharedPreferences("emergency_cache", Context.MODE_PRIVATE)
+            val isEnabled = prefs.getBoolean("isEnabled", false)
+            val title = prefs.getString("title", null)
+            val body = prefs.getString("body", null)
+            if (isEnabled && !title.isNullOrEmpty() && !body.isNullOrEmpty()) {
+                NotificationHelper.showNotification(context, title, body)
+                return true
+            }
+        } catch (e: Exception) {
+            Log.e("BootReceiver", "Error restoring from Device-Protected storage: ${e.localizedMessage}")
+        }
+        return false
+    }
+
+    private fun syncEmergencyNotification(context: Context): Boolean {
         val dbFile = context.getDatabasePath("opencloudhealth.db")
-        if (!dbFile.exists()) return
+        if (!dbFile.exists()) return false
 
         var db: SQLiteDatabase? = null
         try {
@@ -29,7 +72,7 @@ class BootReceiver : BroadcastReceiver() {
             val settingsCursor = db.rawQuery("SELECT * FROM lock_screen_settings WHERE isEnabled = 'true'", null)
             if (!settingsCursor.moveToFirst()) {
                 settingsCursor.close()
-                return
+                return false
             }
 
             var primaryProfileId: String? = null
@@ -71,7 +114,7 @@ class BootReceiver : BroadcastReceiver() {
             val profileCursor = db.rawQuery("SELECT * FROM profiles WHERE id = ?", arrayOf(profileId))
             if (!profileCursor.moveToFirst()) {
                 profileCursor.close()
-                return
+                return false
             }
             val name = profileCursor.getString(profileCursor.getColumnIndexOrThrow("name"))
             val surname = profileCursor.getString(profileCursor.getColumnIndexOrThrow("surname"))
@@ -143,11 +186,13 @@ class BootReceiver : BroadcastReceiver() {
             val body = bodyBuilder.toString().trim()
 
             NotificationHelper.showNotification(context, title, body)
+            return true
         } catch (e: Exception) {
             Log.e("BootReceiver", "Error re-posting notification: ${e.localizedMessage}")
         } finally {
             db?.close()
         }
+        return false
     }
 
     private fun calculateAge(dobStr: String): Int {

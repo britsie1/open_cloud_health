@@ -41,6 +41,9 @@ class MainActivity: FlutterFragmentActivity() {
             } else if (call.method == "openNotificationSettings") {
                 openNotificationSettings()
                 result.success(null)
+            } else if (call.method == "openAutoStartSettings") {
+                openAutoStartSettings()
+                result.success(null)
             } else {
                 result.notImplemented()
             }
@@ -82,6 +85,41 @@ class MainActivity: FlutterFragmentActivity() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         startActivity(intent)
+    }
+
+    private fun openAutoStartSettings() {
+        val intents = listOf(
+            Intent().setComponent(android.content.ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")),
+            Intent().setComponent(android.content.ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.activity.StartupNormalAppListActivity")),
+            Intent().setComponent(android.content.ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.optimize.bootstart.BootStartActivity")),
+            Intent().setComponent(android.content.ComponentName("com.coloros.safecenter", "com.coloros.safecenter.startupapp.StartupAppListActivity")),
+            Intent().setComponent(android.content.ComponentName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity")),
+            Intent().setComponent(android.content.ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")),
+            Intent().setComponent(android.content.ComponentName("com.samsung.android.sm_cn", "com.samsung.android.sm.ui.ram.AutoRunActivity")),
+            Intent().setComponent(android.content.ComponentName("com.samsung.android.sm", "com.samsung.android.sm.ui.battery.BatteryActivity"))
+        )
+
+        for (intent in intents) {
+            try {
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                if (packageManager.resolveActivity(intent, 0) != null) {
+                    startActivity(intent)
+                    return
+                }
+            } catch (e: Exception) {
+                // Try next OEM intent
+            }
+        }
+
+        val fallbackIntent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.parse("package:$packageName")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        try {
+            startActivity(fallbackIntent)
+        } catch (e: Exception) {
+            // Ignore
+        }
     }
 }
 

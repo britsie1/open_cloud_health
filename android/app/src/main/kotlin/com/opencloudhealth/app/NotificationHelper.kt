@@ -59,10 +59,41 @@ object NotificationHelper {
             .build()
 
         manager.notify(NOTIFICATION_ID, notification)
+
+        // Cache in Device Protected Storage for Direct Boot (Pre-unlock reboot state)
+        try {
+            val dpContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                context.createDeviceProtectedStorageContext()
+            } else {
+                context
+            }
+            dpContext.getSharedPreferences("emergency_cache", Context.MODE_PRIVATE)
+                .edit()
+                .putString("title", title)
+                .putString("body", body)
+                .putBoolean("isEnabled", true)
+                .apply()
+        } catch (e: Exception) {
+            // Ignore storage cache errors
+        }
     }
 
     fun cancelNotification(context: Context) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.cancel(NOTIFICATION_ID)
+
+        try {
+            val dpContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                context.createDeviceProtectedStorageContext()
+            } else {
+                context
+            }
+            dpContext.getSharedPreferences("emergency_cache", Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean("isEnabled", false)
+                .apply()
+        } catch (e: Exception) {
+            // Ignore storage cache errors
+        }
     }
 }
