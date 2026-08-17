@@ -3,15 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:open_cloud_health/models/backup_frequency.dart';
 import 'package:open_cloud_health/services/backup_service.dart';
 import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
+import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:path/path.dart' as path;
 
 class MockFileService extends Mock implements FileService {}
 class MockRef extends Mock implements Ref {}
-
+class MockSecureStorage extends Mock implements SecureStorage {}
 class MockGoogleSignIn extends Mock implements GoogleSignIn {}
+class MockGoogleSignInAccount extends Mock implements GoogleSignInAccount {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -39,33 +42,31 @@ void main() {
       final testFile = File(path.join(tempDir.path, 'test_source.jpg'));
       await testFile.writeAsBytes([1, 2, 3]);
 
-      await fileService.saveProfileImage('profile-1', testFile);
+      await fileService.saveProfileImage('profile-123', testFile);
 
-      final savedPath = await fileService.getProfileImagePath('profile-1');
-      expect(savedPath, isNotEmpty);
+      final savedPath = await fileService.getProfileImagePath('profile-123');
+      expect(savedPath, contains('profile-123.jpg'));
       expect(await File(savedPath).exists(), true);
       expect(await File(savedPath).length(), 3);
     });
 
     test('getProfileImagePath returns empty string for empty file', () async {
-      final profileDir = Directory(path.join(tempDir.path, FileService.profileImagesSubdir));
-      await profileDir.create(recursive: true);
-      final emptyFile = File(path.join(profileDir.path, 'empty.jpg'));
-      await emptyFile.create();
+      final testFile = File(path.join(tempDir.path, 'profileImages', 'empty-profile.jpg'));
+      await testFile.create(recursive: true);
 
-      final imagePath = await fileService.getProfileImagePath('empty');
+      final imagePath = await fileService.getProfileImagePath('empty-profile');
       expect(imagePath, '');
     });
 
     test('deleteProfileImage removes the file', () async {
       final testFile = File(path.join(tempDir.path, 'test_source.jpg'));
       await testFile.writeAsBytes([1, 2, 3]);
-      await fileService.saveProfileImage('profile-1', testFile);
+      await fileService.saveProfileImage('profile-to-delete', testFile);
 
-      await fileService.deleteProfileImage('profile-1');
+      await fileService.deleteProfileImage('profile-to-delete');
 
-      final savedPath = await fileService.getProfileImagePath('profile-1');
-      expect(savedPath, '');
+      final imagePath = await fileService.getProfileImagePath('profile-to-delete');
+      expect(imagePath, '');
     });
 
     test('saveAttachment creates file in history-specific subdirectory', () async {
@@ -94,15 +95,18 @@ void main() {
 
   group('BackupService Mock Tests', () {
     late MockFileService mockFileService;
+    late MockSecureStorage mockSecureStorage;
     late MockRef mockRef;
     late MockGoogleSignIn mockGoogleSignIn;
 
     setUp(() {
       mockFileService = MockFileService();
+      mockSecureStorage = MockSecureStorage();
       mockRef = MockRef();
       mockGoogleSignIn = MockGoogleSignIn();
 
       when(() => mockRef.read(fileServiceProvider)).thenReturn(mockFileService);
+      when(() => mockRef.read(secureStorageProvider)).thenReturn(mockSecureStorage);
     });
 
     test('BackupService correctly requests directories from FileService', () async {
@@ -134,25 +138,61 @@ void main() {
 
       verify(() => mockGoogleSignIn.signOut()).called(1);
     });
+
+    test('performScheduledBackupIfDue returns false when user is not connected', () async {
+      when(() => mockGoogleSignIn.currentUser).thenReturn(null);
+      when(() => mockGoogleSignIn.signInSilently()).thenAnswer((_) async => null);
+
+      final backupService = BackupService(mockRef, googleSignIn: mockGoogleSignIn);
+      final result = await backupService.performScheduledBackupIfDue();
+
+      expect(result, false);
+    });
+
+    test('performScheduledBackupIfDue returns false when frequency is manual or never', () async {
+      final mockAccount = MockGoogleSignInAccount();
+      when(() => mockGoogleSignIn.currentUser).thenReturn(mockAccount);
+      when(() => mockSecureStorage.getBackupFrequency())
+          .thenAnswer((_) async => BackupFrequency.manual);
+
+      final backupService = BackupService(mockRef, googleSignIn: mockGoogleSignIn);
+      final result = await backupService.performScheduledBackupIfDue();
+
+      expect(result, false);
+    });
+
+    test('performScheduledBackupIfDue returns false when not due yet', () async {
+      final mockAccount = MockGoogleSignInAccount();
+      when(() => mockGoogleSignIn.currentUser).thenReturn(mockAccount);
+      when(() => mockSecureStorage.getBackupFrequency())
+          .thenAnswer((_) async => BackupFrequency.daily);
+      when(() => mockSecureStorage.getLastAutoBackupTime())
+          .thenAnswer((_) async => DateTime(2026, 8, 17, 2, 0));
+
+      final backupService = BackupService(mockRef, googleSignIn: mockGoogleSignIn);
+      final result = await backupService.performScheduledBackupIfDue(
+        now: DateTime(2026, 8, 17, 3, 0), // Only 1 hr later
+      );
+
+      expect(result, false);
+    });
   });
 
   group('NotificationService Battery Optimization Tests', () {
     test('isBatteryOptimizationDisabled returns boolean on non-Android platform', () async {
-      final notificationService = NotificationService();
-      final isDisabled = await notificationService.isBatteryOptimizationDisabled();
-      expect(isDisabled, isA<bool>());
-      expect(isDisabled, true);
+      final service = NotificationService();
+      final result = await service.isBatteryOptimizationDisabled();
+      expect(result, isA<bool>());
     });
 
     test('requestDisableBatteryOptimization completes without throwing', () async {
-      final notificationService = NotificationService();
-      await expectLater(notificationService.requestDisableBatteryOptimization(), completes);
+      final service = NotificationService();
+      expect(service.requestDisableBatteryOptimization(), completes);
     });
 
     test('openAutoStartSettings completes without throwing on test runner', () async {
-      final notificationService = NotificationService();
-      await expectLater(notificationService.openAutoStartSettings(), completes);
+      final service = NotificationService();
+      expect(service.openAutoStartSettings(), completes);
     });
   });
 }
-

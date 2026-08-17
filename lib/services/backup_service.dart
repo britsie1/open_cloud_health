@@ -1,14 +1,20 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:intl/intl.dart';
+import 'package:open_cloud_health/models/backup_frequency.dart';
 import 'package:open_cloud_health/models/storage_info.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
+import 'package:open_cloud_health/services/backup_encryption_service.dart';
 import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/storage/google_auth_client.dart';
+import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart' as sql;
 
 class BackupService {
@@ -22,6 +28,7 @@ class BackupService {
             ]);
 
   FileService get _fileService => _ref.read(fileServiceProvider);
+  SecureStorage get _secureStorage => _ref.read(secureStorageProvider);
 
   Future<drive.DriveApi?> _getDriveApi({bool interactive = true}) async {
     try {
@@ -82,6 +89,7 @@ class BackupService {
 
       int appBackupBytes = 0;
       String? lastBackupTime;
+      bool isEncryptedBackupPresent = false;
 
       try {
         final fileList = await driveApi.files.list(
@@ -95,15 +103,25 @@ class BackupService {
             if (f.size != null) {
               appBackupBytes += int.tryParse(f.size!) ?? 0;
             }
-            if (f.name == 'opencloudhealth.db' && f.modifiedTime != null) {
-              lastBackupTime = DateFormat('yyyy-MM-dd HH:mm')
-                  .format(f.modifiedTime!.toLocal());
+            if (f.name == 'opencloudhealth_encrypted_backup.enc') {
+              isEncryptedBackupPresent = true;
+              if (f.modifiedTime != null) {
+                lastBackupTime = DateFormat('yyyy-MM-dd HH:mm')
+                    .format(f.modifiedTime!.toLocal());
+              }
+            } else if (f.name == 'opencloudhealth.db' && lastBackupTime == null) {
+              if (f.modifiedTime != null) {
+                lastBackupTime = DateFormat('yyyy-MM-dd HH:mm')
+                    .format(f.modifiedTime!.toLocal());
+              }
             }
           }
         }
       } catch (e) {
         debugPrint('Error getting appData files list: $e');
       }
+
+      final isLocalE2eEnabled = await _secureStorage.isE2eBackupEnabled();
 
       return GoogleStorageInfo(
         totalBytes: totalBytes,
@@ -115,6 +133,7 @@ class BackupService {
         displayName: currentUser?.displayName ?? about.user?.displayName,
         photoUrl: currentUser?.photoUrl ?? about.user?.photoLink,
         lastBackupDateTime: lastBackupTime ?? 'Never',
+        isE2eEncrypted: isEncryptedBackupPresent || isLocalE2eEnabled,
       );
     } catch (e) {
       debugPrint('Error getting Google storage info: $e');
@@ -162,6 +181,29 @@ class BackupService {
     }
   }
 
+  Future<void> _deleteDriveItem(
+      String name, String parentId, drive.DriveApi driveApi) async {
+    try {
+      final query =
+          "name = '$name' and '$parentId' in parents and trashed = false";
+      final fileList = await driveApi.files.list(
+        q: query,
+        spaces: 'appDataFolder',
+        $fields: 'files(id, name)',
+      );
+      if (fileList.files != null) {
+        for (var file in fileList.files!) {
+          if (file.id != null) {
+            await driveApi.files.delete(file.id!);
+            debugPrint('Deleted old item from Drive: ${file.name}');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error deleting item $name from Drive: $e');
+    }
+  }
+
   Future<String?> _getOrCreateFolder(
       String name, String parentId, drive.DriveApi driveApi) async {
     try {
@@ -195,73 +237,129 @@ class BackupService {
     }
   }
 
-  Future<String> backupToGoogleDrive() async {
-    debugPrint('Starting backup to Google Drive...');
-    final driveApi = await _getDriveApi(interactive: true);
+  Future<String> backupToGoogleDrive({
+    String? overridePassword,
+    bool interactive = true,
+  }) async {
+    debugPrint('Starting backup to Google Drive (interactive: $interactive)...');
+    final driveApi = await _getDriveApi(interactive: interactive);
     if (driveApi == null) {
       debugPrint('Failed to get Drive API');
       return '';
     }
 
-    // 1. Backup Database
+    final isCustomE2e = await _secureStorage.isE2eBackupEnabled();
+    final customPassword = overridePassword ??
+        await _secureStorage.getE2eCachedPassword() ??
+        await _secureStorage.getE2eRecoveryKey();
+    final localMasterKey = await _secureStorage.getOrCreateLocalMasterKey();
+
+    final effectiveEncryptionKey =
+        (isCustomE2e && customPassword != null && customPassword.isNotEmpty)
+            ? customPassword
+            : localMasterKey;
+
+    debugPrint(
+        'Executing Encrypted Cloud Backup (mode: ${isCustomE2e ? "custom_password" : "account_bound"})...');
+
+    // 1. Collect local database & directories
     final dbPath = await sql.getDatabasesPath();
     final dbFile = File(path.join(dbPath, 'opencloudhealth.db'));
-    if (await dbFile.exists()) {
-      await _uploadFile(dbFile, 'appDataFolder', driveApi);
-    } else {
-      debugPrint('Database file not found at ${dbFile.path}');
-    }
-
-    // 2. Backup Profile Images
     final profileImagesDir = await _fileService.getProfileImagesDirectory();
-    if (await profileImagesDir.exists()) {
-      final entities = profileImagesDir.listSync();
-      if (entities.isNotEmpty) {
-        final profileImagesFolderId = await _getOrCreateFolder(
-            'profileImages', 'appDataFolder', driveApi);
-        if (profileImagesFolderId != null) {
-          for (var entity in entities) {
-            if (entity is File) {
-              await _uploadFile(entity, profileImagesFolderId, driveApi);
-            }
-          }
-        }
-      } else {
-        debugPrint('No profile images to backup.');
-      }
+    final attachmentsDir = await _fileService.getAttachmentsDirectory();
+
+    // 2. Create in-memory ZIP containing database, photos, and attachments
+    final zipBytes = BackupEncryptionService.createZipArchive(
+      dbFile: dbFile,
+      profileImagesDir: profileImagesDir,
+      attachmentsDir: attachmentsDir,
+    );
+
+    // 3. Encrypt ZIP bundle with AES-256
+    final encryptedBytes = BackupEncryptionService.encryptBundle(
+        zipBytes, effectiveEncryptionKey);
+
+    // 4. Save to temporary file and upload
+    final tempDir = await getTemporaryDirectory();
+    final tempEncFile =
+        File(path.join(tempDir.path, 'opencloudhealth_encrypted_backup.enc'));
+    await tempEncFile.writeAsBytes(encryptedBytes, flush: true);
+
+    await _uploadFile(tempEncFile, 'appDataFolder', driveApi);
+
+    // 5. Clean up temporary file
+    if (await tempEncFile.exists()) {
+      await tempEncFile.delete();
     }
 
-    // 3. Backup Attachments
-    final attachmentDir = await _fileService.getAttachmentsDirectory();
-    if (await attachmentDir.exists()) {
-      final historyDirs = attachmentDir.listSync();
-      if (historyDirs.isNotEmpty) {
-        final attachmentsFolderId = await _getOrCreateFolder(
-            'attachments', 'appDataFolder', driveApi);
-        if (attachmentsFolderId != null) {
-          for (var historyEntity in historyDirs) {
-            if (historyEntity is Directory) {
-              final historyId = path.basename(historyEntity.path);
-              final historyFolderId = await _getOrCreateFolder(
-                  historyId, attachmentsFolderId, driveApi);
-              if (historyFolderId != null) {
-                final files = historyEntity.listSync();
-                for (var fileEntity in files) {
-                  if (fileEntity is File) {
-                    await _uploadFile(fileEntity, historyFolderId, driveApi);
-                  }
-                }
-              }
-            }
-          }
-        }
-      } else {
-        debugPrint('No attachments to backup.');
+    // 6. Account-Bound Keyring Management
+    if (!isCustomE2e) {
+      // Escrow local master key in private appDataFolder for zero-lockout cross-device restore
+      final keyringFile =
+          File(path.join(tempDir.path, 'och_keyring.dat'));
+      await keyringFile.writeAsString(localMasterKey, flush: true);
+      await _uploadFile(keyringFile, 'appDataFolder', driveApi);
+      if (await keyringFile.exists()) {
+        await keyringFile.delete();
       }
+    } else {
+      // Custom E2E password active: delete escrowed keyring so only user password can decrypt
+      await _deleteDriveItem('och_keyring.dat', 'appDataFolder', driveApi);
     }
 
-    debugPrint('Backup completed successfully.');
+    // 7. Delete legacy unencrypted files from Drive if any exist
+    await _deleteDriveItem('opencloudhealth.db', 'appDataFolder', driveApi);
+    await _deleteDriveItem('profileImages', 'appDataFolder', driveApi);
+    await _deleteDriveItem('attachments', 'appDataFolder', driveApi);
+
+    debugPrint('Encrypted cloud backup completed successfully.');
     return DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+  }
+
+  /// Evaluates whether an automated backup should run based on user's chosen frequency,
+  /// idle window constraints (2:00 AM - 5:00 AM), and elapsed time.
+  /// If due, silently executes the cloud backup and records the timestamp.
+  Future<bool> performScheduledBackupIfDue({
+    DateTime? now,
+    bool enforceIdleHours = true,
+  }) async {
+    try {
+      final connectedUser = await getConnectedUser();
+      if (connectedUser == null) {
+        debugPrint('Auto-backup check: User is not connected to Google Drive.');
+        return false;
+      }
+
+      final frequency = await _secureStorage.getBackupFrequency();
+      if (!frequency.isAutomated) {
+        debugPrint('Auto-backup check: Frequency is ${frequency.name}, skipping.');
+        return false;
+      }
+
+      final lastBackup = await _secureStorage.getLastAutoBackupTime();
+      final isDue = frequency.isDue(
+        lastBackup: lastBackup,
+        now: now,
+        enforceIdleHours: enforceIdleHours,
+      );
+
+      if (!isDue) {
+        debugPrint('Auto-backup check: Not due yet for frequency ${frequency.name}.');
+        return false;
+      }
+
+      debugPrint('Auto-backup is DUE for frequency ${frequency.name}! Starting background backup...');
+      final timestamp = await backupToGoogleDrive(interactive: false);
+      if (timestamp.isNotEmpty) {
+        await _secureStorage.setLastAutoBackupTime(now ?? DateTime.now());
+        debugPrint('Auto-backup succeeded at $timestamp');
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error performing scheduled backup: $e');
+      return false;
+    }
   }
 
   Future<String> getLastBackupDateTime() async {
@@ -272,7 +370,6 @@ class BackupService {
 
     try {
       final fileList = await driveApi.files.list(
-        q: "name = 'opencloudhealth.db' and 'appDataFolder' in parents and trashed = false",
         spaces: 'appDataFolder',
         $fields: 'files(id, name, modifiedTime)',
       );
@@ -281,9 +378,28 @@ class BackupService {
         return 'Never';
       }
 
-      final databaseFile = fileList.files!.first;
-      return DateFormat('yyyy-MM-dd HH:mm')
-          .format(databaseFile.modifiedTime!.toLocal());
+      // Check encrypted first, then unencrypted db
+      final encFile = fileList.files!.firstWhere(
+        (f) => f.name == 'opencloudhealth_encrypted_backup.enc',
+        orElse: () => drive.File(),
+      );
+
+      if (encFile.modifiedTime != null) {
+        return DateFormat('yyyy-MM-dd HH:mm')
+            .format(encFile.modifiedTime!.toLocal());
+      }
+
+      final dbFile = fileList.files!.firstWhere(
+        (f) => f.name == 'opencloudhealth.db',
+        orElse: () => drive.File(),
+      );
+
+      if (dbFile.modifiedTime != null) {
+        return DateFormat('yyyy-MM-dd HH:mm')
+            .format(dbFile.modifiedTime!.toLocal());
+      }
+
+      return 'Never';
     } catch (e) {
       debugPrint('Error getting last backup date: $e');
       return 'Error';
@@ -336,7 +452,7 @@ class BackupService {
     }
   }
 
-  Future<void> restoreFromBackup() async {
+  Future<void> restoreFromBackup({String? password}) async {
     debugPrint('Starting restore from backup...');
     final driveApi = await _getDriveApi(interactive: true);
     if (driveApi == null) {
@@ -355,22 +471,152 @@ class BackupService {
       return;
     }
 
-    final localBaseDir = await _fileService.localPath;
+    final encryptedFile = fileList.files!.firstWhere(
+      (f) => f.name == 'opencloudhealth_encrypted_backup.enc',
+      orElse: () => drive.File(),
+    );
 
-    for (var file in fileList.files!) {
-      debugPrint('Processing backup item: ${file.name} (${file.mimeType})');
-      if (file.name == 'opencloudhealth.db') {
-        final dbPath = await sql.getDatabasesPath();
-        await _downloadFile(file.id!, file.name!, dbPath, driveApi);
-      } else if (file.name == 'profileImages' || file.name == 'attachments') {
-        await _restoreFolder(
-            file.id!, path.join(localBaseDir, file.name!), driveApi);
+    final keyringFile = fileList.files!.firstWhere(
+      (f) => f.name == 'och_keyring.dat',
+      orElse: () => drive.File(),
+    );
+
+    if (encryptedFile.id != null) {
+      debugPrint('Found encrypted backup on Google Drive. Decrypting...');
+      String? effectivePassword = password ??
+          await _secureStorage.getE2eCachedPassword() ??
+          await _secureStorage.getE2eRecoveryKey();
+
+      // If no custom password/recovery key, check if account-bound keyring exists in Drive
+      if (effectivePassword == null || effectivePassword.isEmpty) {
+        if (keyringFile.id != null) {
+          debugPrint('Found account-bound keyring on Google Drive. Fetching escrowed key...');
+          try {
+            final keyringMedia = await driveApi.files.get(
+              keyringFile.id!,
+              downloadOptions: drive.DownloadOptions.fullMedia,
+            ) as drive.Media;
+            final keyBytesBuilder = BytesBuilder();
+            await for (var chunk in keyringMedia.stream) {
+              keyBytesBuilder.add(chunk);
+            }
+            final escrowedKey = utf8.decode(keyBytesBuilder.toBytes()).trim();
+            if (escrowedKey.isNotEmpty) {
+              effectivePassword = escrowedKey;
+              // Store master key in device hardware keystore (Apple Keychain / Android Keystore)
+              await _secureStorage.setLocalMasterKey(escrowedKey);
+            }
+          } catch (e) {
+            debugPrint('Failed to fetch keyring: $e');
+          }
+        }
+      }
+
+      // If still not available, check local hardware master key
+      effectivePassword ??= await _secureStorage.getLocalMasterKey();
+
+      if (effectivePassword == null || effectivePassword.isEmpty) {
+        throw const FormatException(
+            'This cloud backup is protected with a custom encryption password or recovery key. Please enter your password to restore.');
+      }
+
+      final media = await driveApi.files.get(
+        encryptedFile.id!,
+        downloadOptions: drive.DownloadOptions.fullMedia,
+      ) as drive.Media;
+
+      final bytesBuilder = BytesBuilder();
+      await for (var chunk in media.stream) {
+        bytesBuilder.add(chunk);
+      }
+      final encryptedBytes = bytesBuilder.toBytes();
+
+      // Decrypt bundle
+      final zipBytes = BackupEncryptionService.decryptBundle(
+          encryptedBytes, effectivePassword);
+
+      // Unpack into db and document directories
+      final dbPath = await sql.getDatabasesPath();
+      final localBaseDir = await _fileService.localPath;
+      BackupEncryptionService.unpackZipArchive(
+        zipBytes: zipBytes,
+        dbDirectoryPath: dbPath,
+        localBasePath: localBaseDir,
+      );
+    } else {
+      debugPrint('Found standard legacy unencrypted backup. Restoring files...');
+      final localBaseDir = await _fileService.localPath;
+
+      for (var file in fileList.files!) {
+        debugPrint('Processing backup item: ${file.name} (${file.mimeType})');
+        if (file.name == 'opencloudhealth.db') {
+          final dbPath = await sql.getDatabasesPath();
+          await _downloadFile(file.id!, file.name!, dbPath, driveApi);
+        } else if (file.name == 'profileImages' || file.name == 'attachments') {
+          await _restoreFolder(
+              file.id!, path.join(localBaseDir, file.name!), driveApi);
+        }
       }
     }
 
     // Reload profiles after database restore
     await _ref.read(profilesProvider.notifier).loadProfiles();
     debugPrint('Restore completed successfully.');
+  }
+
+  /// Exports all local health records (database + profile photos + attachments)
+  /// to an encrypted .ochbackup file. If [customPassword] is provided, encrypts
+  /// with that password; otherwise uses the hardware-backed master key.
+  Future<File> exportLocalBackup({String? customPassword}) async {
+    final dbPath = await sql.getDatabasesPath();
+    final dbFile = File(path.join(dbPath, 'opencloudhealth.db'));
+    final profileImagesDir = await _fileService.getProfileImagesDirectory();
+    final attachmentsDir = await _fileService.getAttachmentsDirectory();
+
+    final localMasterKey = await _secureStorage.getOrCreateLocalMasterKey();
+    final effectiveKey =
+        (customPassword != null && customPassword.isNotEmpty)
+            ? customPassword
+            : localMasterKey;
+
+    final tempDir = await getTemporaryDirectory();
+    final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+    final exportFilePath =
+        path.join(tempDir.path, 'opencloudhealth_backup_$timestamp.ochbackup');
+
+    final exportedFile = await BackupEncryptionService.exportLocalBackupToFile(
+      dbFile: dbFile,
+      targetFilePath: exportFilePath,
+      profileImagesDir: profileImagesDir,
+      attachmentsDir: attachmentsDir,
+      encryptionPasswordOrKey: effectiveKey,
+    );
+
+    return exportedFile;
+  }
+
+  /// Imports and restores an encrypted .ochbackup file.
+  /// First attempts decryption with [customPassword] if provided,
+  /// then falls back to the device's hardware master key.
+  Future<void> importLocalBackup(File backupFile, {String? customPassword}) async {
+    final dbPath = await sql.getDatabasesPath();
+    final localBaseDir = await _fileService.localPath;
+
+    final localMasterKey = await _secureStorage.getOrCreateLocalMasterKey();
+    final effectiveKey =
+        (customPassword != null && customPassword.isNotEmpty)
+            ? customPassword
+            : localMasterKey;
+
+    await BackupEncryptionService.importLocalBackupFromFile(
+      backupFile: backupFile,
+      dbDirectoryPath: dbPath,
+      localBasePath: localBaseDir,
+      encryptionPasswordOrKey: effectiveKey,
+    );
+
+    // Reload profiles and active state
+    await _ref.read(profilesProvider.notifier).loadProfiles();
   }
 }
 

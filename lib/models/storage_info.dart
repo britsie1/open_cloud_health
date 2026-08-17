@@ -11,6 +11,7 @@ class GoogleStorageInfo {
   final String? displayName;
   final String? photoUrl;
   final String? lastBackupDateTime;
+  final bool isE2eEncrypted;
 
   const GoogleStorageInfo({
     required this.totalBytes,
@@ -22,6 +23,7 @@ class GoogleStorageInfo {
     this.displayName,
     this.photoUrl,
     this.lastBackupDateTime,
+    this.isE2eEncrypted = false,
   });
 
   /// Indicates if Google quota is unlimited or unrestricted.
@@ -66,6 +68,7 @@ class GoogleStorageInfo {
     String? displayName,
     String? photoUrl,
     String? lastBackupDateTime,
+    bool? isE2eEncrypted,
   }) {
     return GoogleStorageInfo(
       totalBytes: totalBytes ?? this.totalBytes,
@@ -77,6 +80,7 @@ class GoogleStorageInfo {
       displayName: displayName ?? this.displayName,
       photoUrl: photoUrl ?? this.photoUrl,
       lastBackupDateTime: lastBackupDateTime ?? this.lastBackupDateTime,
+      isE2eEncrypted: isE2eEncrypted ?? this.isE2eEncrypted,
     );
   }
 }

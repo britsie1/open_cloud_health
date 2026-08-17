@@ -1,9 +1,11 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/database/database_helper.dart';
+import 'package:open_cloud_health/models/backup_frequency.dart';
 import 'package:open_cloud_health/models/storage_info.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/services/backup_service.dart';
@@ -12,6 +14,7 @@ import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/utils/format_utils.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -27,6 +30,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isLoadingStorage = true;
   bool _isBackingUp = false;
   bool _isConnectedToGoogle = false;
+  bool _isE2eEnabled = false;
+  BackupFrequency _frequency = BackupFrequency.manual;
+  bool _isBackupWifiOnly = true;
   GoogleStorageInfo? _storageInfo;
   String _lastBackupDateTime = 'Not connected';
 
@@ -73,13 +79,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _checkGoogleConnection() async {
     setState(() => _isLoadingStorage = true);
     final backupService = ref.read(backupServiceProvider);
+    final secureStorage = ref.read(secureStorageProvider);
     final user = await backupService.getConnectedUser();
+    final isE2e = await secureStorage.isE2eBackupEnabled();
+    final frequency = await secureStorage.getBackupFrequency();
+    final wifiOnly = await secureStorage.getBackupWifiOnly();
 
     if (user != null) {
       final info = await backupService.getGoogleStorageInfo(interactive: false);
       if (mounted) {
         setState(() {
           _isConnectedToGoogle = true;
+          _isE2eEnabled = isE2e || (info?.isE2eEncrypted ?? false);
+          _frequency = frequency;
+          _isBackupWifiOnly = wifiOnly;
           _storageInfo = info;
           _lastBackupDateTime = info?.lastBackupDateTime ?? 'Never';
           _isLoadingStorage = false;
@@ -89,6 +102,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (mounted) {
         setState(() {
           _isConnectedToGoogle = false;
+          _isE2eEnabled = isE2e;
+          _frequency = frequency;
+          _isBackupWifiOnly = wifiOnly;
           _storageInfo = null;
           _isLoadingStorage = false;
         });
@@ -100,12 +116,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     setState(() => _isLoadingStorage = true);
     try {
       final backupService = ref.read(backupServiceProvider);
+      final secureStorage = ref.read(secureStorageProvider);
       final info = await backupService.getGoogleStorageInfo(interactive: true);
+      final isE2e = await secureStorage.isE2eBackupEnabled();
+      final frequency = await secureStorage.getBackupFrequency();
+      final wifiOnly = await secureStorage.getBackupWifiOnly();
 
       if (info != null) {
         if (mounted) {
           setState(() {
             _isConnectedToGoogle = true;
+            _isE2eEnabled = isE2e || info.isE2eEncrypted;
+            _frequency = frequency;
+            _isBackupWifiOnly = wifiOnly;
             _storageInfo = info;
             _lastBackupDateTime = info.lastBackupDateTime ?? 'Never';
             _isLoadingStorage = false;
@@ -183,21 +206,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           await ref.read(backupServiceProvider).backupToGoogleDrive();
 
       if (formattedTime.isNotEmpty) {
-        // Refresh storage info after backup
         final updatedInfo = await ref
             .read(backupServiceProvider)
             .getGoogleStorageInfo(interactive: false);
+        final isE2e =
+            await ref.read(secureStorageProvider).isE2eBackupEnabled();
 
         if (mounted) {
           setState(() {
             _lastBackupDateTime = '$formattedTime UTC';
+            _isE2eEnabled = isE2e;
             if (updatedInfo != null) {
               _storageInfo = updatedInfo;
             }
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Medical data backed up to Google Drive'),
+            SnackBar(
+              content: Text(
+                _isE2eEnabled
+                    ? 'Medical data encrypted & backed up to Google Drive 🔒'
+                    : 'Medical data backed up to Google Drive',
+              ),
               backgroundColor: Colors.green,
             ),
           );
@@ -239,6 +268,184 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         );
       }
     }
+  }
+
+  void _showBackupFrequencyDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85,
+            ),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 20.0,
+                right: 20.0,
+                top: 20.0,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.schedule, color: Colors.blue.shade700, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Back up to Google Drive',
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Idle Hours Auto-Backup',
+                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.blue.shade100),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.nightlight_round,
+                            size: 18, color: Colors.blue.shade800),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Automated backups run overnight during idle hours (2:00 AM – 5:00 AM) when your device is charging and connected.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue.shade900,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  ...BackupFrequency.values.map((freq) {
+                    final isSelected = _frequency == freq;
+                    return InkWell(
+                      onTap: () async {
+                        await ref
+                            .read(secureStorageProvider)
+                            .setBackupFrequency(freq);
+                        setState(() => _frequency = freq);
+                        setModalState(() {});
+                        if (mounted) {
+                          Navigator.of(ctx).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Backup frequency set to ${freq.displayName}'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Radio<BackupFrequency>(
+                              value: freq,
+                              groupValue: _frequency,
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              activeColor: Colors.blue.shade700,
+                              onChanged: (BackupFrequency? val) async {
+                                if (val != null) {
+                                  await ref
+                                      .read(secureStorageProvider)
+                                      .setBackupFrequency(val);
+                                  setState(() => _frequency = val);
+                                  setModalState(() {});
+                                  if (mounted) {
+                                    Navigator.of(ctx).pop();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Backup frequency set to ${val.displayName}'),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    freq.displayName,
+                                    style: TextStyle(
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                      fontSize: 14,
+                                      color: isSelected ? Colors.blue.shade900 : Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    freq.description,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isSelected ? Colors.blue.shade800 : Colors.grey.shade600,
+                                      height: 1.25,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _toggleBackupWifiOnly(bool val) async {
+    await ref.read(secureStorageProvider).setBackupWifiOnly(val);
+    setState(() => _isBackupWifiOnly = val);
   }
 
   Future<void> _resetDB() async {
@@ -287,6 +494,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (fraction >= 0.95) return Colors.red;
     if (fraction >= 0.80) return Colors.amber.shade800;
     return Theme.of(context).colorScheme.primary;
+  }
+
+  String _getFrequencySubtitle(BackupFrequency frequency) {
+    switch (frequency) {
+      case BackupFrequency.daily:
+        return 'Daily • Idle hours (2:00 AM – 5:00 AM)';
+      case BackupFrequency.weekly:
+        return 'Weekly • Idle hours (2:00 AM – 5:00 AM)';
+      case BackupFrequency.monthly:
+        return 'Monthly • Idle hours (2:00 AM – 5:00 AM)';
+      case BackupFrequency.manual:
+        return 'Only when I tap "Back up"';
+      case BackupFrequency.never:
+        return 'Never';
+    }
   }
 
   @override
@@ -341,15 +563,48 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Google Drive Backup',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            'Google Drive Backup',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (_isE2eEnabled) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade100,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.lock,
+                                      size: 10, color: Colors.green.shade900),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    'E2E',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green.shade900,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       Text(
                         _isConnectedToGoogle
-                            ? 'Encrypted cloud backup active'
+                            ? (_isE2eEnabled
+                                ? 'Encrypted cloud backup active 🔒'
+                                : 'Cloud backup active')
                             : 'Backup medical data to your Drive',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: Colors.grey.shade600,
@@ -398,16 +653,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
             ] else ...[
-              // WhatsApp-style Account Tile
+              // Account Tile
               _buildAccountRow(),
               const SizedBox(height: 16),
 
-              // WhatsApp-style Storage Usage Bar
+              // Storage Usage Bar
               _buildStorageMeter(),
               const SizedBox(height: 16),
 
               // Medical Backup stats
               _buildBackupStats(),
+              const SizedBox(height: 16),
+
+              // Auto-Backup Settings Card (WhatsApp style)
+              _buildAutoBackupSettingsCard(),
               const SizedBox(height: 16),
 
               // Action Buttons
@@ -426,7 +685,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               ),
                             )
                           : const Icon(Icons.cloud_upload_outlined),
-                      label: Text(_isBackingUp ? 'Backing up...' : 'Back Up Now'),
+                      label:
+                          Text(_isBackingUp ? 'Backing up...' : 'Back Up Now'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.primary,
                         foregroundColor: Colors.white,
@@ -633,12 +893,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.folder_zip_outlined,
-                      size: 16, color: Colors.blue.shade700),
+                  Icon(
+                    _isE2eEnabled
+                        ? Icons.lock_outline
+                        : Icons.folder_zip_outlined,
+                    size: 16,
+                    color: _isE2eEnabled
+                        ? Colors.green.shade700
+                        : Colors.blue.shade700,
+                  ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'Medical Data Backup Size',
-                    style: TextStyle(fontSize: 13),
+                  Text(
+                    _isE2eEnabled
+                        ? 'Encrypted Backup Size'
+                        : 'Medical Data Backup Size',
+                    style: const TextStyle(fontSize: 13),
                   ),
                 ],
               ),
@@ -679,6 +948,82 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Widget _buildAutoBackupSettingsCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.schedule_outlined,
+                  color: Colors.blue.shade700, size: 20),
+            ),
+            title: const Text(
+              'Back up to Google Drive',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 3.0),
+              child: Text(
+                _getFrequencySubtitle(_frequency),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: _frequency.isAutomated
+                      ? Colors.blue.shade800
+                      : Colors.grey.shade700,
+                  fontWeight: _frequency.isAutomated
+                      ? FontWeight.w500
+                      : FontWeight.normal,
+                ),
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+            onTap: _showBackupFrequencyDialog,
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          SwitchListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+            secondary: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.wifi, color: Colors.blue.shade700, size: 20),
+            ),
+            title: const Text(
+              'Back up over Wi-Fi only',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 2.0),
+              child: Text(
+                _isBackupWifiOnly
+                    ? 'Avoid cellular data usage'
+                    : 'Back up over Wi-Fi or cellular data',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+            value: _isBackupWifiOnly,
+            onChanged: _toggleBackupWifiOnly,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSecuritySection() {
     return Card(
       elevation: 0,
@@ -703,10 +1048,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.security, color: Colors.blue),
             title: const Text('App Lock & Security'),
-            subtitle: const Text('Biometrics, PIN & passcodes'),
+            subtitle: const Text('Biometrics, passcodes & E2E encrypted backup'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              context.push(AppRoutes.securitySetup);
+            onTap: () async {
+              await context.push(AppRoutes.securitySetup);
+              _checkGoogleConnection();
             },
           ),
           const Divider(height: 1, indent: 56),
@@ -739,6 +1085,335 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _exportLocalBackup() async {
+    final passwordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool isPasswordProtected = false;
+    String? errorMessage;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.file_upload_outlined, color: Colors.teal),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Export Local Backup',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Packages your medical records, profile images, and PDF attachments into a single AES-256 encrypted .ochbackup file.',
+                  style: TextStyle(fontSize: 13, height: 1.3),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isPasswordProtected
+                            ? Icons.lock
+                            : Icons.shield_outlined,
+                        color: isPasswordProtected
+                            ? Colors.teal
+                            : Colors.grey.shade700,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          isPasswordProtected
+                              ? 'Password Protection'
+                              : 'Standard Device-Key Protection',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                      ),
+                      Switch(
+                        value: isPasswordProtected,
+                        activeColor: Colors.teal,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            isPasswordProtected = val;
+                            errorMessage = null;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                if (isPasswordProtected) ...[
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Set a password to protect this backup file when sharing via WhatsApp, email, or AirDrop:',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Backup Password',
+                      border: OutlineInputBorder(),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: confirmPasswordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Confirm Password',
+                      border: OutlineInputBorder(),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                ],
+                if (errorMessage != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    errorMessage!,
+                    style: const TextStyle(color: Colors.red, fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
+                foregroundColor: Colors.white,
+              ),
+              icon: const Icon(Icons.share, size: 16),
+              label: const Text('Export & Share'),
+              onPressed: () async {
+                if (isPasswordProtected) {
+                  if (passwordController.text.isEmpty) {
+                    setDialogState(
+                        () => errorMessage = 'Please enter a password.');
+                    return;
+                  }
+                  if (passwordController.text !=
+                      confirmPasswordController.text) {
+                    setDialogState(
+                        () => errorMessage = 'Passwords do not match.');
+                    return;
+                  }
+                }
+                Navigator.of(ctx)
+                    .pop(isPasswordProtected ? passwordController.text : '');
+              },
+            ),
+          ],
+        ),
+      ),
+    ).then((result) async {
+      if (result != null && result is String && mounted) {
+        final customPassword = result.isNotEmpty ? result : null;
+        try {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Generating encrypted backup bundle...'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+
+          final backupFile = await ref
+              .read(backupServiceProvider)
+              .exportLocalBackup(customPassword: customPassword);
+
+          if (await backupFile.exists() && mounted) {
+            await Share.shareXFiles(
+              [XFile(backupFile.path)],
+              text: 'Open Cloud Health Encrypted Backup (.ochbackup)',
+            );
+          }
+        } catch (e) {
+          debugPrint('Export error: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Export failed: $e')),
+            );
+          }
+        }
+      }
+    });
+  }
+
+  Future<void> _importLocalBackup() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: false,
+      );
+
+      if (result == null ||
+          result.files.isEmpty ||
+          result.files.single.path == null) {
+        return;
+      }
+
+      final filePath = result.files.single.path!;
+      final file = File(filePath);
+
+      if (!await file.exists()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Selected backup file not found.')),
+          );
+        }
+        return;
+      }
+
+      final passwordController = TextEditingController();
+      String? errorMessage;
+
+      if (!mounted) return;
+
+      final shouldProceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.file_download_outlined, color: Colors.blue),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Import Local Backup',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'File: ${p.basename(filePath)}',
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'If this backup was protected with a password, enter it below. Otherwise, leave it blank to use the device master key:',
+                    style: TextStyle(fontSize: 13, height: 1.3),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Password (Optional)',
+                      hintText: 'Leave empty if no password was set',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                  if (errorMessage != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      errorMessage!,
+                      style: const TextStyle(color: Colors.red, fontSize: 12),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Restore Backup'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (shouldProceed == true && mounted) {
+        final enteredPassword = passwordController.text.trim().isNotEmpty
+            ? passwordController.text.trim()
+            : null;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Restoring medical records and files...'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        await ref.read(backupServiceProvider).importLocalBackup(
+              file,
+              customPassword: enteredPassword,
+            );
+
+        await _loadLocalSizes();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Backup restored successfully! All profiles and attachments loaded.'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Import error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Failed to restore backup: ${e is FormatException ? e.message : e}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildLocalStorageSection() {
@@ -778,6 +1453,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               '${_documentsFileSizeKb.toStringAsFixed(1)} KB',
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
+          ),
+          const Divider(height: 1, indent: 56),
+          ListTile(
+            leading:
+                const Icon(Icons.file_upload_outlined, color: Colors.teal),
+            title: const Text('Export Local Backup (.ochbackup)'),
+            subtitle: const Text(
+                'Bundle DB, photos & PDFs to share via WhatsApp or Files'),
+            trailing: const Icon(Icons.share, size: 20),
+            onTap: _exportLocalBackup,
+          ),
+          const Divider(height: 1, indent: 56),
+          ListTile(
+            leading:
+                const Icon(Icons.file_download_outlined, color: Colors.blue),
+            title: const Text('Import Local Backup'),
+            subtitle: const Text('Restore from a .ochbackup or encrypted file'),
+            trailing: const Icon(Icons.folder_open, size: 20),
+            onTap: _importLocalBackup,
           ),
           const Divider(height: 1, indent: 56),
           ListTile(
@@ -862,7 +1556,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               SizedBox(height: 8),
               Text(
                 '• Local Storage: All medical histories, symptoms, medication logs, and biometrics are stored strictly on your local device. The developer has zero access to your information.\n\n'
-                '• Cloud Backup: If you manually connect Google Drive, the database and attachments are stored directly in your personal Google Drive\'s secure App Data folder, accessible only by you. No data is shared with or sold to third parties.',
+                '• Cloud Backup: If you manually connect Google Drive, the database and attachments are stored directly in your personal Google Drive\'s secure App Data folder. With End-to-End Encryption enabled, your backups are client-side encrypted with AES-256 before upload.',
                 style: TextStyle(fontSize: 14),
               ),
             ],
