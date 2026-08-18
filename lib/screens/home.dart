@@ -208,9 +208,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         backgroundColor: Colors.orange.shade800,
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        minimumSize: const Size(0, 48),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -226,80 +225,89 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             ),
           ),
           const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  title: Row(
-                    children: [
-                      Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
-                      const SizedBox(width: 8),
-                      const Text('Security Warning'),
-                    ],
-                  ),
-                  content: Text(
-                    riskExplanation,
-                    style: const TextStyle(fontSize: 14, height: 1.4),
-                  ),
-                  actions: [
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(ctx).pop();
-                            context.push(AppRoutes.securitySetup).then((_) {
-                              _checkSecurityStatus();
-                            });
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange.shade800,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+          Semantics(
+            label: 'Security banner options',
+            button: true,
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: IconButton(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      title: Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
+                          const SizedBox(width: 8),
+                          const Text('Security Warning'),
+                        ],
+                      ),
+                      content: Text(
+                        riskExplanation,
+                        style: const TextStyle(fontSize: 14, height: 1.4),
+                      ),
+                      actions: [
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.of(ctx).pop();
+                                context.push(AppRoutes.securitySetup).then((_) {
+                                  _checkSecurityStatus();
+                                });
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange.shade800,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text(
+                                'Enable Secure Lock',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
                             ),
-                          ),
-                          child: const Text(
-                            'Enable Secure Lock',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () async {
-                            Navigator.of(ctx).pop();
-                            await ref.read(appDatabaseProvider).setSecurityBannerDismissed(true);
-                            if (mounted) {
-                              setState(() {
-                                _isBannerDismissed = true;
-                              });
-                            }
-                          },
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: Text(
-                            'Proceed Without Protection',
-                            style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold),
-                          ),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: () async {
+                                Navigator.of(ctx).pop();
+                                await ref.read(appDatabaseProvider).setSecurityBannerDismissed(true);
+                                if (mounted) {
+                                  setState(() {
+                                    _isBannerDismissed = true;
+                                  });
+                                }
+                              },
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                              child: Text(
+                                'Proceed Without Protection',
+                                style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  );
+                },
+                icon: Icon(
+                  Icons.close,
+                  size: 20,
+                  color: Colors.orange.shade700,
                 ),
-              );
-            },
-            child: Icon(
-              Icons.close,
-              size: 20,
-              color: Colors.orange.shade700,
+                tooltip: 'Security warning options',
+              ),
             ),
           ),
         ],
@@ -353,9 +361,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         backgroundColor: Colors.red.shade800,
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        minimumSize: const Size(0, 48),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -449,32 +456,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                     ],
                   ),
                 ),
-                GestureDetector(
-                  onTap: () {
-                    context.go('${AppRoutes.profileDetail}/${activeProfile.id}',
-                        extra: activeProfile);
-                  },
-                  child: FutureBuilder<ImageProvider>(
-                    future: _getProfileImage(activeProfile),
-                    builder: (context, snapshot) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                            width: 3,
-                          ),
-                        ),
-                        child: CircleAvatar(
-                          radius: 35,
-                          backgroundColor: Colors.grey.shade200,
-                          backgroundImage: snapshot.data,
-                          child: snapshot.connectionState == ConnectionState.waiting
-                              ? const CircularProgressIndicator()
-                              : null,
-                        ),
-                      );
+                Semantics(
+                  label: 'View ${activeProfile.name} profile details',
+                  button: true,
+                  child: GestureDetector(
+                    onTap: () {
+                      context.go('${AppRoutes.profileDetail}/${activeProfile.id}',
+                          extra: activeProfile);
                     },
+                    child: FutureBuilder<ImageProvider>(
+                      future: _getProfileImage(activeProfile),
+                      builder: (context, snapshot) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                              width: 3,
+                            ),
+                          ),
+                          child: CircleAvatar(
+                            radius: 35,
+                            backgroundColor: Colors.grey.shade200,
+                            backgroundImage: snapshot.data,
+                            child: snapshot.connectionState == ConnectionState.waiting
+                                ? const CircularProgressIndicator()
+                                : null,
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],
@@ -554,94 +565,98 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                     final color = isOverdue ? Colors.red : Colors.blue;
                     final iconWidget = getCheckupIconWidget(nextUp.checkup.iconName, checkupName: nextUp.checkup.name, color: color, size: 28);
 
-                    return GestureDetector(
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => LogCheckupDialog(
-                            profileId: activeProfile.id,
-                            checkupId: nextUp.checkup.id,
-                            checkupName: nextUp.checkup.name,
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
+                    return Semantics(
+                      label: 'Log ${nextUp.checkup.name} checkup',
+                      button: true,
+                      child: GestureDetector(
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => LogCheckupDialog(
+                              profileId: activeProfile.id,
+                              checkupId: nextUp.checkup.id,
+                              checkupName: nextUp.checkup.name,
                             ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: color.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Center(child: iconWidget),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        nextUp.checkup.name,
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        isOverdue 
-                                            ? 'Overdue now' 
-                                            : 'Due on ${nextUp.nextDueDate != null ? DateFormat.yMMMd().format(nextUp.nextDueDate!) : 'TBD'}',
-                                        style: TextStyle(
-                                          color: isOverdue ? Colors.red : Colors.grey.shade600,
-                                          fontSize: 14,
-                                          fontWeight: isOverdue ? FontWeight.w600 : FontWeight.normal,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (isOverdue)
-                                  const Icon(Icons.error_outline, color: Colors.red),
-                              ],
-                            ),
-                            if (overdueCount > 1) ...[
-                              const SizedBox(height: 16),
-                              const Divider(),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Icon(Icons.warning_amber_rounded, size: 16, color: Colors.orange.shade800),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'You have $overdueCount total checkups overdue',
-                                    style: TextStyle(
-                                      color: Colors.orange.shade900,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
+                          );
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
                               ),
                             ],
-                          ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: color.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Center(child: iconWidget),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          nextUp.checkup.name,
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          isOverdue 
+                                              ? 'Overdue now' 
+                                              : 'Due on ${nextUp.nextDueDate != null ? DateFormat.yMMMd().format(nextUp.nextDueDate!) : 'TBD'}',
+                                          style: TextStyle(
+                                            color: isOverdue ? Colors.red : Colors.grey.shade600,
+                                            fontSize: 14,
+                                            fontWeight: isOverdue ? FontWeight.w600 : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (isOverdue)
+                                    const Icon(Icons.error_outline, color: Colors.red),
+                                ],
+                              ),
+                              if (overdueCount > 1) ...[
+                                const SizedBox(height: 16),
+                                const Divider(),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Icon(Icons.warning_amber_rounded, size: 16, color: Colors.orange.shade800),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'You have $overdueCount total checkups overdue',
+                                      style: TextStyle(
+                                        color: Colors.orange.shade900,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -1050,12 +1065,13 @@ class _PRNMedicationSummaryItem extends ConsumerWidget {
             ),
           );
         },
-        icon: const Icon(Icons.add, size: 14),
-        label: const Text('Log', style: TextStyle(fontSize: 12)),
+        icon: const Icon(Icons.add, size: 16),
+        label: const Text('Log', style: TextStyle(fontSize: 13)),
         style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          minimumSize: const Size(72, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
           ),
         ),
       ),
@@ -1133,32 +1149,36 @@ class _VitalItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 16),
-        child: Column(
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: color.withOpacity(0.2), width: 1),
+    return Semantics(
+      label: '$label tracker',
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.only(right: 16),
+          child: Column(
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: color.withOpacity(0.2), width: 1),
+                ),
+                child: Center(child: icon),
               ),
-              child: Center(child: icon),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700,
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

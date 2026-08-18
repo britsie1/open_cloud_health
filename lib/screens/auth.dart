@@ -350,7 +350,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(AppAssets.logo, width: 200),
+              Image.asset(
+                AppAssets.logo,
+                width: 200,
+                semanticLabel: 'Open Cloud Health Logo',
+              ),
               const SizedBox(height: 40),
               const CircularProgressIndicator(),
             ],
@@ -371,7 +375,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 right: 20,
               ),
               width: 230,
-              child: Image.asset(AppAssets.logo),
+              child: Image.asset(
+                AppAssets.logo,
+                semanticLabel: 'Open Cloud Health Logo',
+              ),
             ),
             Text(
               'OpenCloudHealth',

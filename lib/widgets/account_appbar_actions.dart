@@ -17,6 +17,7 @@ class _AccountAppBarActionsState extends ConsumerState<AccountAppBarActions> {
   Widget build(BuildContext context) {
     return PopupMenuButton(
       position: PopupMenuPosition.under,
+      tooltip: 'Account menu',
       icon: const Icon(Icons.account_circle),
       itemBuilder: (ctx) => const [
         PopupMenuItem(

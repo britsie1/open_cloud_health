@@ -1,3 +1,5 @@
+import 'package:accessibility_tools/accessibility_tools.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/routing/app_router.dart';
@@ -26,6 +28,14 @@ class MyApp extends StatelessWidget {
     return MaterialApp.router(
       routerConfig: appRouter,
       title: 'Open Cloud Health',
+      builder: (context, child) {
+        if (kReleaseMode || child == null) {
+          return child ?? const SizedBox.shrink();
+        }
+        return AccessibilityTools(
+          child: child,
+        );
+      },
       theme: ThemeData().copyWith(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         appBarTheme: const AppBarTheme(
