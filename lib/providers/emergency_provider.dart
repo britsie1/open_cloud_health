@@ -10,6 +10,10 @@ class EmergencyContactsNotifier extends FamilyAsyncNotifier<List<EmergencyContac
 
   @override
   Future<List<EmergencyContact>> build(String arg) async {
+    final sub = ref.watch(emergencyRepositoryProvider).watchEmergencyContacts(arg).listen((contacts) {
+      state = AsyncValue.data(contacts);
+    });
+    ref.onDispose(sub.cancel);
     return _repository.getEmergencyContacts(arg);
   }
 
@@ -52,6 +56,10 @@ class LockScreenSettingsNotifier extends FamilyAsyncNotifier<LockScreenSetting, 
 
   @override
   Future<LockScreenSetting> build(String arg) async {
+    final sub = ref.watch(emergencyRepositoryProvider).watchLockScreenSetting(arg).listen((setting) {
+      state = AsyncValue.data(setting);
+    });
+    ref.onDispose(sub.cancel);
     return _repository.getLockScreenSetting(arg);
   }
 
@@ -98,4 +106,3 @@ class PrimaryProfileIdNotifier extends AsyncNotifier<String?> {
 }
 
 final primaryProfileIdProvider = AsyncNotifierProvider<PrimaryProfileIdNotifier, String?>(PrimaryProfileIdNotifier.new);
-

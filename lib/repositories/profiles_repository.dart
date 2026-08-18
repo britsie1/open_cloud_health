@@ -1,97 +1,102 @@
+import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_cloud_health/database/database_helper.dart';
+import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/profile.dart';
 
 class ProfilesRepository {
-  final DatabaseHelper _dbHelper;
-  ProfilesRepository(this._dbHelper);
+  final AppDatabase _db;
+  ProfilesRepository(this._db);
+
+  Profile _mapEntry(ProfileEntry row) {
+    return Profile(
+      id: row.id,
+      name: row.name,
+      middleNames: row.middleNames,
+      surname: row.surname,
+      dateOfBirth: DateTime.parse(row.dateOfBirth),
+      bloodType: row.bloodType,
+      gender: Gender.values.byName(row.gender),
+      isOrganDonor: row.isOrganDonor == 'true',
+      trackOvulation: row.trackOvulation != null ? (row.trackOvulation == 'true') : true,
+      isArchived: row.isArchived != null ? (row.isArchived == 'true') : false,
+      archivedAt: row.archivedAt != null ? DateTime.parse(row.archivedAt!) : null,
+      chronicConditions: row.chronicConditions != null && row.chronicConditions!.isNotEmpty
+          ? row.chronicConditions!.split(',')
+          : [],
+    );
+  }
 
   Future<List<Profile>> fetchProfiles({bool includeArchived = false}) async {
-    final db = await _dbHelper.getDatabase();
-    final List<Map<String, Object?>> data;
-    
-    if (includeArchived) {
-      data = await db.query('profiles');
-    } else {
-      data = await db.query(
-        'profiles',
-        where: 'isArchived = ? OR isArchived IS NULL',
-        whereArgs: ['false'],
-      );
+    final query = _db.select(_db.profiles);
+    if (!includeArchived) {
+      query.where((tbl) => tbl.isArchived.equals('false') | tbl.isArchived.isNull());
     }
+    final data = await query.get();
+    return data.map(_mapEntry).toList();
+  }
 
-    return data
-        .map((row) => Profile(
-            id: row['id'] as String,
-            name: row['name'] as String,
-            middleNames: row['middleNames'] as String,
-            surname: row['surname'] as String,
-            dateOfBirth: DateTime.parse(row['dateOfBirth'] as String),
-            bloodType: row['bloodType'] as String,
-            gender: Gender.values.byName(row['gender'] as String),
-            isOrganDonor: bool.parse(row['isOrganDonor'] as String),
-            trackOvulation: row['trackOvulation'] != null ? bool.parse(row['trackOvulation'] as String) : true,
-            isArchived: row['isArchived'] != null ? bool.parse(row['isArchived'] as String) : false,
-            archivedAt: row['archivedAt'] != null ? DateTime.parse(row['archivedAt'] as String) : null,
-            chronicConditions: row['chronicConditions'] != null && (row['chronicConditions'] as String).isNotEmpty
-                ? (row['chronicConditions'] as String).split(',')
-                : [],
-        ))
-        .toList();
+  Stream<List<Profile>> watchProfiles({bool includeArchived = false}) {
+    final query = _db.select(_db.profiles);
+    if (!includeArchived) {
+      query.where((tbl) => tbl.isArchived.equals('false') | tbl.isArchived.isNull());
+    }
+    return query.watch().map((data) => data.map(_mapEntry).toList());
   }
 
   Future<void> updateProfile(Profile profile) async {
-    final db = await _dbHelper.getDatabase();
-    await db.update(
-        'profiles',
-        {
-          'name': profile.name,
-          'middleNames': profile.middleNames,
-          'surname': profile.surname,
-          'dateOfBirth': profile.formattedDate,
-          'bloodType': profile.bloodType,
-          'gender': profile.gender.name,
-          'isOrganDonor': profile.isOrganDonor.toString(),
-          'trackOvulation': profile.trackOvulation.toString(),
-          'isArchived': profile.isArchived.toString(),
-          'archivedAt': profile.archivedAt?.toIso8601String(),
-          'chronicConditions': profile.chronicConditions.join(','),
-        },
-        where: 'id = ?',
-        whereArgs: [profile.id]);
+    await _db.update(_db.profiles).replace(
+      ProfileEntry(
+        id: profile.id,
+        name: profile.name,
+        middleNames: profile.middleNames,
+        surname: profile.surname,
+        dateOfBirth: profile.formattedDate,
+        bloodType: profile.bloodType,
+        gender: profile.gender.name,
+        isOrganDonor: profile.isOrganDonor.toString(),
+        trackOvulation: profile.trackOvulation.toString(),
+        isArchived: profile.isArchived.toString(),
+        archivedAt: profile.archivedAt?.toIso8601String(),
+        chronicConditions: profile.chronicConditions.join(','),
+      ),
+    );
   }
 
   Future<void> addProfile(Profile profile) async {
-    final db = await _dbHelper.getDatabase();
-    await db.insert('profiles', {
-      'id': profile.id,
-      'name': profile.name,
-      'middleNames': profile.middleNames,
-      'surname': profile.surname,
-      'dateOfBirth': profile.formattedDate,
-      'bloodType': profile.bloodType,
-      'gender': profile.gender.name,
-      'isOrganDonor': profile.isOrganDonor.toString(),
-      'trackOvulation': profile.trackOvulation.toString(),
-      'isArchived': profile.isArchived.toString(),
-      'archivedAt': profile.archivedAt?.toIso8601String(),
-      'chronicConditions': profile.chronicConditions.join(','),
-    });
+    await _db.into(_db.profiles).insert(
+      ProfileEntry(
+        id: profile.id,
+        name: profile.name,
+        middleNames: profile.middleNames,
+        surname: profile.surname,
+        dateOfBirth: profile.formattedDate,
+        bloodType: profile.bloodType,
+        gender: profile.gender.name,
+        isOrganDonor: profile.isOrganDonor.toString(),
+        trackOvulation: profile.trackOvulation.toString(),
+        isArchived: profile.isArchived.toString(),
+        archivedAt: profile.archivedAt?.toIso8601String(),
+        chronicConditions: profile.chronicConditions.join(','),
+      ),
+    );
   }
 
   Future<void> deleteProfile(String id) async {
-    final db = await _dbHelper.getDatabase();
-    await db.delete('profiles', where: 'id = ?', whereArgs: [id]);
-    await db.delete('history', where: 'profileId = ?', whereArgs: [id]);
-    await db.delete('allergy', where: 'profileId = ?', whereArgs: [id]);
-    await db.delete('medications', where: 'profileId = ?', whereArgs: [id]);
-    await db.delete('checkups', where: 'profileId = ?', whereArgs: [id]);
-    await db.delete('period_cycles', where: 'profileId = ?', whereArgs: [id]);
-    await db.delete('vital_logs', where: 'profileId = ?', whereArgs: [id]);
+    await _db.transaction(() async {
+      await (_db.delete(_db.profiles)..where((tbl) => tbl.id.equals(id))).go();
+      await (_db.delete(_db.history)..where((tbl) => tbl.profileId.equals(id))).go();
+      await (_db.delete(_db.allergy)..where((tbl) => tbl.profileId.equals(id))).go();
+      await (_db.delete(_db.medications)..where((tbl) => tbl.profileId.equals(id))).go();
+      await (_db.delete(_db.checkups)..where((tbl) => tbl.profileId.equals(id))).go();
+      await (_db.delete(_db.periodCycles)..where((tbl) => tbl.profileId.equals(id))).go();
+      await (_db.delete(_db.vitalLogs)..where((tbl) => tbl.profileId.equals(id))).go();
+      await (_db.delete(_db.emergencyContacts)..where((tbl) => tbl.profileId.equals(id))).go();
+      await (_db.delete(_db.lockScreenSettings)..where((tbl) => tbl.profileId.equals(id))).go();
+    });
   }
 }
 
 final profilesRepositoryProvider = Provider<ProfilesRepository>((ref) {
-  final dbHelper = ref.watch(databaseHelperProvider);
-  return ProfilesRepository(dbHelper);
+  final db = ref.watch(appDatabaseProvider);
+  return ProfilesRepository(db);
 });

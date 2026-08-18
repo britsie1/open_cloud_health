@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:open_cloud_health/database/database_helper.dart';
+import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/utils/security_utils.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
@@ -69,8 +69,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   Future<void> _checkSecurityStatus() async {
     try {
       final isDeviceSecure = await SecurityUtils.isDeviceSecure();
-      final isEnabled = await ref.read(databaseHelperProvider).isLocalAuthEnabled();
-      final isDismissed = await ref.read(databaseHelperProvider).isSecurityBannerDismissed();
+      final isEnabled = await ref.read(appDatabaseProvider).isLocalAuthEnabled();
+      final isDismissed = await ref.read(appDatabaseProvider).isSecurityBannerDismissed();
       if (mounted) {
         setState(() {
           _isDeviceSecure = isDeviceSecure;
@@ -275,7 +275,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         TextButton(
                           onPressed: () async {
                             Navigator.of(ctx).pop();
-                            await ref.read(databaseHelperProvider).setSecurityBannerDismissed(true);
+                            await ref.read(appDatabaseProvider).setSecurityBannerDismissed(true);
                             if (mounted) {
                               setState(() {
                                 _isBannerDismissed = true;

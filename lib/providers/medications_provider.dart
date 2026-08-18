@@ -14,6 +14,10 @@ class MedicationsNotifier extends FamilyAsyncNotifier<List<Medication>, String> 
 
   @override
   Future<List<Medication>> build(String arg) async {
+    final sub = ref.watch(medicationsRepositoryProvider).watchMedications(arg).listen((meds) {
+      state = AsyncValue.data(meds);
+    });
+    ref.onDispose(sub.cancel);
     return _repository.loadMedications(arg);
   }
 
@@ -181,9 +185,10 @@ class AllMedicationLogsNotifier extends FamilyAsyncNotifier<List<MedicationLog>,
 
   @override
   Future<List<MedicationLog>> build(String arg) async {
-    final sub = ref.read(notificationServiceProvider).onMedicationMarkedTaken.stream.listen((_) {
-      ref.invalidateSelf();
-      ref.invalidate(medicationsProvider(arg));
+    final sub = ref.watch(medicationsRepositoryProvider).watchAllLogs(arg, limit: _limit, offset: _offset).listen((logs) {
+      if (_offset == 0) {
+        state = AsyncValue.data(logs);
+      }
     });
     ref.onDispose(sub.cancel);
 
@@ -246,9 +251,8 @@ class MedicationLogsNotifier
 
   @override
   Future<List<MedicationLog>> build(String arg) async {
-    final sub = ref.read(notificationServiceProvider).onMedicationMarkedTaken.stream.listen((_) {
-      ref.invalidateSelf();
-      ref.invalidate(medicationsProvider(arg));
+    final sub = ref.watch(medicationsRepositoryProvider).watchLogsForDate(DateTime.now(), arg).listen((logs) {
+      state = AsyncValue.data(logs);
     });
     ref.onDispose(sub.cancel);
 

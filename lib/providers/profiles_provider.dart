@@ -13,6 +13,10 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
 
   @override
   Future<List<Profile>> build() async {
+    final subscription = ref.watch(profilesRepositoryProvider).watchProfiles().listen((profiles) {
+      state = AsyncValue.data(profiles);
+    });
+    ref.onDispose(subscription.cancel);
     return _fetchProfiles();
   }
 

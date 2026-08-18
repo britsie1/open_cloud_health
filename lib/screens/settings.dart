@@ -4,7 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:open_cloud_health/database/database_helper.dart';
+import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/backup_frequency.dart';
 import 'package:open_cloud_health/models/storage_info.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
@@ -44,7 +44,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _loadLocalSizes() async {
-    ref.read(databaseHelperProvider).getDatabaseSize().then((value) {
+    ref.read(appDatabaseProvider).getDatabaseSize().then((value) {
       if (mounted) {
         setState(() => _databaseSizeKb = value / 1024);
       }
@@ -478,7 +478,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     if (confirm != true) return;
 
-    await ref.read(databaseHelperProvider).resetDatabase();
+    await ref.read(appDatabaseProvider).resetDatabase();
 
     Directory dir = await getTemporaryDirectory();
     if (dir.existsSync()) {
@@ -1294,7 +1294,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       }
 
       final passwordController = TextEditingController();
-      String? errorMessage;
 
       if (!mounted) return;
 
@@ -1343,13 +1342,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           horizontal: 12, vertical: 10),
                     ),
                   ),
-                  if (errorMessage != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      errorMessage!,
-                      style: const TextStyle(color: Colors.red, fontSize: 12),
-                    ),
-                  ],
                 ],
               ),
             ),

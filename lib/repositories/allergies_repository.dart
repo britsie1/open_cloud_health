@@ -1,43 +1,48 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_cloud_health/database/database_helper.dart';
+import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/allergy.dart';
 
 class AllergiesRepository {
-  final DatabaseHelper _dbHelper;
-  AllergiesRepository(this._dbHelper);
+  final AppDatabase _db;
+  AllergiesRepository(this._db);
+
+  Allergy _mapEntry(AllergyEntry row) {
+    return Allergy(
+      id: row.id,
+      profileId: row.profileId,
+      name: row.name,
+      note: row.note,
+    );
+  }
 
   Future<List<Allergy>> getAllergies(String profileId) async {
-    final db = await _dbHelper.getDatabase();
-    final data = await db.query('allergy',
-        where: 'profileId = ?', whereArgs: [profileId]);
+    final query = _db.select(_db.allergy)..where((tbl) => tbl.profileId.equals(profileId));
+    final data = await query.get();
+    return data.map(_mapEntry).toList();
+  }
 
-    return data
-        .map((row) => Allergy(
-              id: row['id'] as String,
-              profileId: row['profileId'] as String,
-              name: row['name'] as String,
-              note: row['note'] as String,
-            ))
-        .toList();
+  Stream<List<Allergy>> watchAllergies(String profileId) {
+    final query = _db.select(_db.allergy)..where((tbl) => tbl.profileId.equals(profileId));
+    return query.watch().map((data) => data.map(_mapEntry).toList());
   }
 
   Future<void> addAllergy(Allergy allergy) async {
-    final db = await _dbHelper.getDatabase();
-    await db.insert('allergy', {
-      'id': allergy.id,
-      'profileId': allergy.profileId,
-      'name': allergy.name,
-      'note': allergy.note,
-    });
+    await _db.into(_db.allergy).insert(
+      AllergyEntry(
+        id: allergy.id,
+        profileId: allergy.profileId,
+        name: allergy.name,
+        note: allergy.note,
+      ),
+    );
   }
 
   Future<void> deleteAllergy(String id) async {
-    final db = await _dbHelper.getDatabase();
-    await db.delete('allergy', where: 'id = ?', whereArgs: [id]);
+    await (_db.delete(_db.allergy)..where((tbl) => tbl.id.equals(id))).go();
   }
 }
 
 final allergiesRepositoryProvider = Provider<AllergiesRepository>((ref) {
-  final dbHelper = ref.watch(databaseHelperProvider);
-  return AllergiesRepository(dbHelper);
+  final db = ref.watch(appDatabaseProvider);
+  return AllergiesRepository(db);
 });

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:open_cloud_health/database/database_helper.dart';
+import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/backup_frequency.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/models/storage_info.dart';
@@ -15,7 +15,7 @@ import 'package:open_cloud_health/services/backup_service.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
 
 class MockBackupService extends Mock implements BackupService {}
-class MockDatabaseHelper extends Mock implements DatabaseHelper {}
+class MockAppDatabase extends Mock implements AppDatabase {}
 class MockSecureStorage extends Mock implements SecureStorage {}
 class MockProfilesRepository extends Mock implements ProfilesRepository {}
 class MockGoogleSignInAccount extends Mock implements GoogleSignInAccount {}
@@ -23,7 +23,7 @@ class MockGoogleSignInAccount extends Mock implements GoogleSignInAccount {}
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late MockBackupService mockBackupService;
-  late MockDatabaseHelper mockDatabaseHelper;
+  late MockAppDatabase mockAppDatabase;
   late MockSecureStorage mockSecureStorage;
   late MockProfilesRepository mockProfilesRepository;
 
@@ -33,15 +33,15 @@ void main() {
 
   setUp(() {
     mockBackupService = MockBackupService();
-    mockDatabaseHelper = MockDatabaseHelper();
+    mockAppDatabase = MockAppDatabase();
     mockSecureStorage = MockSecureStorage();
     mockProfilesRepository = MockProfilesRepository();
 
-    when(() => mockDatabaseHelper.getDatabaseSize())
+    when(() => mockAppDatabase.getDatabaseSize())
         .thenAnswer((_) async => 1024 * 50); // 50 KB
-    when(() => mockDatabaseHelper.isLocalAuthEnabled())
+    when(() => mockAppDatabase.isLocalAuthEnabled())
         .thenAnswer((_) async => false);
-    when(() => mockDatabaseHelper.isSecurityBannerDismissed())
+    when(() => mockAppDatabase.isSecurityBannerDismissed())
         .thenAnswer((_) async => false);
     when(() => mockSecureStorage.getLastProfileId())
         .thenAnswer((_) async => 'profile-1');
@@ -57,6 +57,8 @@ void main() {
         .thenAnswer((_) async {});
     when(() => mockSecureStorage.setBackupWifiOnly(any()))
         .thenAnswer((_) async {});
+    when(() => mockProfilesRepository.watchProfiles())
+        .thenAnswer((_) => const Stream.empty());
     when(() => mockSecureStorage.isStrictBiometricsOnly())
         .thenAnswer((_) async => false);
     when(() => mockSecureStorage.setStrictBiometricsOnly(any()))
@@ -93,7 +95,7 @@ void main() {
       ProviderScope(
         overrides: [
           backupServiceProvider.overrideWithValue(mockBackupService),
-          databaseHelperProvider.overrideWithValue(mockDatabaseHelper),
+          appDatabaseProvider.overrideWithValue(mockAppDatabase),
           secureStorageProvider.overrideWithValue(mockSecureStorage),
           profilesRepositoryProvider.overrideWithValue(mockProfilesRepository),
         ],
@@ -146,7 +148,7 @@ void main() {
       ProviderScope(
         overrides: [
           backupServiceProvider.overrideWithValue(mockBackupService),
-          databaseHelperProvider.overrideWithValue(mockDatabaseHelper),
+          appDatabaseProvider.overrideWithValue(mockAppDatabase),
           secureStorageProvider.overrideWithValue(mockSecureStorage),
           profilesRepositoryProvider.overrideWithValue(mockProfilesRepository),
         ],
@@ -192,7 +194,7 @@ void main() {
       ProviderScope(
         overrides: [
           backupServiceProvider.overrideWithValue(mockBackupService),
-          databaseHelperProvider.overrideWithValue(mockDatabaseHelper),
+          appDatabaseProvider.overrideWithValue(mockAppDatabase),
           secureStorageProvider.overrideWithValue(mockSecureStorage),
         ],
         child: const MaterialApp(
@@ -224,7 +226,7 @@ void main() {
       ProviderScope(
         overrides: [
           backupServiceProvider.overrideWithValue(mockBackupService),
-          databaseHelperProvider.overrideWithValue(mockDatabaseHelper),
+          appDatabaseProvider.overrideWithValue(mockAppDatabase),
           secureStorageProvider.overrideWithValue(mockSecureStorage),
         ],
         child: const MaterialApp(

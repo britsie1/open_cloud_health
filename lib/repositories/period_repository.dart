@@ -1,118 +1,130 @@
+import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_cloud_health/database/database_helper.dart';
+import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/period_cycle.dart';
 import 'package:open_cloud_health/models/period_log.dart';
 
 class PeriodRepository {
-  final DatabaseHelper _dbHelper;
-  PeriodRepository(this._dbHelper);
+  final AppDatabase _db;
+  PeriodRepository(this._db);
+
+  PeriodCycle _mapCycle(PeriodCycleEntry row) {
+    return PeriodCycle(
+      id: row.id,
+      profileId: row.profileId,
+      startDate: DateTime.parse(row.startDate),
+      endDate: row.endDate != null ? DateTime.parse(row.endDate!) : null,
+    );
+  }
+
+  PeriodLog _mapLog(PeriodLogEntry row) {
+    final moodsStr = row.moods;
+    final List<Mood> moods = moodsStr != null && moodsStr.isNotEmpty
+        ? moodsStr.split(',').map((e) => Mood.values.byName(e)).toList()
+        : [];
+
+    final physStr = row.physicalSymptoms;
+    final List<PhysicalSymptom> physicalSymptoms = physStr != null && physStr.isNotEmpty
+        ? physStr.split(',').map((e) => PhysicalSymptom.values.byName(e)).toList()
+        : [];
+
+    return PeriodLog(
+      id: row.id,
+      cycleId: row.cycleId,
+      date: DateTime.parse(row.date),
+      flowLevel: row.flowLevel != null ? FlowLevel.values.byName(row.flowLevel!) : null,
+      moods: moods,
+      physicalSymptoms: physicalSymptoms,
+    );
+  }
 
   Future<List<PeriodCycle>> getCycles(String profileId) async {
-    final db = await _dbHelper.getDatabase();
-    final data = await db.query(
-      'period_cycles',
-      where: 'profileId = ?',
-      whereArgs: [profileId],
-      orderBy: 'startDate DESC',
-    );
+    final query = _db.select(_db.periodCycles)
+      ..where((tbl) => tbl.profileId.equals(profileId))
+      ..orderBy([(tbl) => OrderingTerm.desc(tbl.startDate)]);
 
-    return data.map((row) => PeriodCycle(
-      id: row['id'] as String,
-      profileId: row['profileId'] as String,
-      startDate: DateTime.parse(row['startDate'] as String),
-      endDate: row['endDate'] != null ? DateTime.parse(row['endDate'] as String) : null,
-    )).toList();
+    final data = await query.get();
+    return data.map(_mapCycle).toList();
+  }
+
+  Stream<List<PeriodCycle>> watchCycles(String profileId) {
+    final query = _db.select(_db.periodCycles)
+      ..where((tbl) => tbl.profileId.equals(profileId))
+      ..orderBy([(tbl) => OrderingTerm.desc(tbl.startDate)]);
+
+    return query.watch().map((data) => data.map(_mapCycle).toList());
   }
 
   Future<void> addCycle(PeriodCycle cycle) async {
-    final db = await _dbHelper.getDatabase();
-    await db.insert('period_cycles', {
-      'id': cycle.id,
-      'profileId': cycle.profileId,
-      'startDate': cycle.startDate.toIso8601String(),
-      'endDate': cycle.endDate?.toIso8601String(),
-    });
+    await _db.into(_db.periodCycles).insert(
+      PeriodCycleEntry(
+        id: cycle.id,
+        profileId: cycle.profileId,
+        startDate: cycle.startDate.toIso8601String(),
+        endDate: cycle.endDate?.toIso8601String(),
+      ),
+    );
   }
 
   Future<void> updateCycle(PeriodCycle cycle) async {
-    final db = await _dbHelper.getDatabase();
-    await db.update(
-      'period_cycles',
-      {
-        'startDate': cycle.startDate.toIso8601String(),
-        'endDate': cycle.endDate?.toIso8601String(),
-      },
-      where: 'id = ?',
-      whereArgs: [cycle.id],
+    await _db.update(_db.periodCycles).replace(
+      PeriodCycleEntry(
+        id: cycle.id,
+        profileId: cycle.profileId,
+        startDate: cycle.startDate.toIso8601String(),
+        endDate: cycle.endDate?.toIso8601String(),
+      ),
     );
   }
-  
+
   Future<void> deleteCycle(String id) async {
-    final db = await _dbHelper.getDatabase();
-    await db.delete('period_cycles', where: 'id = ?', whereArgs: [id]);
-    await db.delete('period_logs', where: 'cycleId = ?', whereArgs: [id]);
+    await _db.transaction(() async {
+      await (_db.delete(_db.periodCycles)..where((tbl) => tbl.id.equals(id))).go();
+      await (_db.delete(_db.periodLogs)..where((tbl) => tbl.cycleId.equals(id))).go();
+    });
   }
 
   Future<List<PeriodLog>> getLogsForCycle(String cycleId) async {
-    final db = await _dbHelper.getDatabase();
-    final data = await db.query(
-      'period_logs',
-      where: 'cycleId = ?',
-      whereArgs: [cycleId],
-      orderBy: 'date ASC',
-    );
+    final query = _db.select(_db.periodLogs)
+      ..where((tbl) => tbl.cycleId.equals(cycleId))
+      ..orderBy([(tbl) => OrderingTerm.asc(tbl.date)]);
 
-    return data.map((row) {
-      final moodsStr = row['moods'] as String?;
-      final List<Mood> moods = moodsStr != null && moodsStr.isNotEmpty
-          ? moodsStr.split(',').map((e) => Mood.values.byName(e)).toList()
-          : [];
+    final data = await query.get();
+    return data.map(_mapLog).toList();
+  }
 
-      final physStr = row['physicalSymptoms'] as String?;
-      final List<PhysicalSymptom> physicalSymptoms = physStr != null && physStr.isNotEmpty
-          ? physStr.split(',').map((e) => PhysicalSymptom.values.byName(e)).toList()
-          : [];
+  Stream<List<PeriodLog>> watchLogsForCycle(String cycleId) {
+    final query = _db.select(_db.periodLogs)
+      ..where((tbl) => tbl.cycleId.equals(cycleId))
+      ..orderBy([(tbl) => OrderingTerm.asc(tbl.date)]);
 
-      return PeriodLog(
-        id: row['id'] as String,
-        cycleId: row['cycleId'] as String,
-        date: DateTime.parse(row['date'] as String),
-        flowLevel: row['flowLevel'] != null ? FlowLevel.values.byName(row['flowLevel'] as String) : null,
-        moods: moods,
-        physicalSymptoms: physicalSymptoms,
-      );
-    }).toList();
+    return query.watch().map((data) => data.map(_mapLog).toList());
   }
 
   Future<void> upsertLog(PeriodLog log) async {
-    final db = await _dbHelper.getDatabase();
-    
-    // Check if log exists for this date and cycle
     final dateStr = log.date.toIso8601String().split('T')[0];
-    final existing = await db.query(
-      'period_logs',
-      where: 'cycleId = ? AND date LIKE ?',
-      whereArgs: [log.cycleId, '$dateStr%'],
+    final existingQuery = _db.select(_db.periodLogs)
+      ..where((tbl) => tbl.cycleId.equals(log.cycleId) & tbl.date.like('$dateStr%'));
+    final existing = await existingQuery.getSingleOrNull();
+
+    final entry = PeriodLogEntry(
+      id: existing != null ? existing.id : log.id,
+      cycleId: log.cycleId,
+      date: log.date.toIso8601String(),
+      flowLevel: log.flowLevel?.name,
+      moods: log.moods.map((e) => e.name).join(','),
+      physicalSymptoms: log.physicalSymptoms.map((e) => e.name).join(','),
     );
 
-    final map = {
-      'id': existing.isNotEmpty ? existing.first['id'] : log.id,
-      'cycleId': log.cycleId,
-      'date': log.date.toIso8601String(),
-      'flowLevel': log.flowLevel?.name,
-      'moods': log.moods.map((e) => e.name).join(','),
-      'physicalSymptoms': log.physicalSymptoms.map((e) => e.name).join(','),
-    };
-
-    if (existing.isNotEmpty) {
-      await db.update('period_logs', map, where: 'id = ?', whereArgs: [existing.first['id']]);
+    if (existing != null) {
+      await _db.update(_db.periodLogs).replace(entry);
     } else {
-      await db.insert('period_logs', map);
+      await _db.into(_db.periodLogs).insert(entry);
     }
   }
 }
 
 final periodRepositoryProvider = Provider<PeriodRepository>((ref) {
-  final dbHelper = ref.watch(databaseHelperProvider);
-  return PeriodRepository(dbHelper);
+  final db = ref.watch(appDatabaseProvider);
+  return PeriodRepository(db);
 });

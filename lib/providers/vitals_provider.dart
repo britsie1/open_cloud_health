@@ -10,6 +10,10 @@ class VitalsNotifier extends FamilyAsyncNotifier<List<VitalLog>, VitalsArgs> {
 
   @override
   Future<List<VitalLog>> build(VitalsArgs arg) async {
+    final sub = ref.watch(vitalsRepositoryProvider).watchLogs(arg.profileId, arg.type).listen((logs) {
+      state = AsyncValue.data(logs);
+    });
+    ref.onDispose(sub.cancel);
     return _repository.getLogs(arg.profileId, arg.type);
   }
 

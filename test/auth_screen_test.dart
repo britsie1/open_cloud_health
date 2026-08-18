@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:open_cloud_health/database/database_helper.dart';
+import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
 import 'package:open_cloud_health/screens/auth.dart';
@@ -13,28 +13,30 @@ import 'package:open_cloud_health/services/backup_encryption_service.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 
-class MockDatabaseHelper extends Mock implements DatabaseHelper {}
+class MockAppDatabase extends Mock implements AppDatabase {}
 class MockSecureStorage extends Mock implements SecureStorage {}
 class MockProfilesRepository extends Mock implements ProfilesRepository {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late MockDatabaseHelper mockDatabaseHelper;
+  late MockAppDatabase mockAppDatabase;
   late MockSecureStorage mockSecureStorage;
   late MockProfilesRepository mockProfilesRepository;
 
   setUp(() {
-    mockDatabaseHelper = MockDatabaseHelper();
+    mockAppDatabase = MockAppDatabase();
     mockSecureStorage = MockSecureStorage();
     mockProfilesRepository = MockProfilesRepository();
 
-    when(() => mockDatabaseHelper.isLocalAuthEnabled())
+    when(() => mockAppDatabase.isLocalAuthEnabled())
         .thenAnswer((_) async => true);
     when(() => mockSecureStorage.getLastProfileId())
         .thenAnswer((_) async => 'profile-1');
     when(() => mockSecureStorage.isStrictBiometricsOnly())
         .thenAnswer((_) async => false);
+    when(() => mockProfilesRepository.watchProfiles(includeArchived: any(named: 'includeArchived')))
+        .thenAnswer((_) => const Stream.empty());
     when(() => mockProfilesRepository.fetchProfiles(includeArchived: any(named: 'includeArchived'))).thenAnswer((_) async => [
           Profile(
             id: 'profile-1',
@@ -142,7 +144,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          databaseHelperProvider.overrideWithValue(mockDatabaseHelper),
+          appDatabaseProvider.overrideWithValue(mockAppDatabase),
           secureStorageProvider.overrideWithValue(mockSecureStorage),
           profilesRepositoryProvider.overrideWithValue(mockProfilesRepository),
         ],
@@ -184,7 +186,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          databaseHelperProvider.overrideWithValue(mockDatabaseHelper),
+          appDatabaseProvider.overrideWithValue(mockAppDatabase),
           secureStorageProvider.overrideWithValue(mockSecureStorage),
           profilesRepositoryProvider.overrideWithValue(mockProfilesRepository),
         ],
@@ -241,7 +243,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          databaseHelperProvider.overrideWithValue(mockDatabaseHelper),
+          appDatabaseProvider.overrideWithValue(mockAppDatabase),
           secureStorageProvider.overrideWithValue(mockSecureStorage),
           profilesRepositoryProvider.overrideWithValue(mockProfilesRepository),
         ],

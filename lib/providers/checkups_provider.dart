@@ -40,6 +40,11 @@ class CheckupsNotifier extends FamilyAsyncNotifier<List<CheckupWithStatus>, Stri
     
     final profile = profiles.firstWhere((p) => p.id == arg, orElse: () => throw Exception('Profile not found'));
 
+    final sub = ref.watch(checkupsRepositoryProvider).watchCheckups(arg).listen((_) async {
+      state = await AsyncValue.guard(() => _loadCheckupsWithStatus());
+    });
+    ref.onDispose(sub.cancel);
+
     // 2. Sync standard checkups if missing
     await _syncStandardCheckups(profile);
 

@@ -21,6 +21,11 @@ class HistoryNotifier extends FamilyAsyncNotifier<List<HistoryEvent>, String> {
 
   @override
   Future<List<HistoryEvent>> build(String arg) async {
+    final sub = ref.watch(historyRepositoryProvider).watchEvents(arg).listen((_) async {
+      state = await AsyncValue.guard(() => _fetchEvents(arg));
+    });
+    ref.onDispose(sub.cancel);
+
     return _fetchEvents(arg);
   }
 

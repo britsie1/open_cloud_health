@@ -9,6 +9,10 @@ class AllergiesNotifier extends FamilyAsyncNotifier<List<Allergy>, String> {
 
   @override
   Future<List<Allergy>> build(String arg) async {
+    final sub = ref.watch(allergiesRepositoryProvider).watchAllergies(arg).listen((allergies) {
+      state = AsyncValue.data(allergies);
+    });
+    ref.onDispose(sub.cancel);
     return _repository.getAllergies(arg);
   }
 

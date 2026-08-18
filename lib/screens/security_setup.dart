@@ -1,11 +1,10 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:android_intent_plus/android_intent.dart';
-import 'package:open_cloud_health/database/database_helper.dart';
+import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/services/backup_encryption_service.dart';
 import 'package:open_cloud_health/services/backup_service.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
@@ -50,14 +49,14 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
   Future<void> _checkCapabilitiesAndLoadSettings() async {
     try {
       final isDeviceSecure = await SecurityUtils.isDeviceSecure();
-      var isEnabled = await ref.read(databaseHelperProvider).isLocalAuthEnabled();
-      final isDismissed = await ref.read(databaseHelperProvider).isSecurityBannerDismissed();
+      var isEnabled = await ref.read(appDatabaseProvider).isLocalAuthEnabled();
+      final isDismissed = await ref.read(appDatabaseProvider).isSecurityBannerDismissed();
       final isE2e = await ref.read(secureStorageProvider).isE2eBackupEnabled();
       final isStrict = await ref.read(secureStorageProvider).isStrictBiometricsOnly();
 
       if (isEnabled && !isDeviceSecure) {
         // Auto-disable in database since the device lock was removed
-        await ref.read(databaseHelperProvider).setLocalAuthEnabled(false);
+        await ref.read(appDatabaseProvider).setLocalAuthEnabled(false);
         isEnabled = false;
       }
 
@@ -101,7 +100,7 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
         );
 
         if (authenticated) {
-          await ref.read(databaseHelperProvider).setLocalAuthEnabled(true);
+          await ref.read(appDatabaseProvider).setLocalAuthEnabled(true);
           setState(() {
             _isLocalAuthEnabled = true;
           });
@@ -126,7 +125,7 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
         );
 
         if (authenticated) {
-          await ref.read(databaseHelperProvider).setLocalAuthEnabled(false);
+          await ref.read(appDatabaseProvider).setLocalAuthEnabled(false);
           setState(() {
             _isLocalAuthEnabled = false;
           });
@@ -302,7 +301,7 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
   }
 
   Future<void> _toggleBannerDismissed(bool value) async {
-    await ref.read(databaseHelperProvider).setSecurityBannerDismissed(value);
+    await ref.read(appDatabaseProvider).setSecurityBannerDismissed(value);
     setState(() {
       _isBannerDismissed = value;
     });

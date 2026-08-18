@@ -39,6 +39,11 @@ class PeriodNotifier extends FamilyAsyncNotifier<PeriodState, String> {
   @override
   Future<PeriodState> build(String arg) async {
     ref.watch(profilesProvider);
+    final sub = ref.watch(periodRepositoryProvider).watchCycles(arg).listen((_) async {
+      state = await AsyncValue.guard(() => _loadState());
+    });
+    ref.onDispose(sub.cancel);
+
     return _loadState();
   }
 

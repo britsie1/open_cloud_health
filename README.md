@@ -63,7 +63,7 @@ graph TD
 ### Key Technical Details
 1.  **Repository Pattern:** UI screens and Riverpod state managers (`Notifiers` / `AsyncNotifiers`) never make raw database calls. Instead, they interact with dedicated repositories (e.g., `MedicationsRepository`, `ProfilesRepository`) which abstract local SQLite database operations.
 2.  **State Management:** State is managed via `flutter_riverpod`. High-level controllers fetch data asynchronously, and UI pages respond gracefully to `AsyncValue` data, loading, and error states.
-3.  **Local Database:** Powered by standard `sqflite` with automatic database migration, relational foreign-key integrity constraints, and raw transactional safety.
+3.  **Local Database:** Powered by `drift` with typed tables, reactive stream queries, relational integrity constraints, and transactional safety.
 4.  **Local Notifications:** Dynamic notification scheduling utilizing timezone awareness so alerts trigger correctly matching the user's native device clock.
 5.  **Biometric Lock:** Standard local auth check runs on app resume and initial startup to gate app access behind TouchID, FaceID, or PIN checks.
 
@@ -73,10 +73,10 @@ graph TD
 
 ```text
 lib/
-├── database/        # SQLite setup and DatabaseHelper schemas
+├── database/        # Drift database schema, tables, and AppDatabase
 ├── models/          # Dart entity data models (Profile, Medication, Allergy, etc.)
 ├── providers/       # State management providers utilizing Riverpod
-├── repositories/    # Abstract and concrete database repositories
+├── repositories/    # Abstract and concrete reactive database repositories
 ├── routing/         # Declarative routing and screen navigation via GoRouter
 ├── screens/         # Screens and Page widgets representing full layouts
 ├── services/        # Low-level native utilities (Backup, Notifications, File IO)
@@ -93,7 +93,7 @@ Here is a list of the key packages powering Open Cloud Health:
 
 | Package | Purpose | Category |
 | :--- | :--- | :--- |
-| `sqflite` | Local SQLite database engine | Storage |
+| `drift` | Typed, reactive SQLite database engine | Storage |
 | `flutter_riverpod` | Decoupled reactive state management | Architecture |
 | `go_router` | Declarative routing and deep linking | Routing |
 | `local_auth` | Biometric authentication (FaceID, TouchID, PIN) | Security |

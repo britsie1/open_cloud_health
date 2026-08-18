@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:intl/intl.dart';
-import 'package:open_cloud_health/models/backup_frequency.dart';
 import 'package:open_cloud_health/models/storage_info.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/services/backup_encryption_service.dart';
@@ -204,38 +203,6 @@ class BackupService {
     }
   }
 
-  Future<String?> _getOrCreateFolder(
-      String name, String parentId, drive.DriveApi driveApi) async {
-    try {
-      debugPrint('Checking for folder: $name in parent: $parentId');
-      final query =
-          "name = '$name' and '$parentId' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
-      final fileList = await driveApi.files.list(
-        q: query,
-        spaces: 'appDataFolder',
-        $fields: 'files(id, name)',
-      );
-
-      if (fileList.files != null && fileList.files!.isNotEmpty) {
-        final folderId = fileList.files!.first.id;
-        debugPrint('Found existing folder $name (ID: $folderId)');
-        return folderId;
-      }
-
-      debugPrint('Folder $name not found, creating...');
-      final folder = drive.File();
-      folder.name = name;
-      folder.mimeType = 'application/vnd.google-apps.folder';
-      folder.parents = [parentId];
-
-      final createdFolder = await driveApi.files.create(folder);
-      debugPrint('Created folder $name (ID: ${createdFolder.id})');
-      return createdFolder.id;
-    } catch (e) {
-      debugPrint('Error getting/creating folder $name: $e');
-      return null;
-    }
-  }
 
   Future<String> backupToGoogleDrive({
     String? overridePassword,

@@ -11,7 +11,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:open_cloud_health/database/database_helper.dart';
+import 'package:drift/drift.dart' as drift;
+import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -26,66 +27,51 @@ void notificationTapBackground(NotificationResponse response) async {
   final medicationId = response.payload;
   if (medicationId == null) return;
 
-  final dbHelper = DatabaseHelper();
-  final db = await dbHelper.getDatabase();
+  final db = AppDatabase();
+  try {
+    if (response.actionId == 'mark_taken') {
+      final med = await (db.select(db.medications)..where((tbl) => tbl.id.equals(medicationId))).getSingleOrNull();
+      final String? medDosage = med?.dosage;
 
-  if (response.actionId == 'mark_taken') {
-    final List<Map<String, dynamic>> meds = await db.query(
-      'medications',
-      where: 'id = ?',
-      whereArgs: [medicationId],
-    );
-    final String? medDosage = meds.isNotEmpty ? meds.first['dosage'] as String? : null;
+      final log = MedicationLog(
+        id: const Uuid().v4(),
+        medicationId: medicationId,
+        timestamp: DateTime.now(),
+        dosage: medDosage,
+      );
 
-    final log = MedicationLog(
-      id: const Uuid().v4(),
-      medicationId: medicationId,
-      timestamp: DateTime.now(),
-      dosage: medDosage,
-    );
+      await db.into(db.medicationLogs).insert(
+        MedicationLogEntry(
+          id: log.id,
+          medicationId: log.medicationId,
+          timestamp: log.timestamp.toIso8601String(),
+          isTaken: log.isTaken.toString(),
+          dosage: log.dosage,
+        ),
+      );
 
-    await db.insert('medication_logs', {
-      'id': log.id,
-      'medicationId': log.medicationId,
-      'timestamp': log.timestamp.toIso8601String(),
-      'isTaken': log.isTaken.toString(),
-      'dosage': log.dosage,
-    });
-
-    // Background stock decrement direct SQLite query using parsed dosage quantity
-    if (meds.isNotEmpty) {
-      final med = meds.first;
-      final trackInventory = med['trackInventory'] == 'true';
-      if (trackInventory) {
-        final currentStock = (med['stockQuantity'] as num?)?.toDouble() ?? 0.0;
-        final dosageVal = parseDosageQuantity(med['dosage'] as String? ?? '');
+      // Background stock decrement direct Drift query using parsed dosage quantity
+      if (med != null && med.trackInventory == 'true') {
+        final currentStock = med.stockQuantity ?? 0.0;
+        final dosageVal = parseDosageQuantity(med.dosage);
         final newStock = (currentStock - dosageVal).clamp(0.0, double.infinity);
-        await db.update(
-          'medications',
-          {'stockQuantity': newStock},
-          where: 'id = ?',
-          whereArgs: [medicationId],
-        );
+        await (db.update(db.medications)..where((tbl) => tbl.id.equals(medicationId)))
+            .write(MedicationsCompanion(stockQuantity: drift.Value(newStock)));
       }
-    }
 
-    final SendPort? sendPort = IsolateNameServer.lookupPortByName('notification_action_port');
-    if (sendPort != null) {
-      sendPort.send(medicationId);
-    }
-  } else if (response.actionId == 'snooze_15') {
-    tz.initializeTimeZones();
-    try {
-      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(timeZoneName));
-    } catch (_) {}
+      final SendPort? sendPort = IsolateNameServer.lookupPortByName('notification_action_port');
+      if (sendPort != null) {
+        sendPort.send(medicationId);
+      }
+    } else if (response.actionId == 'snooze_15') {
+      tz.initializeTimeZones();
+      try {
+        final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+        tz.setLocalLocation(tz.getLocation(timeZoneName));
+      } catch (_) {}
 
-    final List<Map<String, dynamic>> meds = await db.query(
-      'medications',
-      where: 'id = ?',
-      whereArgs: [medicationId],
-    );
-    final String medName = meds.isNotEmpty ? meds.first['name'] as String : 'Medication';
+      final med = await (db.select(db.medications)..where((tbl) => tbl.id.equals(medicationId))).getSingleOrNull();
+      final String medName = med?.name ?? 'Medication';
 
     final notificationService = NotificationService();
     
@@ -166,6 +152,9 @@ void notificationTapBackground(NotificationResponse response) async {
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: medicationId);
+    }
+  } finally {
+    await db.close();
   }
 }
 
@@ -192,61 +181,48 @@ class NotificationService {
   final onMedicationMarkedTaken = StreamController<String>.broadcast();
 
   Future<void> markMedicationTaken(String medicationId) async {
-    final dbHelper = DatabaseHelper();
-    final db = await dbHelper.getDatabase();
-    
-    final List<Map<String, dynamic>> meds = await db.query(
-      'medications',
-      where: 'id = ?',
-      whereArgs: [medicationId],
-    );
-    final String? medDosage = meds.isNotEmpty ? meds.first['dosage'] as String? : null;
+    final db = AppDatabase();
+    try {
+      final med = await (db.select(db.medications)..where((tbl) => tbl.id.equals(medicationId))).getSingleOrNull();
+      final String? medDosage = med?.dosage;
 
-    final log = MedicationLog(
-      id: const Uuid().v4(),
-      medicationId: medicationId,
-      timestamp: DateTime.now(),
-      dosage: medDosage,
-    );
+      final log = MedicationLog(
+        id: const Uuid().v4(),
+        medicationId: medicationId,
+        timestamp: DateTime.now(),
+        dosage: medDosage,
+      );
 
-    await db.insert('medication_logs', {
-      'id': log.id,
-      'medicationId': log.medicationId,
-      'timestamp': log.timestamp.toIso8601String(),
-      'isTaken': log.isTaken.toString(),
-      'dosage': log.dosage,
-    });
+      await db.into(db.medicationLogs).insert(
+        MedicationLogEntry(
+          id: log.id,
+          medicationId: log.medicationId,
+          timestamp: log.timestamp.toIso8601String(),
+          isTaken: log.isTaken.toString(),
+          dosage: log.dosage,
+        ),
+      );
 
-    // Decrement stock in foreground directly using parsed dosage quantity
-    if (meds.isNotEmpty) {
-      final med = meds.first;
-      final trackInventory = med['trackInventory'] == 'true';
-      if (trackInventory) {
-        final currentStock = (med['stockQuantity'] as num?)?.toDouble() ?? 0.0;
-        final dosageVal = parseDosageQuantity(med['dosage'] as String? ?? '');
+      // Decrement stock in foreground directly using parsed dosage quantity
+      if (med != null && med.trackInventory == 'true') {
+        final currentStock = med.stockQuantity ?? 0.0;
+        final dosageVal = parseDosageQuantity(med.dosage);
         final newStock = (currentStock - dosageVal).clamp(0.0, double.infinity);
-        await db.update(
-          'medications',
-          {'stockQuantity': newStock},
-          where: 'id = ?',
-          whereArgs: [medicationId],
-        );
+        await (db.update(db.medications)..where((tbl) => tbl.id.equals(medicationId)))
+            .write(MedicationsCompanion(stockQuantity: drift.Value(newStock)));
       }
-    }
 
-    onMedicationMarkedTaken.add(medicationId);
+      onMedicationMarkedTaken.add(medicationId);
+    } finally {
+      await db.close();
+    }
   }
 
   Future<void> snoozeMedication(String medicationId) async {
-    final dbHelper = DatabaseHelper();
-    final db = await dbHelper.getDatabase();
-    
-    final List<Map<String, dynamic>> meds = await db.query(
-      'medications',
-      where: 'id = ?',
-      whereArgs: [medicationId],
-    );
-    final String medName = meds.isNotEmpty ? meds.first['name'] as String : 'Medication';
+    final db = AppDatabase();
+    try {
+      final med = await (db.select(db.medications)..where((tbl) => tbl.id.equals(medicationId))).getSingleOrNull();
+      final String medName = med?.name ?? 'Medication';
 
     final now = tz.TZDateTime.now(tz.local);
     final scheduledDate = now.add(const Duration(minutes: 15));
@@ -287,6 +263,9 @@ class NotificationService {
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: medicationId);
+    } finally {
+      await db.close();
+    }
   }
 
   Future<void> init() async {
@@ -506,12 +485,10 @@ class NotificationService {
   }
 
   Future<void> syncEmergencyNotification(String profileId) async {
+    final db = AppDatabase();
     try {
-      final dbHelper = DatabaseHelper();
-      final db = await dbHelper.getDatabase();
-
       // Get all active lock screen settings
-      final activeSettings = await db.query('lock_screen_settings', where: 'isEnabled = ?', whereArgs: ['true']);
+      final activeSettings = await (db.select(db.lockScreenSettings)..where((tbl) => tbl.isEnabled.equals('true'))).get();
       if (activeSettings.isEmpty) {
         await cancelEmergencyNotification();
         return;
@@ -520,24 +497,24 @@ class NotificationService {
       if (activeSettings.length == 1) {
         // Sync single profile (exact same logic as original)
         final setRow = activeSettings.first;
-        final pId = setRow['profileId'] as String;
-        final showName = setRow['showName'] == 'true';
-        final showAge = setRow['showAge'] == 'true';
-        final showBloodType = setRow['showBloodType'] == 'true';
-        final showOrganDonor = setRow['showOrganDonor'] == 'true';
-        final showChronicConditions = setRow['showChronicConditions'] == 'true';
-        final showAllergies = setRow['showAllergies'] == 'true';
-        final showMedications = setRow['showMedications'] == 'true';
-        final showContacts = setRow['showContacts'] == 'true';
+        final pId = setRow.profileId;
+        final showName = setRow.showName == 'true';
+        final showAge = setRow.showAge == 'true';
+        final showBloodType = setRow.showBloodType == 'true';
+        final showOrganDonor = setRow.showOrganDonor == 'true';
+        final showChronicConditions = setRow.showChronicConditions == 'true';
+        final showAllergies = setRow.showAllergies == 'true';
+        final showMedications = setRow.showMedications == 'true';
+        final showContacts = setRow.showContacts == 'true';
 
-        final profileData = await db.query('profiles', where: 'id = ?', whereArgs: [pId]);
-        if (profileData.isEmpty) {
+        final p = await (db.select(db.profiles)..where((tbl) => tbl.id.equals(pId))).getSingleOrNull();
+        if (p == null) {
           await cancelEmergencyNotification();
           return;
         }
-        final p = profileData.first;
-        final name = '${p['name']} ${p['surname']}';
-        final dobStr = p['dateOfBirth'] as String;
+
+        final name = '${p.name} ${p.surname}';
+        final dobStr = p.dateOfBirth;
         final dob = DateTime.parse(dobStr);
         final dobFormatted = dobStr.split(' ').first;
         final today = DateTime.now();
@@ -545,18 +522,18 @@ class NotificationService {
         if (today.month < dob.month || (today.month == dob.month && today.day < dob.day)) {
           age--;
         }
-        final bloodType = p['bloodType'] as String;
-        final isOrganDonor = p['isOrganDonor'] == 'true';
-        final chronicConditionsStr = p['chronicConditions'] as String? ?? '';
+        final bloodType = p.bloodType;
+        final isOrganDonor = p.isOrganDonor == 'true';
+        final chronicConditionsStr = p.chronicConditions ?? '';
         final chronicConditions = chronicConditionsStr.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
-        final allergiesData = await db.query('allergy', where: 'profileId = ?', whereArgs: [pId]);
-        final allergies = allergiesData.map((row) => row['name'] as String).toList();
+        final allergiesData = await (db.select(db.allergy)..where((tbl) => tbl.profileId.equals(pId))).get();
+        final allergies = allergiesData.map((row) => row.name).toList();
 
-        final medsData = await db.query('medications', where: 'profileId = ? AND isActive = ?', whereArgs: [pId, 'true']);
-        final medications = medsData.map((row) => row['name'] as String).toList();
+        final medsData = await (db.select(db.medications)..where((tbl) => tbl.profileId.equals(pId) & tbl.isActive.equals('true'))).get();
+        final medications = medsData.map((row) => row.name).toList();
 
-        final contactsData = await db.query('emergency_contacts', where: 'profileId = ?', whereArgs: [pId]);
+        final contactsData = await (db.select(db.emergencyContacts)..where((tbl) => tbl.profileId.equals(pId))).get();
 
         final title = '🚨 Emergency Medical ID: ${showName ? name : "Medical Information"}';
         final buffer = StringBuffer();
@@ -588,7 +565,7 @@ class NotificationService {
         if (showContacts && contactsData.isNotEmpty) {
           buffer.writeln('Emergency Contacts:');
           for (final c in contactsData) {
-            buffer.writeln('• ${c['name']} (${c['relationship']}): ${c['phoneNumber']}');
+            buffer.writeln('• ${c.name} (${c.relationship}): ${c.phoneNumber}');
           }
         }
 
@@ -604,36 +581,35 @@ class NotificationService {
         final buffer = StringBuffer();
 
         // Get primary profile ID to list first
-        final primaryId = await dbHelper.getPrimaryProfileId();
-        final settingsList = List<Map<String, dynamic>>.from(activeSettings);
+        final primaryId = await db.getPrimaryProfileId();
+        final settingsList = List<LockScreenSettingEntry>.from(activeSettings);
         if (primaryId != null) {
           settingsList.sort((a, b) {
-            if (a['profileId'] == primaryId) return -1;
-            if (b['profileId'] == primaryId) return 1;
+            if (a.profileId == primaryId) return -1;
+            if (b.profileId == primaryId) return 1;
             return 0;
           });
         }
 
         for (final setRow in settingsList) {
-          final pId = setRow['profileId'] as String;
-          final showName = setRow['showName'] == 'true';
-          final showAge = setRow['showAge'] == 'true';
-          final showBloodType = setRow['showBloodType'] == 'true';
-          final showOrganDonor = setRow['showOrganDonor'] == 'true';
-          final showChronicConditions = setRow['showChronicConditions'] == 'true';
-          final showAllergies = setRow['showAllergies'] == 'true';
-          final showMedications = setRow['showMedications'] == 'true';
+          final pId = setRow.profileId;
+          final showName = setRow.showName == 'true';
+          final showAge = setRow.showAge == 'true';
+          final showBloodType = setRow.showBloodType == 'true';
+          final showOrganDonor = setRow.showOrganDonor == 'true';
+          final showChronicConditions = setRow.showChronicConditions == 'true';
+          final showAllergies = setRow.showAllergies == 'true';
+          final showMedications = setRow.showMedications == 'true';
 
-          final profileData = await db.query('profiles', where: 'id = ?', whereArgs: [pId]);
-          if (profileData.isEmpty) continue;
-          final p = profileData.first;
-          final name = '${p['name']} ${p['surname']}';
+          final p = await (db.select(db.profiles)..where((tbl) => tbl.id.equals(pId))).getSingleOrNull();
+          if (p == null) continue;
+          final name = '${p.name} ${p.surname}';
           
           if (showName) {
-            namesList.add(p['name'] as String);
+            namesList.add(p.name);
           }
 
-          final dobStr = p['dateOfBirth'] as String;
+          final dobStr = p.dateOfBirth;
           final dob = DateTime.parse(dobStr);
           final dobFormatted = dobStr.split(' ').first;
           final today = DateTime.now();
@@ -641,16 +617,16 @@ class NotificationService {
           if (today.month < dob.month || (today.month == dob.month && today.day < dob.day)) {
             age--;
           }
-          final bloodType = p['bloodType'] as String;
-          final isOrganDonor = p['isOrganDonor'] == 'true';
-          final chronicConditionsStr = p['chronicConditions'] as String? ?? '';
+          final bloodType = p.bloodType;
+          final isOrganDonor = p.isOrganDonor == 'true';
+          final chronicConditionsStr = p.chronicConditions ?? '';
           final chronicConditions = chronicConditionsStr.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
-          final allergiesData = await db.query('allergy', where: 'profileId = ?', whereArgs: [pId]);
-          final allergies = allergiesData.map((row) => row['name'] as String).toList();
+          final allergiesData = await (db.select(db.allergy)..where((tbl) => tbl.profileId.equals(pId))).get();
+          final allergies = allergiesData.map((row) => row.name).toList();
 
-          final medsData = await db.query('medications', where: 'profileId = ? AND isActive = ?', whereArgs: [pId, 'true']);
-          final medications = medsData.map((row) => row['name'] as String).toList();
+          final medsData = await (db.select(db.medications)..where((tbl) => tbl.profileId.equals(pId) & tbl.isActive.equals('true'))).get();
+          final medications = medsData.map((row) => row.name).toList();
 
           buffer.writeln('${showName ? name : "Profile"}:');
           final details = <String>[];
@@ -687,6 +663,8 @@ class NotificationService {
       }
     } catch (e) {
       debugPrint('Error syncing emergency notification: $e');
+    } finally {
+      await db.close();
     }
   }
 

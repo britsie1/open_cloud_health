@@ -114,6 +114,30 @@ void main() {
         .thenAnswer((_) async => []);
     when(() => mockCheckupsRepository.loadAllLogsForProfile(any()))
         .thenAnswer((_) async => []);
+    when(() => mockProfilesRepository.watchProfiles())
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockHistoryRepository.watchEvents(any()))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockMedicationsRepository.watchMedications(any()))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockMedicationsRepository.watchLogsForDate(any(), any()))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockMedicationsRepository.watchAllLogs(any()))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockAllergiesRepository.watchAllergies(any()))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockAttachmentRepository.watchAttachments(any()))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockPeriodRepository.watchCycles(any()))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockPeriodRepository.watchLogsForCycle(any()))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockCheckupsRepository.watchCheckups(any()))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockEmergencyRepository.watchEmergencyContacts(any()))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockEmergencyRepository.watchLockScreenSetting(any()))
+        .thenAnswer((_) => const Stream.empty());
 
     container = ProviderContainer(
       overrides: [

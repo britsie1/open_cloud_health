@@ -1,7 +1,8 @@
 import 'dart:io';
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_cloud_health/database/database_helper.dart';
+import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/allergy.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/emergency_contact.dart';
@@ -288,47 +289,45 @@ class EmergencyCardView extends ConsumerWidget {
     return Text(
       title,
       style: const TextStyle(
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: FontWeight.bold,
+        letterSpacing: 0.8,
         color: Colors.grey,
-        letterSpacing: 1.1,
       ),
     );
   }
 
   Future<List<Map<String, dynamic>>> _fetchAllEmergencyDetails(WidgetRef ref) async {
-    final dbHelper = ref.read(databaseHelperProvider);
-    final db = await dbHelper.getDatabase();
+    final db = ref.read(appDatabaseProvider);
 
-    final settingsData = await db.query('lock_screen_settings', where: 'isEnabled = ?', whereArgs: ['true']);
-    if (settingsData.isEmpty) {
+    final activeSettings = await (db.select(db.lockScreenSettings)..where((tbl) => tbl.isEnabled.equals('true'))).get();
+    if (activeSettings.isEmpty) {
       return [];
     }
 
     final List<Map<String, dynamic>> results = [];
     final fileService = ref.read(fileServiceProvider);
 
-    for (final setRow in settingsData) {
-      final pId = setRow['profileId'] as String;
+    for (final setRow in activeSettings) {
+      final pId = setRow.profileId;
 
       final settings = LockScreenSetting(
         profileId: pId,
-        showName: setRow['showName'] == 'true',
-        showAge: setRow['showAge'] == 'true',
-        showBloodType: setRow['showBloodType'] == 'true',
-        showOrganDonor: setRow['showOrganDonor'] == 'true',
-        showChronicConditions: setRow['showChronicConditions'] == 'true',
-        showAllergies: setRow['showAllergies'] == 'true',
-        showMedications: setRow['showMedications'] == 'true',
-        showContacts: setRow['showContacts'] == 'true',
+        showName: setRow.showName == 'true',
+        showAge: setRow.showAge == 'true',
+        showBloodType: setRow.showBloodType == 'true',
+        showOrganDonor: setRow.showOrganDonor == 'true',
+        showChronicConditions: setRow.showChronicConditions == 'true',
+        showAllergies: setRow.showAllergies == 'true',
+        showMedications: setRow.showMedications == 'true',
+        showContacts: setRow.showContacts == 'true',
         isEnabled: true,
       );
 
-      final profileData = await db.query('profiles', where: 'id = ?', whereArgs: [pId]);
-      if (profileData.isEmpty) continue;
+      final p = await (db.select(db.profiles)..where((tbl) => tbl.id.equals(pId))).getSingleOrNull();
+      if (p == null) continue;
 
-      final p = profileData.first;
-      final chronicConditionsStr = p['chronicConditions'] as String? ?? '';
+      final chronicConditionsStr = p.chronicConditions ?? '';
       final chronicConditions = chronicConditionsStr
           .split(',')
           .map((e) => e.trim())
@@ -336,49 +335,49 @@ class EmergencyCardView extends ConsumerWidget {
           .toList();
 
       final profile = Profile(
-        id: p['id'] as String,
-        name: p['name'] as String,
-        middleNames: p['middleNames'] as String? ?? '',
-        surname: p['surname'] as String,
-        dateOfBirth: DateTime.parse(p['dateOfBirth'] as String),
-        gender: p['gender'] == 'male' ? Gender.male : Gender.female,
-        bloodType: p['bloodType'] as String,
-        isOrganDonor: p['isOrganDonor'] == 'true',
+        id: p.id,
+        name: p.name,
+        middleNames: p.middleNames,
+        surname: p.surname,
+        dateOfBirth: DateTime.parse(p.dateOfBirth),
+        gender: p.gender == 'male' ? Gender.male : Gender.female,
+        bloodType: p.bloodType,
+        isOrganDonor: p.isOrganDonor == 'true',
         chronicConditions: chronicConditions,
       );
 
-      final allergiesData = await db.query('allergy', where: 'profileId = ?', whereArgs: [pId]);
+      final allergiesData = await (db.select(db.allergy)..where((tbl) => tbl.profileId.equals(pId))).get();
       final allergies = allergiesData
           .map((row) => Allergy(
-                id: row['id'] as String,
-                profileId: row['profileId'] as String,
-                name: row['name'] as String,
-                note: row['note'] as String? ?? '',
+                id: row.id,
+                profileId: row.profileId,
+                name: row.name,
+                note: row.note,
               ))
           .toList();
 
-      final medsData = await db.query('medications', where: 'profileId = ? AND isActive = ?', whereArgs: [pId, 'true']);
+      final medsData = await (db.select(db.medications)..where((tbl) => tbl.profileId.equals(pId) & tbl.isActive.equals('true'))).get();
       final medications = medsData
           .map((row) => Medication(
-                id: row['id'] as String,
-                profileId: row['profileId'] as String,
-                name: row['name'] as String,
-                dosage: row['dosage'] as String? ?? '',
-                type: row['type'] as String? ?? 'Other',
-                isActive: row['isActive'] == 'true',
-                notificationEnabled: row['notificationEnabled'] == 'true',
-                alarmEnabled: row['alarmEnabled'] == 'true',
+                id: row.id,
+                profileId: row.profileId,
+                name: row.name,
+                dosage: row.dosage,
+                type: row.type ?? 'Other',
+                isActive: row.isActive == 'true',
+                notificationEnabled: row.notificationEnabled == 'true',
+                alarmEnabled: row.alarmEnabled == 'true',
               ))
           .toList();
 
-      final contactsData = await db.query('emergency_contacts', where: 'profileId = ?', whereArgs: [pId]);
+      final contactsData = await (db.select(db.emergencyContacts)..where((tbl) => tbl.profileId.equals(pId))).get();
       final contacts = contactsData
           .map((row) => EmergencyContact(
-                id: row['id'] as String,
-                profileId: row['profileId'] as String,
-                name: row['name'] as String,
-                relationship: row['relationship'] as String,
-                phoneNumber: row['phoneNumber'] as String,
+                id: row.id,
+                profileId: row.profileId,
+                name: row.name,
+                relationship: row.relationship,
+                phoneNumber: row.phoneNumber,
               ))
           .toList();
 
@@ -394,7 +393,7 @@ class EmergencyCardView extends ConsumerWidget {
       });
     }
 
-    final primaryId = await dbHelper.getPrimaryProfileId();
+    final primaryId = await db.getPrimaryProfileId();
     if (primaryId != null) {
       results.sort((a, b) {
         final aId = (a['settings'] as LockScreenSetting).profileId;

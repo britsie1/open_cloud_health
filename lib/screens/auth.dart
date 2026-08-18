@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:open_cloud_health/database/database_helper.dart';
+import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/services/backup_encryption_service.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
@@ -50,12 +50,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
     // 2. Check if local auth is enabled in settings
     final isAuthEnabled =
-        await ref.read(databaseHelperProvider).isLocalAuthEnabled();
+        await ref.read(appDatabaseProvider).isLocalAuthEnabled();
     final isDeviceSecure = await SecurityUtils.isDeviceSecure();
 
     if (isAuthEnabled && !isDeviceSecure) {
       // Auto-disable in database since the device lock was removed
-      await ref.read(databaseHelperProvider).setLocalAuthEnabled(false);
+      await ref.read(appDatabaseProvider).setLocalAuthEnabled(false);
     }
 
     if (!isAuthEnabled || !isDeviceSecure) {
@@ -451,12 +451,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Future<void> _showEmergencyCard() async {
-    final dbHelper = ref.read(databaseHelperProvider);
-    final db = await dbHelper.getDatabase();
+    final db = ref.read(appDatabaseProvider);
 
     // Check if there are any active settings enabled
-    final settingsData = await db.query('lock_screen_settings',
-        where: 'isEnabled = ?', whereArgs: ['true']);
+    final settingsData = await (db.select(db.lockScreenSettings)..where((tbl) => tbl.isEnabled.equals('true'))).get();
 
     if (settingsData.isEmpty) {
       if (mounted) {
