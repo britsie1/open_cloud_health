@@ -69,7 +69,7 @@ class BootReceiver : BroadcastReceiver() {
         try {
             db = SQLiteDatabase.openDatabase(dbFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
             
-            val settingsCursor = db.rawQuery("SELECT * FROM lock_screen_settings WHERE isEnabled = 'true' OR isEnabled = 1", null)
+            val settingsCursor = db.rawQuery("SELECT * FROM lock_screen_settings WHERE isEnabled = 1", null)
             if (!settingsCursor.moveToFirst()) {
                 settingsCursor.close()
                 return false
@@ -82,68 +82,76 @@ class BootReceiver : BroadcastReceiver() {
             }
             primaryCursor.close()
 
-            val settingsList = mutableListOf<Map<String, String>>()
+            val settingsList = mutableListOf<LockScreenConfig>()
+            val profileIdCol = settingsCursor.getColumnIndexOrThrow("profileId")
+            val showNameCol = settingsCursor.getColumnIndexOrThrow("showName")
+            val showAgeCol = settingsCursor.getColumnIndexOrThrow("showAge")
+            val showBloodTypeCol = settingsCursor.getColumnIndexOrThrow("showBloodType")
+            val showOrganDonorCol = settingsCursor.getColumnIndexOrThrow("showOrganDonor")
+            val showChronicConditionsCol = settingsCursor.getColumnIndexOrThrow("showChronicConditions")
+            val showAllergiesCol = settingsCursor.getColumnIndexOrThrow("showAllergies")
+            val showMedicationsCol = settingsCursor.getColumnIndexOrThrow("showMedications")
+            val showContactsCol = settingsCursor.getColumnIndexOrThrow("showContacts")
+
             do {
-                val settingsMap = mutableMapOf<String, String>()
-                for (col in settingsCursor.columnNames) {
-                    settingsMap[col] = settingsCursor.getString(settingsCursor.getColumnIndexOrThrow(col)) ?: ""
-                }
-                settingsList.add(settingsMap)
+                settingsList.add(
+                    LockScreenConfig(
+                        profileId = settingsCursor.getString(profileIdCol) ?: "",
+                        showName = settingsCursor.getInt(showNameCol) == 1,
+                        showAge = settingsCursor.getInt(showAgeCol) == 1,
+                        showBloodType = settingsCursor.getInt(showBloodTypeCol) == 1,
+                        showOrganDonor = settingsCursor.getInt(showOrganDonorCol) == 1,
+                        showChronicConditions = settingsCursor.getInt(showChronicConditionsCol) == 1,
+                        showAllergies = settingsCursor.getInt(showAllergiesCol) == 1,
+                        showMedications = settingsCursor.getInt(showMedicationsCol) == 1,
+                        showContacts = settingsCursor.getInt(showContactsCol) == 1
+                    )
+                )
             } while (settingsCursor.moveToNext())
             settingsCursor.close()
 
             var targetRowIndex = 0
             if (primaryProfileId != null) {
-                val idx = settingsList.indexOfFirst { it["profileId"] == primaryProfileId }
+                val idx = settingsList.indexOfFirst { it.profileId == primaryProfileId }
                 if (idx != -1) {
                     targetRowIndex = idx
                 }
             }
             val setRow = settingsList[targetRowIndex]
-
-            val profileId = setRow["profileId"] ?: ""
-            val showName = setRow["showName"] == "true" || setRow["showName"] == "1"
-            val showAge = setRow["showAge"] == "true" || setRow["showAge"] == "1"
-            val showBloodType = setRow["showBloodType"] == "true" || setRow["showBloodType"] == "1"
-            val showOrganDonor = setRow["showOrganDonor"] == "true" || setRow["showOrganDonor"] == "1"
-            val showChronicConditions = setRow["showChronicConditions"] == "true" || setRow["showChronicConditions"] == "1"
-            val showAllergies = setRow["showAllergies"] == "true" || setRow["showAllergies"] == "1"
-            val showMedications = setRow["showMedications"] == "true" || setRow["showMedications"] == "1"
-            val showContacts = setRow["showContacts"] == "true" || setRow["showContacts"] == "1"
+            val profileId = setRow.profileId
 
             val profileCursor = db.rawQuery("SELECT * FROM profiles WHERE id = ?", arrayOf(profileId))
             if (!profileCursor.moveToFirst()) {
                 profileCursor.close()
                 return false
             }
-            val name = profileCursor.getString(profileCursor.getColumnIndexOrThrow("name"))
-            val surname = profileCursor.getString(profileCursor.getColumnIndexOrThrow("surname"))
-            val dateOfBirthStr = profileCursor.getString(profileCursor.getColumnIndexOrThrow("dateOfBirth"))
-            val bloodType = profileCursor.getString(profileCursor.getColumnIndexOrThrow("bloodType"))
-            val isOrganDonorStr = profileCursor.getString(profileCursor.getColumnIndexOrThrow("isOrganDonor"))
-            val isOrganDonor = isOrganDonorStr == "true" || isOrganDonorStr == "1"
+            val name = profileCursor.getString(profileCursor.getColumnIndexOrThrow("name")) ?: ""
+            val surname = profileCursor.getString(profileCursor.getColumnIndexOrThrow("surname")) ?: ""
+            val dateOfBirthEpoch = profileCursor.getLong(profileCursor.getColumnIndexOrThrow("dateOfBirth"))
+            val bloodType = profileCursor.getString(profileCursor.getColumnIndexOrThrow("bloodType")) ?: ""
+            val isOrganDonor = profileCursor.getInt(profileCursor.getColumnIndexOrThrow("isOrganDonor")) == 1
             val chronicConditionsStr = profileCursor.getString(profileCursor.getColumnIndexOrThrow("chronicConditions")) ?: ""
             profileCursor.close()
 
-            val age = calculateAge(dateOfBirthStr)
-            val dobFormatted = formatDob(dateOfBirthStr)
+            val age = calculateAge(dateOfBirthEpoch)
+            val dobFormatted = formatDob(dateOfBirthEpoch)
             val details = mutableListOf<String>()
-            if (showAge) {
+            if (setRow.showAge && dateOfBirthEpoch > 0) {
                 details.add("DOB: $dobFormatted")
                 details.add("Age: $age")
             }
-            if (showBloodType) details.add("Blood: $bloodType")
-            if (showOrganDonor) details.add("Donor: ${if (isOrganDonor) "Yes" else "No"}")
+            if (setRow.showBloodType && bloodType.isNotEmpty()) details.add("Blood: $bloodType")
+            if (setRow.showOrganDonor) details.add("Donor: ${if (isOrganDonor) "Yes" else "No"}")
 
             val bodyBuilder = StringBuilder()
             if (details.isNotEmpty()) bodyBuilder.append(details.joinToString(" | ")).append("\n")
 
-            if (showChronicConditions) {
-                val conditions = chronicConditionsStr.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            if (setRow.showChronicConditions) {
+                val conditions = if (chronicConditionsStr.isNotEmpty()) chronicConditionsStr.split(",").map { it.trim() }.filter { it.isNotEmpty() } else emptyList()
                 bodyBuilder.append("Conditions: ").append(if (conditions.isNotEmpty()) conditions.joinToString(", ") else "None").append("\n")
             }
 
-            if (showAllergies) {
+            if (setRow.showAllergies) {
                 val allergyCursor = db.rawQuery("SELECT * FROM allergy WHERE profileId = ?", arrayOf(profileId))
                 val allergies = mutableListOf<String>()
                 if (allergyCursor.moveToFirst()) {
@@ -155,8 +163,8 @@ class BootReceiver : BroadcastReceiver() {
                 bodyBuilder.append("Allergies: ").append(if (allergies.isNotEmpty()) allergies.joinToString(", ") else "None").append("\n")
             }
 
-            if (showMedications) {
-                val medsCursor = db.rawQuery("SELECT * FROM medications WHERE profileId = ? AND (isActive = 'true' OR isActive = 1)", arrayOf(profileId))
+            if (setRow.showMedications) {
+                val medsCursor = db.rawQuery("SELECT * FROM medications WHERE profileId = ? AND isActive = 1", arrayOf(profileId))
                 val medications = mutableListOf<String>()
                 if (medsCursor.moveToFirst()) {
                     do {
@@ -169,7 +177,7 @@ class BootReceiver : BroadcastReceiver() {
                 }
             }
 
-            if (showContacts) {
+            if (setRow.showContacts) {
                 val contactsCursor = db.rawQuery("SELECT * FROM emergency_contacts WHERE profileId = ?", arrayOf(profileId))
                 if (contactsCursor.moveToFirst()) {
                     bodyBuilder.append("Emergency Contacts:\n")
@@ -183,7 +191,7 @@ class BootReceiver : BroadcastReceiver() {
                 contactsCursor.close()
             }
 
-            val title = "🚨 Emergency Medical ID: ${if (showName) "$name $surname" else "Medical Information"}"
+            val title = "🚨 Emergency Medical ID: ${if (setRow.showName) "$name $surname" else "Medical Information"}"
             val body = bodyBuilder.toString().trim()
 
             NotificationHelper.showNotification(context, title, body)
@@ -196,34 +204,36 @@ class BootReceiver : BroadcastReceiver() {
         return false
     }
 
-    private fun formatDob(dobStr: String): String {
+    private data class LockScreenConfig(
+        val profileId: String,
+        val showName: Boolean,
+        val showAge: Boolean,
+        val showBloodType: Boolean,
+        val showOrganDonor: Boolean,
+        val showChronicConditions: Boolean,
+        val showAllergies: Boolean,
+        val showMedications: Boolean,
+        val showContacts: Boolean
+    )
+
+    private fun formatDob(epoch: Long): String {
+        if (epoch <= 0L) return ""
         try {
-            val epoch = dobStr.toLongOrNull()
-            if (epoch != null) {
-                val millis = if (epoch < 100000000000L) epoch * 1000L else epoch
-                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                return sdf.format(Date(millis))
-            }
-            return dobStr.split(" ")[0]
+            val millis = if (epoch < 100000000000L) epoch * 1000L else epoch
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            return sdf.format(Date(millis))
         } catch (e: Exception) {
-            return dobStr
+            return ""
         }
     }
 
-    private fun calculateAge(dobStr: String): Int {
+    private fun calculateAge(epoch: Long): Int {
+        if (epoch <= 0L) return 0
         try {
-            val dobDate: Date? = if (dobStr.toLongOrNull() != null) {
-                val epoch = dobStr.toLong()
-                val millis = if (epoch < 100000000000L) epoch * 1000L else epoch
-                Date(millis)
-            } else {
-                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                sdf.parse(dobStr)
-            }
-            if (dobDate == null) return 0
+            val millis = if (epoch < 100000000000L) epoch * 1000L else epoch
+            val dobDate = Date(millis)
             val today = Calendar.getInstance()
-            val birthDate = Calendar.getInstance()
-            birthDate.time = dobDate
+            val birthDate = Calendar.getInstance().apply { time = dobDate }
             var age = today.get(Calendar.YEAR) - birthDate.get(Calendar.YEAR)
             if (today.get(Calendar.DAY_OF_YEAR) < birthDate.get(Calendar.DAY_OF_YEAR)) {
                 age--

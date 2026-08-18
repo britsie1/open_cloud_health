@@ -19,7 +19,7 @@ class NotificationDismissReceiver : BroadcastReceiver() {
                 var db: SQLiteDatabase? = null
                 try {
                     db = SQLiteDatabase.openDatabase(dbFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
-                    val settingsCursor = db.rawQuery("SELECT * FROM lock_screen_settings WHERE isEnabled = 'true' LIMIT 1", null)
+                    val settingsCursor = db.rawQuery("SELECT 1 FROM lock_screen_settings WHERE isEnabled = 1 LIMIT 1", null)
                     val isStillEnabled = settingsCursor.moveToFirst()
                     settingsCursor.close()
                     

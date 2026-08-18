@@ -57,17 +57,34 @@ class EmergencyActivity : Activity() {
             db = SQLiteDatabase.openDatabase(dbFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
             
             // Check all enabled lock screen settings
-            val settingsCursor = db.rawQuery("SELECT * FROM lock_screen_settings WHERE isEnabled = 'true'", null)
-            val settingsList = mutableListOf<Map<String, String>>()
+            val settingsCursor = db.rawQuery("SELECT * FROM lock_screen_settings WHERE isEnabled = 1", null)
+            val settingsList = mutableListOf<LockScreenConfig>()
             
             if (settingsCursor.moveToFirst()) {
+                val profileIdCol = settingsCursor.getColumnIndexOrThrow("profileId")
+                val showNameCol = settingsCursor.getColumnIndexOrThrow("showName")
+                val showAgeCol = settingsCursor.getColumnIndexOrThrow("showAge")
+                val showBloodTypeCol = settingsCursor.getColumnIndexOrThrow("showBloodType")
+                val showOrganDonorCol = settingsCursor.getColumnIndexOrThrow("showOrganDonor")
+                val showChronicConditionsCol = settingsCursor.getColumnIndexOrThrow("showChronicConditions")
+                val showAllergiesCol = settingsCursor.getColumnIndexOrThrow("showAllergies")
+                val showMedicationsCol = settingsCursor.getColumnIndexOrThrow("showMedications")
+                val showContactsCol = settingsCursor.getColumnIndexOrThrow("showContacts")
+
                 do {
-                    val settingsMap = mutableMapOf<String, String>()
-                    val columnNames = settingsCursor.columnNames
-                    for (col in columnNames) {
-                        settingsMap[col] = settingsCursor.getString(settingsCursor.getColumnIndexOrThrow(col)) ?: ""
-                    }
-                    settingsList.add(settingsMap)
+                    settingsList.add(
+                        LockScreenConfig(
+                            profileId = settingsCursor.getString(profileIdCol) ?: "",
+                            showName = settingsCursor.getInt(showNameCol) == 1,
+                            showAge = settingsCursor.getInt(showAgeCol) == 1,
+                            showBloodType = settingsCursor.getInt(showBloodTypeCol) == 1,
+                            showOrganDonor = settingsCursor.getInt(showOrganDonorCol) == 1,
+                            showChronicConditions = settingsCursor.getInt(showChronicConditionsCol) == 1,
+                            showAllergies = settingsCursor.getInt(showAllergiesCol) == 1,
+                            showMedications = settingsCursor.getInt(showMedicationsCol) == 1,
+                            showContacts = settingsCursor.getInt(showContactsCol) == 1
+                        )
+                    )
                 } while (settingsCursor.moveToNext())
             }
             settingsCursor.close()
@@ -86,7 +103,7 @@ class EmergencyActivity : Activity() {
             primaryCursor.close()
 
             if (primaryProfileId != null) {
-                val primaryIndex = settingsList.indexOfFirst { it["profileId"] == primaryProfileId }
+                val primaryIndex = settingsList.indexOfFirst { it.profileId == primaryProfileId }
                 if (primaryIndex != -1) {
                     val primarySettings = settingsList.removeAt(primaryIndex)
                     settingsList.add(0, primarySettings)
@@ -102,15 +119,7 @@ class EmergencyActivity : Activity() {
 
             for (i in 0 until settingsList.size) {
                 val settings = settingsList[i]
-                val profileId = settings["profileId"] ?: ""
-                val showName = settings["showName"] == "true"
-                val showAge = settings["showAge"] == "true"
-                val showBloodType = settings["showBloodType"] == "true"
-                val showOrganDonor = settings["showOrganDonor"] == "true"
-                val showChronicConditions = settings["showChronicConditions"] == "true"
-                val showAllergies = settings["showAllergies"] == "true"
-                val showMedications = settings["showMedications"] == "true"
-                val showContacts = settings["showContacts"] == "true"
+                val profileId = settings.profileId
 
                 // Fetch Profile
                 val profileCursor = db.rawQuery("SELECT * FROM profiles WHERE id = ?", arrayOf(profileId))
@@ -119,12 +128,12 @@ class EmergencyActivity : Activity() {
                     continue
                 }
                 
-                val name = profileCursor.getString(profileCursor.getColumnIndexOrThrow("name"))
+                val name = profileCursor.getString(profileCursor.getColumnIndexOrThrow("name")) ?: ""
                 val middleNames = profileCursor.getString(profileCursor.getColumnIndexOrThrow("middleNames")) ?: ""
-                val surname = profileCursor.getString(profileCursor.getColumnIndexOrThrow("surname"))
-                val dateOfBirthStr = profileCursor.getString(profileCursor.getColumnIndexOrThrow("dateOfBirth"))
-                val bloodType = profileCursor.getString(profileCursor.getColumnIndexOrThrow("bloodType"))
-                val isOrganDonor = profileCursor.getString(profileCursor.getColumnIndexOrThrow("isOrganDonor")) == "true"
+                val surname = profileCursor.getString(profileCursor.getColumnIndexOrThrow("surname")) ?: ""
+                val dateOfBirthEpoch = profileCursor.getLong(profileCursor.getColumnIndexOrThrow("dateOfBirth"))
+                val bloodType = profileCursor.getString(profileCursor.getColumnIndexOrThrow("bloodType")) ?: ""
+                val isOrganDonor = profileCursor.getInt(profileCursor.getColumnIndexOrThrow("isOrganDonor")) == 1
                 val chronicConditionsStr = profileCursor.getString(profileCursor.getColumnIndexOrThrow("chronicConditions")) ?: ""
                 profileCursor.close()
 
@@ -137,7 +146,7 @@ class EmergencyActivity : Activity() {
 
                 // Render Name
                 val nameTextView = profileView.findViewById<TextView>(R.id.nameText)
-                if (showName) {
+                if (settings.showName) {
                     nameTextView.text = "$name $middleNames $surname".replace("\\s+".toRegex(), " ").trim()
                     nameTextView.visibility = View.VISIBLE
                 } else {
@@ -147,8 +156,8 @@ class EmergencyActivity : Activity() {
 
                 // Render DOB
                 val dobTextView = profileView.findViewById<TextView>(R.id.dobText)
-                if (showAge && dateOfBirthStr.isNotEmpty()) {
-                    val dobFormatted = dateOfBirthStr.split(" ")[0]
+                if (settings.showAge && dateOfBirthEpoch > 0) {
+                    val dobFormatted = formatDob(dateOfBirthEpoch)
                     dobTextView.text = "Date of Birth: $dobFormatted"
                     dobTextView.visibility = View.VISIBLE
                 } else {
@@ -159,14 +168,14 @@ class EmergencyActivity : Activity() {
                 val tagsLayout = profileView.findViewById<LinearLayout>(R.id.tagsLayout)
                 tagsLayout.removeAllViews()
                 
-                if (showAge && dateOfBirthStr.isNotEmpty()) {
-                    val age = calculateAge(dateOfBirthStr)
+                if (settings.showAge && dateOfBirthEpoch > 0) {
+                    val age = calculateAge(dateOfBirthEpoch)
                     addTag(tagsLayout, "AGE", "$age", R.drawable.tag_age_background, 0xFF9C27B0.toInt())
                 }
-                if (showBloodType && bloodType.isNotEmpty()) {
+                if (settings.showBloodType && bloodType.isNotEmpty()) {
                     addTag(tagsLayout, "BLOOD", bloodType, R.drawable.tag_blood_background, 0xFFE53935.toInt())
                 }
-                if (showOrganDonor) {
+                if (settings.showOrganDonor) {
                     addTag(tagsLayout, "DONOR", if (isOrganDonor) "YES" else "NO", R.drawable.tag_donor_background, 0xFFE91E63.toInt())
                 }
 
@@ -174,7 +183,7 @@ class EmergencyActivity : Activity() {
                 val conditionsCard = profileView.findViewById<View>(R.id.conditionsCard)
                 val conditionsContainer = profileView.findViewById<LinearLayout>(R.id.conditionsContainer)
                 conditionsContainer.removeAllViews()
-                if (showChronicConditions) {
+                if (settings.showChronicConditions) {
                     conditionsCard.visibility = View.VISIBLE
                     val conditions = if (chronicConditionsStr.isNotEmpty()) {
                         chronicConditionsStr.split(",").map { it.trim() }.filter { it.isNotEmpty() }
@@ -196,7 +205,7 @@ class EmergencyActivity : Activity() {
                 val allergiesCard = profileView.findViewById<View>(R.id.allergiesCard)
                 val allergiesContainer = profileView.findViewById<LinearLayout>(R.id.allergiesContainer)
                 allergiesContainer.removeAllViews()
-                if (showAllergies) {
+                if (settings.showAllergies) {
                     allergiesCard.visibility = View.VISIBLE
                     val allergyCursor = db.rawQuery("SELECT * FROM allergy WHERE profileId = ?", arrayOf(profileId))
                     if (allergyCursor.moveToFirst()) {
@@ -217,8 +226,8 @@ class EmergencyActivity : Activity() {
                 val medicationsCard = profileView.findViewById<View>(R.id.medicationsCard)
                 val medicationsContainer = profileView.findViewById<LinearLayout>(R.id.medicationsContainer)
                 medicationsContainer.removeAllViews()
-                if (showMedications) {
-                    val medsCursor = db.rawQuery("SELECT * FROM medications WHERE profileId = ? AND isActive = 'true'", arrayOf(profileId))
+                if (settings.showMedications) {
+                    val medsCursor = db.rawQuery("SELECT * FROM medications WHERE profileId = ? AND isActive = 1", arrayOf(profileId))
                     if (medsCursor.moveToFirst()) {
                         medicationsCard.visibility = View.VISIBLE
                         do {
@@ -238,7 +247,7 @@ class EmergencyActivity : Activity() {
                 val contactsCard = profileView.findViewById<View>(R.id.contactsCard)
                 val contactsContainer = profileView.findViewById<LinearLayout>(R.id.contactsContainer)
                 contactsContainer.removeAllViews()
-                if (showContacts) {
+                if (settings.showContacts) {
                     val contactsCursor = db.rawQuery("SELECT * FROM emergency_contacts WHERE profileId = ?", arrayOf(profileId))
                     if (contactsCursor.moveToFirst()) {
                         contactsCard.visibility = View.VISIBLE
@@ -271,13 +280,36 @@ class EmergencyActivity : Activity() {
         }
     }
 
-    private fun calculateAge(dobStr: String): Int {
+    private data class LockScreenConfig(
+        val profileId: String,
+        val showName: Boolean,
+        val showAge: Boolean,
+        val showBloodType: Boolean,
+        val showOrganDonor: Boolean,
+        val showChronicConditions: Boolean,
+        val showAllergies: Boolean,
+        val showMedications: Boolean,
+        val showContacts: Boolean
+    )
+
+    private fun formatDob(epoch: Long): String {
+        if (epoch <= 0L) return ""
         try {
+            val millis = if (epoch < 100000000000L) epoch * 1000L else epoch
             val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-            val dob = sdf.parse(dobStr) ?: return 0
+            return sdf.format(Date(millis))
+        } catch (e: Exception) {
+            return ""
+        }
+    }
+
+    private fun calculateAge(epoch: Long): Int {
+        if (epoch <= 0L) return 0
+        try {
+            val millis = if (epoch < 100000000000L) epoch * 1000L else epoch
+            val dobDate = Date(millis)
             val today = Calendar.getInstance()
-            val birthDate = Calendar.getInstance()
-            birthDate.time = dob
+            val birthDate = Calendar.getInstance().apply { time = dobDate }
             var age = today.get(Calendar.YEAR) - birthDate.get(Calendar.YEAR)
             if (today.get(Calendar.DAY_OF_YEAR) < birthDate.get(Calendar.DAY_OF_YEAR)) {
                 age--
