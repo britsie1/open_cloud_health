@@ -38,7 +38,11 @@ void main() {
     late StreamController<String> markTakenController;
 
     setUp(() {
-      db = AppDatabase(NativeDatabase.memory());
+      db = AppDatabase(NativeDatabase.memory(
+        setup: (rawDb) {
+          rawDb.execute('PRAGMA foreign_keys = ON;');
+        },
+      ));
       mockNotificationService = MockNotificationService();
       markTakenController = StreamController<String>.broadcast();
 
@@ -138,17 +142,17 @@ void main() {
     test('HistoryNotifier adds event, retrieves and integrates period logs', () async {
       // Seed profile
       await db.into(db.profiles).insert(
-            const ProfileEntry(
+            ProfileEntry(
               id: 'p-hist',
               name: 'Dorothy',
               middleNames: '',
               surname: 'Hodgkin',
-              dateOfBirth: '1910-05-12',
+              dateOfBirth: DateTime(1910, 5, 12),
               bloodType: 'O+',
               gender: 'female',
-              isOrganDonor: 'true',
-              trackOvulation: 'true',
-              isArchived: 'false',
+              isOrganDonor: true,
+              trackOvulation: true,
+              isArchived: false,
               archivedAt: null,
               chronicConditions: '',
             ),
@@ -171,18 +175,18 @@ void main() {
 
       // Add a period cycle and log directly in DB
       await db.into(db.periodCycles).insert(
-            const PeriodCycleEntry(
+            PeriodCycleEntry(
               id: 'pc-1',
               profileId: 'p-hist',
-              startDate: '1910-06-01T00:00:00.000',
-              endDate: '1910-06-05T00:00:00.000',
+              startDate: DateTime(1910, 6, 1),
+              endDate: DateTime(1910, 6, 5),
             ),
           );
       await db.into(db.periodLogs).insert(
-            const PeriodLogEntry(
+            PeriodLogEntry(
               id: 'pl-1',
               cycleId: 'pc-1',
-              date: '1910-06-01T00:00:00.000',
+              date: DateTime(1910, 6, 1),
               flowLevel: 'medium',
             ),
           );
@@ -196,17 +200,17 @@ void main() {
     test('MedicationsProvider, MedicationLogsProvider and MedicationAdherenceProvider', () async {
       const profileId = 'p-med';
       await db.into(db.profiles).insert(
-            const ProfileEntry(
+            ProfileEntry(
               id: profileId,
               name: 'Ada',
               middleNames: '',
               surname: 'Lovelace',
-              dateOfBirth: '1815-12-10',
+              dateOfBirth: DateTime(1815, 12, 10),
               bloodType: 'A+',
               gender: 'female',
-              isOrganDonor: 'true',
-              trackOvulation: 'false',
-              isArchived: 'false',
+              isOrganDonor: true,
+              trackOvulation: false,
+              isArchived: false,
               archivedAt: null,
               chronicConditions: '',
             ),
@@ -260,17 +264,17 @@ void main() {
     test('CheckupsProvider and CheckupLogsProvider schedule and status derivation', () async {
       const profileId = 'p-chk';
       await db.into(db.profiles).insert(
-            const ProfileEntry(
+            ProfileEntry(
               id: profileId,
               name: 'Florence',
               middleNames: '',
               surname: 'Nightingale',
-              dateOfBirth: '1820-05-12',
+              dateOfBirth: DateTime(1820, 5, 12),
               bloodType: 'O-',
               gender: 'female',
-              isOrganDonor: 'true',
-              trackOvulation: 'false',
-              isArchived: 'false',
+              isOrganDonor: true,
+              trackOvulation: false,
+              isArchived: false,
               archivedAt: null,
               chronicConditions: '',
             ),
@@ -303,17 +307,17 @@ void main() {
     test('VitalsProvider records and reads biometric entries', () async {
       const profileId = 'p-vit';
       await db.into(db.profiles).insert(
-            const ProfileEntry(
+            ProfileEntry(
               id: profileId,
               name: 'Elizabeth',
               middleNames: '',
               surname: 'Blackwell',
-              dateOfBirth: '1821-02-03',
+              dateOfBirth: DateTime(1821, 2, 3),
               bloodType: 'B+',
               gender: 'female',
-              isOrganDonor: 'true',
-              trackOvulation: 'false',
-              isArchived: 'false',
+              isOrganDonor: true,
+              trackOvulation: false,
+              isArchived: false,
               archivedAt: null,
               chronicConditions: '',
             ),
@@ -342,17 +346,17 @@ void main() {
     test('EmergencyProvider and LockScreenSettingProvider integration', () async {
       const profileId = 'p-emg';
       await db.into(db.profiles).insert(
-            const ProfileEntry(
+            ProfileEntry(
               id: profileId,
               name: 'Jane',
               middleNames: '',
               surname: 'Goodall',
-              dateOfBirth: '1934-04-03',
+              dateOfBirth: DateTime(1934, 4, 3),
               bloodType: 'A-',
               gender: 'female',
-              isOrganDonor: 'true',
-              trackOvulation: 'false',
-              isArchived: 'false',
+              isOrganDonor: true,
+              trackOvulation: false,
+              isArchived: false,
               archivedAt: null,
               chronicConditions: '',
             ),

@@ -23,15 +23,15 @@ class EmergencyRepository {
     }
     return LockScreenSetting(
       profileId: row.profileId,
-      showName: row.showName == 'true',
-      showAge: row.showAge == 'true',
-      showBloodType: row.showBloodType == 'true',
-      showOrganDonor: row.showOrganDonor == 'true',
-      showChronicConditions: row.showChronicConditions == 'true',
-      showAllergies: row.showAllergies == 'true',
-      showMedications: row.showMedications == 'true',
-      showContacts: row.showContacts == 'true',
-      isEnabled: row.isEnabled == 'true',
+      showName: row.showName ?? true,
+      showAge: row.showAge ?? true,
+      showBloodType: row.showBloodType ?? true,
+      showOrganDonor: row.showOrganDonor ?? true,
+      showChronicConditions: row.showChronicConditions ?? true,
+      showAllergies: row.showAllergies ?? true,
+      showMedications: row.showMedications ?? true,
+      showContacts: row.showContacts ?? true,
+      isEnabled: row.isEnabled ?? false,
     );
   }
 
@@ -81,15 +81,15 @@ class EmergencyRepository {
     await _db.into(_db.lockScreenSettings).insertOnConflictUpdate(
       LockScreenSettingEntry(
         profileId: setting.profileId,
-        showName: setting.showName.toString(),
-        showAge: setting.showAge.toString(),
-        showBloodType: setting.showBloodType.toString(),
-        showOrganDonor: setting.showOrganDonor.toString(),
-        showChronicConditions: setting.showChronicConditions.toString(),
-        showAllergies: setting.showAllergies.toString(),
-        showMedications: setting.showMedications.toString(),
-        showContacts: setting.showContacts.toString(),
-        isEnabled: setting.isEnabled.toString(),
+        showName: setting.showName,
+        showAge: setting.showAge,
+        showBloodType: setting.showBloodType,
+        showOrganDonor: setting.showOrganDonor,
+        showChronicConditions: setting.showChronicConditions,
+        showAllergies: setting.showAllergies,
+        showMedications: setting.showMedications,
+        showContacts: setting.showContacts,
+        isEnabled: setting.isEnabled,
       ),
     );
   }

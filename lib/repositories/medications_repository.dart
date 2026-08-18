@@ -42,17 +42,17 @@ class MedicationsRepository {
       name: row.name,
       dosage: row.dosage,
       type: row.type ?? 'Other',
-      notificationEnabled: row.notificationEnabled == 'true',
-      alarmEnabled: row.alarmEnabled == 'true',
+      notificationEnabled: row.notificationEnabled ?? false,
+      alarmEnabled: row.alarmEnabled ?? false,
       timeOfDay: TimeOfDay(
         hour: int.parse(timeParts[0]),
         minute: int.parse(timeParts[1]),
       ),
-      isActive: row.isActive == 'true',
+      isActive: row.isActive ?? true,
       daysOfWeek: daysOfWeek,
       timesOfDay: timesOfDay,
-      isAsNeeded: row.isAsNeeded == 'true',
-      trackInventory: row.trackInventory == 'true',
+      isAsNeeded: row.isAsNeeded ?? false,
+      trackInventory: row.trackInventory ?? false,
       stockQuantity: row.stockQuantity ?? 0.0,
       lowStockThreshold: row.lowStockThreshold ?? 0.0,
     );
@@ -62,8 +62,8 @@ class MedicationsRepository {
     return MedicationLog(
       id: row.id,
       medicationId: row.medicationId,
-      timestamp: DateTime.parse(row.timestamp),
-      isTaken: row.isTaken == 'true',
+      timestamp: row.timestamp,
+      isTaken: row.isTaken ?? true,
       dosage: row.dosage,
     );
   }
@@ -89,14 +89,14 @@ class MedicationsRepository {
         name: medication.name,
         dosage: medication.dosage,
         type: medication.type,
-        notificationEnabled: medication.notificationEnabled.toString(),
-        alarmEnabled: medication.alarmEnabled.toString(),
+        notificationEnabled: medication.notificationEnabled,
+        alarmEnabled: medication.alarmEnabled,
         timeOfDay: '${medication.timeOfDay.hour}:${medication.timeOfDay.minute}',
-        isActive: medication.isActive.toString(),
+        isActive: medication.isActive,
         daysOfWeek: jsonEncode(medication.daysOfWeek),
         timesOfDay: jsonEncode(medication.timesOfDay.map((t) => '${t.hour}:${t.minute}').toList()),
-        isAsNeeded: medication.isAsNeeded.toString(),
-        trackInventory: medication.trackInventory.toString(),
+        isAsNeeded: medication.isAsNeeded,
+        trackInventory: medication.trackInventory,
         stockQuantity: medication.stockQuantity,
         lowStockThreshold: medication.lowStockThreshold,
       ),
@@ -111,14 +111,14 @@ class MedicationsRepository {
         name: medication.name,
         dosage: medication.dosage,
         type: medication.type,
-        notificationEnabled: medication.notificationEnabled.toString(),
-        alarmEnabled: medication.alarmEnabled.toString(),
+        notificationEnabled: medication.notificationEnabled,
+        alarmEnabled: medication.alarmEnabled,
         timeOfDay: '${medication.timeOfDay.hour}:${medication.timeOfDay.minute}',
-        isActive: medication.isActive.toString(),
+        isActive: medication.isActive,
         daysOfWeek: jsonEncode(medication.daysOfWeek),
         timesOfDay: jsonEncode(medication.timesOfDay.map((t) => '${t.hour}:${t.minute}').toList()),
-        isAsNeeded: medication.isAsNeeded.toString(),
-        trackInventory: medication.trackInventory.toString(),
+        isAsNeeded: medication.isAsNeeded,
+        trackInventory: medication.trackInventory,
         stockQuantity: medication.stockQuantity,
         lowStockThreshold: medication.lowStockThreshold,
       ),
@@ -134,28 +134,34 @@ class MedicationsRepository {
 
   Future<void> toggleIsActive(String id, bool isActive) async {
     await (_db.update(_db.medications)..where((tbl) => tbl.id.equals(id)))
-        .write(MedicationsCompanion(isActive: Value(isActive.toString())));
+        .write(MedicationsCompanion(isActive: Value(isActive)));
   }
 
   // --- Medication Logs ---
 
   Future<List<MedicationLog>> loadLogsForDate(DateTime date, String profileId) async {
-    final dateStr = date.toIso8601String().split('T')[0];
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
     final query = _db.select(_db.medicationLogs).join([
       innerJoin(_db.medications, _db.medications.id.equalsExp(_db.medicationLogs.medicationId)),
     ])
-      ..where(_db.medications.profileId.equals(profileId) & _db.medicationLogs.timestamp.like('$dateStr%'));
+      ..where(_db.medications.profileId.equals(profileId) &
+          _db.medicationLogs.timestamp.isBiggerOrEqualValue(startOfDay) &
+          _db.medicationLogs.timestamp.isSmallerThanValue(endOfDay));
 
     final rows = await query.get();
     return rows.map((r) => _mapMedicationLog(r.readTable(_db.medicationLogs))).toList();
   }
 
   Stream<List<MedicationLog>> watchLogsForDate(DateTime date, String profileId) {
-    final dateStr = date.toIso8601String().split('T')[0];
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
     final query = _db.select(_db.medicationLogs).join([
       innerJoin(_db.medications, _db.medications.id.equalsExp(_db.medicationLogs.medicationId)),
     ])
-      ..where(_db.medications.profileId.equals(profileId) & _db.medicationLogs.timestamp.like('$dateStr%'));
+      ..where(_db.medications.profileId.equals(profileId) &
+          _db.medicationLogs.timestamp.isBiggerOrEqualValue(startOfDay) &
+          _db.medicationLogs.timestamp.isSmallerThanValue(endOfDay));
 
     return query.watch().map((rows) => rows.map((r) => _mapMedicationLog(r.readTable(_db.medicationLogs))).toList());
   }
@@ -189,15 +195,15 @@ class MedicationsRepository {
         MedicationLogEntry(
           id: log.id,
           medicationId: log.medicationId,
-          timestamp: log.timestamp.toIso8601String(),
-          isTaken: log.isTaken.toString(),
+          timestamp: log.timestamp,
+          isTaken: log.isTaken,
           dosage: log.dosage,
         ),
       );
 
       // Decrement stock if trackInventory is enabled
       final med = await (_db.select(_db.medications)..where((tbl) => tbl.id.equals(log.medicationId))).getSingleOrNull();
-      if (med != null && med.trackInventory == 'true') {
+      if (med != null && (med.trackInventory ?? false)) {
         final currentStock = med.stockQuantity ?? 0.0;
         final dosageToParse = (log.dosage != null && log.dosage!.trim().isNotEmpty)
             ? log.dosage!
@@ -212,22 +218,31 @@ class MedicationsRepository {
 
   Future<void> removeLog(String medicationId, DateTime date, {TimeOfDay? time}) async {
     await _db.transaction(() async {
-      final dateStr = date.toIso8601String().split('T')[0];
-      final matchPattern = time != null
-          ? '${dateStr}T${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}%'
-          : '$dateStr%';
+      final DateTime startTime;
+      final DateTime endTime;
+      if (time != null) {
+        startTime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+        endTime = startTime.add(const Duration(minutes: 1));
+      } else {
+        startTime = DateTime(date.year, date.month, date.day);
+        endTime = startTime.add(const Duration(days: 1));
+      }
 
       final deleteQuery = _db.select(_db.medicationLogs)
-        ..where((tbl) => tbl.medicationId.equals(medicationId) & tbl.timestamp.like(matchPattern));
+        ..where((tbl) => tbl.medicationId.equals(medicationId) &
+            tbl.timestamp.isBiggerOrEqualValue(startTime) &
+            tbl.timestamp.isSmallerThanValue(endTime));
       final logsToDelete = await deleteQuery.get();
 
       if (logsToDelete.isNotEmpty) {
         await (_db.delete(_db.medicationLogs)
-              ..where((tbl) => tbl.medicationId.equals(medicationId) & tbl.timestamp.like(matchPattern)))
+              ..where((tbl) => tbl.medicationId.equals(medicationId) &
+                  tbl.timestamp.isBiggerOrEqualValue(startTime) &
+                  tbl.timestamp.isSmallerThanValue(endTime)))
             .go();
 
         final med = await (_db.select(_db.medications)..where((tbl) => tbl.id.equals(medicationId))).getSingleOrNull();
-        if (med != null && med.trackInventory == 'true') {
+        if (med != null && (med.trackInventory ?? false)) {
           final currentStock = med.stockQuantity ?? 0.0;
           double totalIncrement = 0.0;
           for (final log in logsToDelete) {

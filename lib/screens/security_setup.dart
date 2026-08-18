@@ -689,7 +689,7 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
                                 .setE2eRecoveryKey(recoveryKey);
                             await secureStorage.setE2eCachedPassword(pass);
 
-                            if (mounted) {
+                            if (mounted && ctx.mounted) {
                               setState(() => _isE2eEnabled = true);
                               Navigator.of(ctx).pop();
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -984,7 +984,7 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
                 await secureStorage.setE2ePasswordHash(newHash);
                 await secureStorage.setE2eCachedPassword(next);
 
-                if (mounted) {
+                if (mounted && ctx.mounted) {
                   Navigator.of(ctx).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -1103,7 +1103,7 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
                 // Clear E2E settings
                 await secureStorage.clearE2eSettings();
 
-                if (mounted) {
+                if (mounted && ctx.mounted) {
                   setState(() => _isE2eEnabled = false);
                   Navigator.of(ctx).pop();
                   ScaffoldMessenger.of(context).showSnackBar(

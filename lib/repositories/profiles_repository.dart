@@ -13,13 +13,13 @@ class ProfilesRepository {
       name: row.name,
       middleNames: row.middleNames,
       surname: row.surname,
-      dateOfBirth: DateTime.parse(row.dateOfBirth),
+      dateOfBirth: row.dateOfBirth,
       bloodType: row.bloodType,
       gender: Gender.values.byName(row.gender),
-      isOrganDonor: row.isOrganDonor == 'true',
-      trackOvulation: row.trackOvulation != null ? (row.trackOvulation == 'true') : true,
-      isArchived: row.isArchived != null ? (row.isArchived == 'true') : false,
-      archivedAt: row.archivedAt != null ? DateTime.parse(row.archivedAt!) : null,
+      isOrganDonor: row.isOrganDonor,
+      trackOvulation: row.trackOvulation ?? true,
+      isArchived: row.isArchived ?? false,
+      archivedAt: row.archivedAt,
       chronicConditions: row.chronicConditions != null && row.chronicConditions!.isNotEmpty
           ? row.chronicConditions!.split(',')
           : [],
@@ -29,8 +29,15 @@ class ProfilesRepository {
   Future<List<Profile>> fetchProfiles({bool includeArchived = false}) async {
     final query = _db.select(_db.profiles);
     if (!includeArchived) {
-      query.where((tbl) => tbl.isArchived.equals('false') | tbl.isArchived.isNull());
+      query.where((tbl) => tbl.isArchived.equals(false) | tbl.isArchived.isNull());
     }
+    final data = await query.get();
+    return data.map(_mapEntry).toList();
+  }
+
+  Future<List<Profile>> fetchArchivedProfiles() async {
+    final query = _db.select(_db.profiles)
+      ..where((tbl) => tbl.isArchived.equals(true));
     final data = await query.get();
     return data.map(_mapEntry).toList();
   }
@@ -38,9 +45,15 @@ class ProfilesRepository {
   Stream<List<Profile>> watchProfiles({bool includeArchived = false}) {
     final query = _db.select(_db.profiles);
     if (!includeArchived) {
-      query.where((tbl) => tbl.isArchived.equals('false') | tbl.isArchived.isNull());
+      query.where((tbl) => tbl.isArchived.equals(false) | tbl.isArchived.isNull());
     }
     return query.watch().map((data) => data.map(_mapEntry).toList());
+  }
+
+  Future<Profile?> getProfile(String id) async {
+    final query = _db.select(_db.profiles)..where((tbl) => tbl.id.equals(id));
+    final row = await query.getSingleOrNull();
+    return row != null ? _mapEntry(row) : null;
   }
 
   Future<void> updateProfile(Profile profile) async {
@@ -50,13 +63,13 @@ class ProfilesRepository {
         name: profile.name,
         middleNames: profile.middleNames,
         surname: profile.surname,
-        dateOfBirth: profile.formattedDate,
+        dateOfBirth: profile.dateOfBirth,
         bloodType: profile.bloodType,
         gender: profile.gender.name,
-        isOrganDonor: profile.isOrganDonor.toString(),
-        trackOvulation: profile.trackOvulation.toString(),
-        isArchived: profile.isArchived.toString(),
-        archivedAt: profile.archivedAt?.toIso8601String(),
+        isOrganDonor: profile.isOrganDonor,
+        trackOvulation: profile.trackOvulation,
+        isArchived: profile.isArchived,
+        archivedAt: profile.archivedAt,
         chronicConditions: profile.chronicConditions.join(','),
       ),
     );
@@ -69,21 +82,39 @@ class ProfilesRepository {
         name: profile.name,
         middleNames: profile.middleNames,
         surname: profile.surname,
-        dateOfBirth: profile.formattedDate,
+        dateOfBirth: profile.dateOfBirth,
         bloodType: profile.bloodType,
         gender: profile.gender.name,
-        isOrganDonor: profile.isOrganDonor.toString(),
-        trackOvulation: profile.trackOvulation.toString(),
-        isArchived: profile.isArchived.toString(),
-        archivedAt: profile.archivedAt?.toIso8601String(),
+        isOrganDonor: profile.isOrganDonor,
+        trackOvulation: profile.trackOvulation,
+        isArchived: profile.isArchived,
+        archivedAt: profile.archivedAt,
         chronicConditions: profile.chronicConditions.join(','),
       ),
     );
   }
 
+  Future<void> archiveProfile(String id) async {
+    await (_db.update(_db.profiles)..where((tbl) => tbl.id.equals(id)))
+        .write(ProfilesCompanion(
+      isArchived: const Value(true),
+      archivedAt: Value(DateTime.now()),
+    ));
+  }
+
+  Future<void> restoreProfile(String id) async {
+    await (_db.update(_db.profiles)..where((tbl) => tbl.id.equals(id)))
+        .write(const ProfilesCompanion(
+      isArchived: Value(false),
+      archivedAt: Value(null),
+    ));
+  }
+
   Future<void> deleteProfile(String id) async {
     await _db.transaction(() async {
       await (_db.delete(_db.profiles)..where((tbl) => tbl.id.equals(id))).go();
+      // SQLite foreign key CASCADE automatically cleans up child tables,
+      // but explicit delete ensures compatibility across all environments.
       await (_db.delete(_db.history)..where((tbl) => tbl.profileId.equals(id))).go();
       await (_db.delete(_db.allergy)..where((tbl) => tbl.profileId.equals(id))).go();
       await (_db.delete(_db.medications)..where((tbl) => tbl.profileId.equals(id))).go();
@@ -94,6 +125,8 @@ class ProfilesRepository {
       await (_db.delete(_db.lockScreenSettings)..where((tbl) => tbl.profileId.equals(id))).go();
     });
   }
+
+  Future<void> deleteProfilePermanently(String id) => deleteProfile(id);
 }
 
 final profilesRepositoryProvider = Provider<ProfilesRepository>((ref) {

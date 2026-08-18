@@ -364,7 +364,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             .setBackupFrequency(freq);
                         setState(() => _frequency = freq);
                         setModalState(() {});
-                        if (mounted) {
+                        if (mounted && ctx.mounted) {
                           Navigator.of(ctx).pop();
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -392,7 +392,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                       .setBackupFrequency(val);
                                   setState(() => _frequency = val);
                                   setModalState(() {});
-                                  if (mounted) {
+                                  if (mounted && ctx.mounted) {
                                     Navigator.of(ctx).pop();
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
@@ -433,7 +433,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
@@ -1064,15 +1064,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onTap: () async {
               final lastProfileId =
                   await ref.read(secureStorageProvider).getLastProfileId();
+              if (!mounted) return;
               final profiles = ref.read(profilesProvider).value ?? [];
               if (profiles.isNotEmpty) {
                 final activeProfileId = lastProfileId ?? profiles.first.id;
-                if (context.mounted) {
+                if (mounted) {
                   context.push(
                       '${AppRoutes.emergencySettings}/$activeProfileId');
                 }
               } else {
-                if (context.mounted) {
+                if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Please create a profile first.'),

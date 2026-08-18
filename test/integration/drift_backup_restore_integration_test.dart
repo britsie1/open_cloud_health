@@ -9,53 +9,60 @@ import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
+  late Directory tempDir;
+  late File sourceDbFile;
+  late Directory avatarsDir;
+  late Directory attachmentsDir;
+  late Directory restoredDir;
+
   setUpAll(() {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   });
 
-  group('Drift DB Backup, Encryption, Decryption, and Restore Integration Test', () {
-    late Directory tempDir;
-    late File sourceDbFile;
-    late Directory avatarsDir;
-    late Directory attachmentsDir;
-    late Directory restoredDir;
+  setUp(() async {
+    tempDir = await Directory.systemTemp.createTemp('drift_backup_test_');
+    sourceDbFile = File(path.join(tempDir.path, 'source_opencloudhealth.db'));
+    avatarsDir = Directory(path.join(tempDir.path, 'avatars'))..createSync();
+    attachmentsDir = Directory(path.join(tempDir.path, 'attachments'))..createSync();
+    restoredDir = Directory(path.join(tempDir.path, 'restored'))..createSync();
+  });
 
-    setUp(() async {
-      tempDir = await Directory.systemTemp.createTemp('drift_backup_restore_');
-      sourceDbFile = File(path.join(tempDir.path, 'source_app_database.sqlite'));
-      avatarsDir = Directory(path.join(tempDir.path, 'avatars'))..createSync(recursive: true);
-      attachmentsDir = Directory(path.join(tempDir.path, 'attachments'))..createSync(recursive: true);
-      restoredDir = Directory(path.join(tempDir.path, 'restored'))..createSync(recursive: true);
-    });
+  tearDown(() async {
+    if (tempDir.existsSync()) {
+      tempDir.deleteSync(recursive: true);
+    }
+  });
 
-    tearDown(() async {
-      if (tempDir.existsSync()) {
-        try {
-          tempDir.deleteSync(recursive: true);
-        } catch (_) {}
-      }
-    });
-
+  group('Drift Backup & Restore Encryption Integration Pipeline', () {
     test('Full multi-table relational backup, AES-256 encryption, decryption, and restore roundtrip', () async {
       const password = 'SuperSecurePatientBackupKey2026!';
 
       // 1. Initialize and populate the source Drift database
       final sourceDb = AppDatabase(NativeDatabase(sourceDbFile));
 
+      final dob = DateTime(1920, 7, 25);
+      final eventDate = DateTime(1952, 5, 1, 10, 0);
+      final uploadDate = DateTime(1952, 5, 1);
+      final logTime = DateTime(1952, 5, 1, 9, 0);
+      final checkupDate = DateTime(1952, 1, 15, 10, 0);
+      final cycleStart = DateTime(1952, 4, 20);
+      final cycleEnd = DateTime(1952, 4, 25);
+      final vitalDate = DateTime(1952, 5, 1, 8, 0);
+
       // Populate Profiles
       await sourceDb.into(sourceDb.profiles).insert(
-            const ProfileEntry(
+            ProfileEntry(
               id: 'prof-restore-1',
               name: 'Rosalind',
               middleNames: 'Elsie',
               surname: 'Franklin',
-              dateOfBirth: '1920-07-25',
+              dateOfBirth: dob,
               bloodType: 'O+',
               gender: 'female',
-              isOrganDonor: 'true',
-              trackOvulation: 'true',
-              isArchived: 'false',
+              isOrganDonor: true,
+              trackOvulation: true,
+              isArchived: false,
               archivedAt: null,
               chronicConditions: 'Ovarian Cancer,Asthma',
             ),
@@ -63,14 +70,14 @@ void main() {
 
       // Populate History
       await sourceDb.into(sourceDb.history).insert(
-            const HistoryEntry(
+            HistoryEntry(
               id: 'hist-restore-1',
               profileId: 'prof-restore-1',
               title: 'X-ray Crystallography Discovery',
               description: 'Photo 51 experimental session',
-              date: '1952-05-01T10:00:00.000',
+              date: eventDate,
               eventType: 'other',
-              hasTime: 'true',
+              hasTime: true,
               provider: 'King\'s College London',
               facility: 'Biophysics Lab',
             ),
@@ -78,11 +85,11 @@ void main() {
 
       // Populate Attachments
       await sourceDb.into(sourceDb.attachments).insert(
-            const AttachmentEntry(
+            AttachmentEntry(
               id: 'att-restore-1',
               historyId: 'hist-restore-1',
               filename: 'photo_51.tiff',
-              uploadDate: '1952-05-01',
+              uploadDate: uploadDate,
               byteLength: 1048576,
             ),
           );
@@ -105,14 +112,14 @@ void main() {
               name: 'Pain Management Analgesic',
               dosage: '50 mg',
               type: const drift.Value('Tablet'),
-              notificationEnabled: const drift.Value('true'),
-              alarmEnabled: const drift.Value('false'),
+              notificationEnabled: const drift.Value(true),
+              alarmEnabled: const drift.Value(false),
               timeOfDay: '09:00',
-              isActive: const drift.Value('true'),
+              isActive: const drift.Value(true),
               daysOfWeek: const drift.Value('[1,2,3,4,5,6,7]'),
               timesOfDay: const drift.Value('["09:00","21:00"]'),
-              isAsNeeded: const drift.Value('false'),
-              trackInventory: const drift.Value('true'),
+              isAsNeeded: const drift.Value(false),
+              trackInventory: const drift.Value(true),
               stockQuantity: const drift.Value(45.0),
               lowStockThreshold: const drift.Value(10.0),
             ),
@@ -120,11 +127,11 @@ void main() {
 
       // Populate Medication Logs
       await sourceDb.into(sourceDb.medicationLogs).insert(
-            const MedicationLogEntry(
+            MedicationLogEntry(
               id: 'mlog-restore-1',
               medicationId: 'med-restore-1',
-              timestamp: '1952-05-01T09:00:00.000',
-              isTaken: 'true',
+              timestamp: logTime,
+              isTaken: true,
               dosage: '50 mg',
             ),
           );
@@ -137,17 +144,17 @@ void main() {
               name: 'Annual Biophysics Health Screening',
               frequencyInMonths: 6,
               iconName: const drift.Value('shield'),
-              isCustomInterval: const drift.Value('false'),
-              isActive: const drift.Value('true'),
+              isCustomInterval: const drift.Value(false),
+              isActive: const drift.Value(true),
             ),
           );
 
       // Populate Checkup Logs
       await sourceDb.into(sourceDb.checkupLogs).insert(
-            const CheckupLogEntry(
+            CheckupLogEntry(
               id: 'chkl-restore-1',
               checkupId: 'chk-restore-1',
-              dateCompleted: '1952-01-15T10:00:00.000',
+              dateCompleted: checkupDate,
               location: 'London Medical Center',
               doctorName: 'Dr. Physician',
               notes: 'Follow up in 6 months.',
@@ -156,18 +163,18 @@ void main() {
 
       // Populate Period Cycles & Logs
       await sourceDb.into(sourceDb.periodCycles).insert(
-            const PeriodCycleEntry(
+            PeriodCycleEntry(
               id: 'cyc-restore-1',
               profileId: 'prof-restore-1',
-              startDate: '1952-04-20T00:00:00.000',
-              endDate: '1952-04-25T00:00:00.000',
+              startDate: cycleStart,
+              endDate: cycleEnd,
             ),
           );
       await sourceDb.into(sourceDb.periodLogs).insert(
-            const PeriodLogEntry(
+            PeriodLogEntry(
               id: 'plog-restore-1',
               cycleId: 'cyc-restore-1',
-              date: '1952-04-20T00:00:00.000',
+              date: cycleStart,
               flowLevel: 'medium',
               moods: 'fatigue',
               physicalSymptoms: 'cramps',
@@ -176,11 +183,11 @@ void main() {
 
       // Populate Vital Logs
       await sourceDb.into(sourceDb.vitalLogs).insert(
-            const VitalLogEntry(
+            VitalLogEntry(
               id: 'vital-restore-1',
               profileId: 'prof-restore-1',
               type: 'bloodPressure',
-              date: '1952-05-01T08:00:00.000',
+              date: vitalDate,
               value1: 115.0,
               value2: 75.0,
               unit: 'mmHg',
@@ -204,14 +211,14 @@ void main() {
             ),
           );
       await sourceDb.into(sourceDb.lockScreenSettings).insert(
-            LockScreenSettingsCompanion.insert(
-              profileId: 'prof-restore-1',
-              showName: const drift.Value('true'),
-              showContacts: const drift.Value('true'),
-              showAllergies: const drift.Value('true'),
-              showMedications: const drift.Value('true'),
-              showChronicConditions: const drift.Value('true'),
-              isEnabled: const drift.Value('true'),
+            const LockScreenSettingsCompanion(
+              profileId: drift.Value('prof-restore-1'),
+              showName: drift.Value(true),
+              showContacts: drift.Value(true),
+              showAllergies: drift.Value(true),
+              showMedications: drift.Value(true),
+              showChronicConditions: drift.Value(true),
+              isEnabled: drift.Value(true),
             ),
           );
 
@@ -289,6 +296,7 @@ void main() {
       expect(profiles.first.name, 'Rosalind');
       expect(profiles.first.surname, 'Franklin');
       expect(profiles.first.chronicConditions, 'Ovarian Cancer,Asthma');
+      expect(profiles.first.isOrganDonor, true);
 
       // Assert History & Attachments
       final history = await restoredDb.select(restoredDb.history).get();
@@ -309,15 +317,18 @@ void main() {
       expect(medications.length, 1);
       expect(medications.first.name, 'Pain Management Analgesic');
       expect(medications.first.stockQuantity, 45.0);
+      expect(medications.first.notificationEnabled, true);
 
       final medLogs = await restoredDb.select(restoredDb.medicationLogs).get();
       expect(medLogs.length, 1);
       expect(medLogs.first.dosage, '50 mg');
+      expect(medLogs.first.isTaken, true);
 
       // Assert Checkups & Checkup Logs
       final checkups = await restoredDb.select(restoredDb.checkups).get();
       expect(checkups.length, 1);
       expect(checkups.first.name, 'Annual Biophysics Health Screening');
+      expect(checkups.first.isActive, true);
 
       final checkupLogs = await restoredDb.select(restoredDb.checkupLogs).get();
       expect(checkupLogs.length, 1);
@@ -326,17 +337,20 @@ void main() {
       // Assert Period Cycles & Logs
       final cycles = await restoredDb.select(restoredDb.periodCycles).get();
       expect(cycles.length, 1);
-      expect(cycles.first.startDate, '1952-04-20T00:00:00.000');
+      expect(cycles.first.startDate, cycleStart);
+      expect(cycles.first.endDate, cycleEnd);
 
       final periodLogs = await restoredDb.select(restoredDb.periodLogs).get();
       expect(periodLogs.length, 1);
       expect(periodLogs.first.moods, 'fatigue');
+      expect(periodLogs.first.date, cycleStart);
 
       // Assert Vitals
       final vitals = await restoredDb.select(restoredDb.vitalLogs).get();
       expect(vitals.length, 1);
       expect(vitals.first.value1, 115.0);
       expect(vitals.first.value2, 75.0);
+      expect(vitals.first.date, vitalDate);
 
       // Assert Settings
       expect(await restoredDb.isLocalAuthEnabled(), isTrue);
@@ -351,8 +365,8 @@ void main() {
       final lockSettings = await (restoredDb.select(restoredDb.lockScreenSettings)
             ..where((tbl) => tbl.profileId.equals('prof-restore-1')))
           .getSingle();
-      expect(lockSettings.isEnabled, 'true');
-      expect(lockSettings.showChronicConditions, 'true');
+      expect(lockSettings.isEnabled, true);
+      expect(lockSettings.showChronicConditions, true);
 
       await restoredDb.close();
     });

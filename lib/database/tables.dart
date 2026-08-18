@@ -6,13 +6,13 @@ class Profiles extends Table {
   TextColumn get name => text()();
   TextColumn get middleNames => text().named('middleNames')();
   TextColumn get surname => text()();
-  TextColumn get dateOfBirth => text().named('dateOfBirth')();
+  DateTimeColumn get dateOfBirth => dateTime().named('dateOfBirth')();
   TextColumn get bloodType => text().named('bloodType')();
   TextColumn get gender => text()();
-  TextColumn get isOrganDonor => text().named('isOrganDonor').withDefault(const Constant('false'))();
-  TextColumn get trackOvulation => text().named('trackOvulation').nullable().withDefault(const Constant('true'))();
-  TextColumn get isArchived => text().named('isArchived').nullable().withDefault(const Constant('false'))();
-  TextColumn get archivedAt => text().named('archivedAt').nullable()();
+  BoolColumn get isOrganDonor => boolean().named('isOrganDonor').withDefault(const Constant(false))();
+  BoolColumn get trackOvulation => boolean().named('trackOvulation').nullable().withDefault(const Constant(true))();
+  BoolColumn get isArchived => boolean().named('isArchived').nullable().withDefault(const Constant(false))();
+  DateTimeColumn get archivedAt => dateTime().named('archivedAt').nullable()();
   TextColumn get chronicConditions => text().named('chronicConditions').nullable().withDefault(const Constant(''))();
 
   @override
@@ -22,12 +22,12 @@ class Profiles extends Table {
 @DataClassName('HistoryEntry')
 class History extends Table {
   TextColumn get id => text()();
-  TextColumn get profileId => text().named('profileId')();
+  TextColumn get profileId => text().named('profileId').references(Profiles, #id, onDelete: KeyAction.cascade)();
   TextColumn get title => text()();
   TextColumn get description => text()();
-  TextColumn get date => text()();
+  DateTimeColumn get date => dateTime()();
   TextColumn get eventType => text().named('eventType').nullable().withDefault(const Constant('other'))();
-  TextColumn get hasTime => text().named('hasTime').nullable().withDefault(const Constant('true'))();
+  BoolColumn get hasTime => boolean().named('hasTime').nullable().withDefault(const Constant(true))();
   TextColumn get provider => text().nullable()();
   TextColumn get facility => text().nullable()();
 
@@ -38,9 +38,9 @@ class History extends Table {
 @DataClassName('AttachmentEntry')
 class Attachments extends Table {
   TextColumn get id => text()();
-  TextColumn get historyId => text().named('historyId')();
+  TextColumn get historyId => text().named('historyId').references(History, #id, onDelete: KeyAction.cascade)();
   TextColumn get filename => text()();
-  TextColumn get uploadDate => text().named('uploadDate')();
+  DateTimeColumn get uploadDate => dateTime().named('uploadDate')();
   IntColumn get byteLength => integer().named('byteLength')();
 
   @override
@@ -53,7 +53,7 @@ class Allergy extends Table {
   String get tableName => 'allergy';
 
   TextColumn get id => text()();
-  TextColumn get profileId => text().named('profileId')();
+  TextColumn get profileId => text().named('profileId').references(Profiles, #id, onDelete: KeyAction.cascade)();
   TextColumn get name => text()();
   TextColumn get note => text()();
 
@@ -64,18 +64,18 @@ class Allergy extends Table {
 @DataClassName('MedicationEntry')
 class Medications extends Table {
   TextColumn get id => text()();
-  TextColumn get profileId => text().named('profileId')();
+  TextColumn get profileId => text().named('profileId').references(Profiles, #id, onDelete: KeyAction.cascade)();
   TextColumn get name => text()();
   TextColumn get dosage => text()();
   TextColumn get type => text().nullable().withDefault(const Constant('Other'))();
-  TextColumn get notificationEnabled => text().named('notificationEnabled').nullable().withDefault(const Constant('false'))();
-  TextColumn get alarmEnabled => text().named('alarmEnabled').nullable().withDefault(const Constant('false'))();
+  BoolColumn get notificationEnabled => boolean().named('notificationEnabled').nullable().withDefault(const Constant(false))();
+  BoolColumn get alarmEnabled => boolean().named('alarmEnabled').nullable().withDefault(const Constant(false))();
   TextColumn get timeOfDay => text().named('timeOfDay')();
-  TextColumn get isActive => text().named('isActive').nullable().withDefault(const Constant('true'))();
+  BoolColumn get isActive => boolean().named('isActive').nullable().withDefault(const Constant(true))();
   TextColumn get daysOfWeek => text().named('daysOfWeek').nullable()();
   TextColumn get timesOfDay => text().named('timesOfDay').nullable()();
-  TextColumn get isAsNeeded => text().named('isAsNeeded').nullable().withDefault(const Constant('false'))();
-  TextColumn get trackInventory => text().named('trackInventory').nullable().withDefault(const Constant('false'))();
+  BoolColumn get isAsNeeded => boolean().named('isAsNeeded').nullable().withDefault(const Constant(false))();
+  BoolColumn get trackInventory => boolean().named('trackInventory').nullable().withDefault(const Constant(false))();
   RealColumn get stockQuantity => real().named('stockQuantity').nullable().withDefault(const Constant(0.0))();
   RealColumn get lowStockThreshold => real().named('lowStockThreshold').nullable().withDefault(const Constant(0.0))();
 
@@ -89,9 +89,9 @@ class MedicationLogs extends Table {
   String get tableName => 'medication_logs';
 
   TextColumn get id => text()();
-  TextColumn get medicationId => text().named('medicationId')();
-  TextColumn get timestamp => text()();
-  TextColumn get isTaken => text().named('isTaken').nullable().withDefault(const Constant('true'))();
+  TextColumn get medicationId => text().named('medicationId').references(Medications, #id, onDelete: KeyAction.cascade)();
+  DateTimeColumn get timestamp => dateTime()();
+  BoolColumn get isTaken => boolean().named('isTaken').nullable().withDefault(const Constant(true))();
   TextColumn get dosage => text().nullable()();
 
   @override
@@ -101,12 +101,12 @@ class MedicationLogs extends Table {
 @DataClassName('CheckupEntry')
 class Checkups extends Table {
   TextColumn get id => text()();
-  TextColumn get profileId => text().named('profileId')();
+  TextColumn get profileId => text().named('profileId').references(Profiles, #id, onDelete: KeyAction.cascade)();
   TextColumn get name => text()();
   IntColumn get frequencyInMonths => integer().named('frequencyInMonths')();
   TextColumn get iconName => text().named('iconName').nullable()();
-  TextColumn get isCustomInterval => text().named('isCustomInterval').nullable().withDefault(const Constant('false'))();
-  TextColumn get isActive => text().named('isActive').nullable().withDefault(const Constant('true'))();
+  BoolColumn get isCustomInterval => boolean().named('isCustomInterval').nullable().withDefault(const Constant(false))();
+  BoolColumn get isActive => boolean().named('isActive').nullable().withDefault(const Constant(true))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -118,8 +118,8 @@ class CheckupLogs extends Table {
   String get tableName => 'checkup_logs';
 
   TextColumn get id => text()();
-  TextColumn get checkupId => text().named('checkupId')();
-  TextColumn get dateCompleted => text().named('dateCompleted')();
+  TextColumn get checkupId => text().named('checkupId').references(Checkups, #id, onDelete: KeyAction.cascade)();
+  DateTimeColumn get dateCompleted => dateTime().named('dateCompleted')();
   TextColumn get location => text().nullable()();
   TextColumn get doctorName => text().named('doctorName').nullable()();
   TextColumn get notes => text().nullable()();
@@ -134,9 +134,9 @@ class PeriodCycles extends Table {
   String get tableName => 'period_cycles';
 
   TextColumn get id => text()();
-  TextColumn get profileId => text().named('profileId')();
-  TextColumn get startDate => text().named('startDate')();
-  TextColumn get endDate => text().named('endDate').nullable()();
+  TextColumn get profileId => text().named('profileId').references(Profiles, #id, onDelete: KeyAction.cascade)();
+  DateTimeColumn get startDate => dateTime().named('startDate')();
+  DateTimeColumn get endDate => dateTime().named('endDate').nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -148,8 +148,8 @@ class PeriodLogs extends Table {
   String get tableName => 'period_logs';
 
   TextColumn get id => text()();
-  TextColumn get cycleId => text().named('cycleId')();
-  TextColumn get date => text()();
+  TextColumn get cycleId => text().named('cycleId').references(PeriodCycles, #id, onDelete: KeyAction.cascade)();
+  DateTimeColumn get date => dateTime()();
   TextColumn get flowLevel => text().named('flowLevel').nullable()();
   TextColumn get moods => text().nullable()();
   TextColumn get physicalSymptoms => text().named('physicalSymptoms').nullable()();
@@ -164,9 +164,9 @@ class VitalLogs extends Table {
   String get tableName => 'vital_logs';
 
   TextColumn get id => text()();
-  TextColumn get profileId => text().named('profileId')();
+  TextColumn get profileId => text().named('profileId').references(Profiles, #id, onDelete: KeyAction.cascade)();
   TextColumn get type => text()();
-  TextColumn get date => text()();
+  DateTimeColumn get date => dateTime()();
   RealColumn get value1 => real()();
   RealColumn get value2 => real().nullable()();
   TextColumn get unit => text()();
@@ -191,7 +191,7 @@ class EmergencyContacts extends Table {
   String get tableName => 'emergency_contacts';
 
   TextColumn get id => text()();
-  TextColumn get profileId => text().named('profileId')();
+  TextColumn get profileId => text().named('profileId').references(Profiles, #id, onDelete: KeyAction.cascade)();
   TextColumn get name => text()();
   TextColumn get relationship => text()();
   TextColumn get phoneNumber => text().named('phoneNumber')();
@@ -205,16 +205,16 @@ class LockScreenSettings extends Table {
   @override
   String get tableName => 'lock_screen_settings';
 
-  TextColumn get profileId => text().named('profileId')();
-  TextColumn get showName => text().named('showName').nullable().withDefault(const Constant('true'))();
-  TextColumn get showAge => text().named('showAge').nullable().withDefault(const Constant('true'))();
-  TextColumn get showBloodType => text().named('showBloodType').nullable().withDefault(const Constant('true'))();
-  TextColumn get showOrganDonor => text().named('showOrganDonor').nullable().withDefault(const Constant('true'))();
-  TextColumn get showChronicConditions => text().named('showChronicConditions').nullable().withDefault(const Constant('true'))();
-  TextColumn get showAllergies => text().named('showAllergies').nullable().withDefault(const Constant('true'))();
-  TextColumn get showMedications => text().named('showMedications').nullable().withDefault(const Constant('true'))();
-  TextColumn get showContacts => text().named('showContacts').nullable().withDefault(const Constant('true'))();
-  TextColumn get isEnabled => text().named('isEnabled').nullable().withDefault(const Constant('false'))();
+  TextColumn get profileId => text().named('profileId').references(Profiles, #id, onDelete: KeyAction.cascade)();
+  BoolColumn get showName => boolean().named('showName').nullable().withDefault(const Constant(true))();
+  BoolColumn get showAge => boolean().named('showAge').nullable().withDefault(const Constant(true))();
+  BoolColumn get showBloodType => boolean().named('showBloodType').nullable().withDefault(const Constant(true))();
+  BoolColumn get showOrganDonor => boolean().named('showOrganDonor').nullable().withDefault(const Constant(true))();
+  BoolColumn get showChronicConditions => boolean().named('showChronicConditions').nullable().withDefault(const Constant(true))();
+  BoolColumn get showAllergies => boolean().named('showAllergies').nullable().withDefault(const Constant(true))();
+  BoolColumn get showMedications => boolean().named('showMedications').nullable().withDefault(const Constant(true))();
+  BoolColumn get showContacts => boolean().named('showContacts').nullable().withDefault(const Constant(true))();
+  BoolColumn get isEnabled => boolean().named('isEnabled').nullable().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {profileId};

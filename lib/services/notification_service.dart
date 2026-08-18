@@ -44,14 +44,14 @@ void notificationTapBackground(NotificationResponse response) async {
         MedicationLogEntry(
           id: log.id,
           medicationId: log.medicationId,
-          timestamp: log.timestamp.toIso8601String(),
-          isTaken: log.isTaken.toString(),
+          timestamp: log.timestamp,
+          isTaken: log.isTaken,
           dosage: log.dosage,
         ),
       );
 
       // Background stock decrement direct Drift query using parsed dosage quantity
-      if (med != null && med.trackInventory == 'true') {
+      if (med != null && (med.trackInventory ?? false)) {
         final currentStock = med.stockQuantity ?? 0.0;
         final dosageVal = parseDosageQuantity(med.dosage);
         final newStock = (currentStock - dosageVal).clamp(0.0, double.infinity);
@@ -197,14 +197,14 @@ class NotificationService {
         MedicationLogEntry(
           id: log.id,
           medicationId: log.medicationId,
-          timestamp: log.timestamp.toIso8601String(),
-          isTaken: log.isTaken.toString(),
+          timestamp: log.timestamp,
+          isTaken: log.isTaken,
           dosage: log.dosage,
         ),
       );
 
       // Decrement stock in foreground directly using parsed dosage quantity
-      if (med != null && med.trackInventory == 'true') {
+      if (med != null && (med.trackInventory ?? false)) {
         final currentStock = med.stockQuantity ?? 0.0;
         final dosageVal = parseDosageQuantity(med.dosage);
         final newStock = (currentStock - dosageVal).clamp(0.0, double.infinity);
@@ -488,7 +488,7 @@ class NotificationService {
     final db = AppDatabase();
     try {
       // Get all active lock screen settings
-      final activeSettings = await (db.select(db.lockScreenSettings)..where((tbl) => tbl.isEnabled.equals('true'))).get();
+      final activeSettings = await (db.select(db.lockScreenSettings)..where((tbl) => tbl.isEnabled.equals(true))).get();
       if (activeSettings.isEmpty) {
         await cancelEmergencyNotification();
         return;
@@ -498,14 +498,14 @@ class NotificationService {
         // Sync single profile (exact same logic as original)
         final setRow = activeSettings.first;
         final pId = setRow.profileId;
-        final showName = setRow.showName == 'true';
-        final showAge = setRow.showAge == 'true';
-        final showBloodType = setRow.showBloodType == 'true';
-        final showOrganDonor = setRow.showOrganDonor == 'true';
-        final showChronicConditions = setRow.showChronicConditions == 'true';
-        final showAllergies = setRow.showAllergies == 'true';
-        final showMedications = setRow.showMedications == 'true';
-        final showContacts = setRow.showContacts == 'true';
+        final showName = setRow.showName ?? true;
+        final showAge = setRow.showAge ?? true;
+        final showBloodType = setRow.showBloodType ?? true;
+        final showOrganDonor = setRow.showOrganDonor ?? true;
+        final showChronicConditions = setRow.showChronicConditions ?? true;
+        final showAllergies = setRow.showAllergies ?? true;
+        final showMedications = setRow.showMedications ?? true;
+        final showContacts = setRow.showContacts ?? true;
 
         final p = await (db.select(db.profiles)..where((tbl) => tbl.id.equals(pId))).getSingleOrNull();
         if (p == null) {
@@ -514,23 +514,22 @@ class NotificationService {
         }
 
         final name = '${p.name} ${p.surname}';
-        final dobStr = p.dateOfBirth;
-        final dob = DateTime.parse(dobStr);
-        final dobFormatted = dobStr.split(' ').first;
+        final dob = p.dateOfBirth;
+        final dobFormatted = '${dob.year.toString().padLeft(4, '0')}-${dob.month.toString().padLeft(2, '0')}-${dob.day.toString().padLeft(2, '0')}';
         final today = DateTime.now();
         int age = today.year - dob.year;
         if (today.month < dob.month || (today.month == dob.month && today.day < dob.day)) {
           age--;
         }
         final bloodType = p.bloodType;
-        final isOrganDonor = p.isOrganDonor == 'true';
+        final isOrganDonor = p.isOrganDonor;
         final chronicConditionsStr = p.chronicConditions ?? '';
         final chronicConditions = chronicConditionsStr.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
         final allergiesData = await (db.select(db.allergy)..where((tbl) => tbl.profileId.equals(pId))).get();
         final allergies = allergiesData.map((row) => row.name).toList();
 
-        final medsData = await (db.select(db.medications)..where((tbl) => tbl.profileId.equals(pId) & tbl.isActive.equals('true'))).get();
+        final medsData = await (db.select(db.medications)..where((tbl) => tbl.profileId.equals(pId) & tbl.isActive.equals(true))).get();
         final medications = medsData.map((row) => row.name).toList();
 
         final contactsData = await (db.select(db.emergencyContacts)..where((tbl) => tbl.profileId.equals(pId))).get();
@@ -593,13 +592,13 @@ class NotificationService {
 
         for (final setRow in settingsList) {
           final pId = setRow.profileId;
-          final showName = setRow.showName == 'true';
-          final showAge = setRow.showAge == 'true';
-          final showBloodType = setRow.showBloodType == 'true';
-          final showOrganDonor = setRow.showOrganDonor == 'true';
-          final showChronicConditions = setRow.showChronicConditions == 'true';
-          final showAllergies = setRow.showAllergies == 'true';
-          final showMedications = setRow.showMedications == 'true';
+          final showName = setRow.showName ?? true;
+          final showAge = setRow.showAge ?? true;
+          final showBloodType = setRow.showBloodType ?? true;
+          final showOrganDonor = setRow.showOrganDonor ?? true;
+          final showChronicConditions = setRow.showChronicConditions ?? true;
+          final showAllergies = setRow.showAllergies ?? true;
+          final showMedications = setRow.showMedications ?? true;
 
           final p = await (db.select(db.profiles)..where((tbl) => tbl.id.equals(pId))).getSingleOrNull();
           if (p == null) continue;
@@ -609,23 +608,22 @@ class NotificationService {
             namesList.add(p.name);
           }
 
-          final dobStr = p.dateOfBirth;
-          final dob = DateTime.parse(dobStr);
-          final dobFormatted = dobStr.split(' ').first;
+          final dob = p.dateOfBirth;
+          final dobFormatted = '${dob.year.toString().padLeft(4, '0')}-${dob.month.toString().padLeft(2, '0')}-${dob.day.toString().padLeft(2, '0')}';
           final today = DateTime.now();
           int age = today.year - dob.year;
           if (today.month < dob.month || (today.month == dob.month && today.day < dob.day)) {
             age--;
           }
           final bloodType = p.bloodType;
-          final isOrganDonor = p.isOrganDonor == 'true';
+          final isOrganDonor = p.isOrganDonor;
           final chronicConditionsStr = p.chronicConditions ?? '';
           final chronicConditions = chronicConditionsStr.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
           final allergiesData = await (db.select(db.allergy)..where((tbl) => tbl.profileId.equals(pId))).get();
           final allergies = allergiesData.map((row) => row.name).toList();
 
-          final medsData = await (db.select(db.medications)..where((tbl) => tbl.profileId.equals(pId) & tbl.isActive.equals('true'))).get();
+          final medsData = await (db.select(db.medications)..where((tbl) => tbl.profileId.equals(pId) & tbl.isActive.equals(true))).get();
           final medications = medsData.map((row) => row.name).toList();
 
           buffer.writeln('${showName ? name : "Profile"}:');

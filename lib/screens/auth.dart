@@ -284,7 +284,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 }
 
                 if (isCorrect) {
-                  Navigator.of(ctx).pop();
+                  if (ctx.mounted) {
+                    Navigator.of(ctx).pop();
+                  }
                   await _onAuthenticatedSuccessfully();
                 } else {
                   setModalState(() {
@@ -461,7 +463,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     final db = ref.read(appDatabaseProvider);
 
     // Check if there are any active settings enabled
-    final settingsData = await (db.select(db.lockScreenSettings)..where((tbl) => tbl.isEnabled.equals('true'))).get();
+    final settingsData = await (db.select(db.lockScreenSettings)..where((tbl) => tbl.isEnabled.equals(true))).get();
 
     if (settingsData.isEmpty) {
       if (mounted) {

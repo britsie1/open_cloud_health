@@ -10,7 +10,6 @@ import 'package:open_cloud_health/repositories/profiles_repository.dart';
 import 'package:open_cloud_health/repositories/emergency_repository.dart';
 import 'package:open_cloud_health/models/emergency_contact.dart';
 import 'package:open_cloud_health/models/lock_screen_setting.dart';
-
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -21,8 +20,31 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
 
-  setUp(() {
+  setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
+
+    // Pre-populate standard test profiles p1 and p2 so foreign keys are satisfied
+    final profRepo = ProfilesRepository(db);
+    await profRepo.addProfile(Profile(
+      id: 'p1',
+      name: 'Primary',
+      middleNames: '',
+      surname: 'User',
+      dateOfBirth: DateTime(1990, 1, 1),
+      gender: Gender.male,
+      bloodType: 'O+',
+      isOrganDonor: true,
+    ));
+    await profRepo.addProfile(Profile(
+      id: 'p2',
+      name: 'Secondary',
+      middleNames: '',
+      surname: 'User',
+      dateOfBirth: DateTime(1992, 2, 2),
+      gender: Gender.female,
+      bloodType: 'A+',
+      isOrganDonor: false,
+    ));
   });
 
   tearDown(() async {
@@ -46,8 +68,7 @@ void main() {
       await repository.addProfile(profile);
 
       final result = await repository.fetchProfiles();
-      expect(result.length, 1);
-      expect(result.first.name, 'John');
+      expect(result.any((p) => p.name == 'John'), isTrue);
     });
 
     test('watchProfiles emits reactive stream updates', () async {

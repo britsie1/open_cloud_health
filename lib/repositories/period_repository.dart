@@ -12,8 +12,8 @@ class PeriodRepository {
     return PeriodCycle(
       id: row.id,
       profileId: row.profileId,
-      startDate: DateTime.parse(row.startDate),
-      endDate: row.endDate != null ? DateTime.parse(row.endDate!) : null,
+      startDate: row.startDate,
+      endDate: row.endDate,
     );
   }
 
@@ -31,7 +31,7 @@ class PeriodRepository {
     return PeriodLog(
       id: row.id,
       cycleId: row.cycleId,
-      date: DateTime.parse(row.date),
+      date: row.date,
       flowLevel: row.flowLevel != null ? FlowLevel.values.byName(row.flowLevel!) : null,
       moods: moods,
       physicalSymptoms: physicalSymptoms,
@@ -60,8 +60,8 @@ class PeriodRepository {
       PeriodCycleEntry(
         id: cycle.id,
         profileId: cycle.profileId,
-        startDate: cycle.startDate.toIso8601String(),
-        endDate: cycle.endDate?.toIso8601String(),
+        startDate: cycle.startDate,
+        endDate: cycle.endDate,
       ),
     );
   }
@@ -71,8 +71,8 @@ class PeriodRepository {
       PeriodCycleEntry(
         id: cycle.id,
         profileId: cycle.profileId,
-        startDate: cycle.startDate.toIso8601String(),
-        endDate: cycle.endDate?.toIso8601String(),
+        startDate: cycle.startDate,
+        endDate: cycle.endDate,
       ),
     );
   }
@@ -102,15 +102,18 @@ class PeriodRepository {
   }
 
   Future<void> upsertLog(PeriodLog log) async {
-    final dateStr = log.date.toIso8601String().split('T')[0];
+    final startOfDay = DateTime(log.date.year, log.date.month, log.date.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
     final existingQuery = _db.select(_db.periodLogs)
-      ..where((tbl) => tbl.cycleId.equals(log.cycleId) & tbl.date.like('$dateStr%'));
+      ..where((tbl) => tbl.cycleId.equals(log.cycleId) &
+          tbl.date.isBiggerOrEqualValue(startOfDay) &
+          tbl.date.isSmallerThanValue(endOfDay));
     final existing = await existingQuery.getSingleOrNull();
 
     final entry = PeriodLogEntry(
       id: existing != null ? existing.id : log.id,
       cycleId: log.cycleId,
-      date: log.date.toIso8601String(),
+      date: log.date,
       flowLevel: log.flowLevel?.name,
       moods: log.moods.map((e) => e.name).join(','),
       physicalSymptoms: log.physicalSymptoms.map((e) => e.name).join(','),

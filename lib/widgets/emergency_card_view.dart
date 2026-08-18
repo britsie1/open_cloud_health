@@ -300,7 +300,7 @@ class EmergencyCardView extends ConsumerWidget {
   Future<List<Map<String, dynamic>>> _fetchAllEmergencyDetails(WidgetRef ref) async {
     final db = ref.read(appDatabaseProvider);
 
-    final activeSettings = await (db.select(db.lockScreenSettings)..where((tbl) => tbl.isEnabled.equals('true'))).get();
+    final activeSettings = await (db.select(db.lockScreenSettings)..where((tbl) => tbl.isEnabled.equals(true))).get();
     if (activeSettings.isEmpty) {
       return [];
     }
@@ -313,14 +313,14 @@ class EmergencyCardView extends ConsumerWidget {
 
       final settings = LockScreenSetting(
         profileId: pId,
-        showName: setRow.showName == 'true',
-        showAge: setRow.showAge == 'true',
-        showBloodType: setRow.showBloodType == 'true',
-        showOrganDonor: setRow.showOrganDonor == 'true',
-        showChronicConditions: setRow.showChronicConditions == 'true',
-        showAllergies: setRow.showAllergies == 'true',
-        showMedications: setRow.showMedications == 'true',
-        showContacts: setRow.showContacts == 'true',
+        showName: setRow.showName ?? true,
+        showAge: setRow.showAge ?? true,
+        showBloodType: setRow.showBloodType ?? true,
+        showOrganDonor: setRow.showOrganDonor ?? true,
+        showChronicConditions: setRow.showChronicConditions ?? true,
+        showAllergies: setRow.showAllergies ?? true,
+        showMedications: setRow.showMedications ?? true,
+        showContacts: setRow.showContacts ?? true,
         isEnabled: true,
       );
 
@@ -339,10 +339,10 @@ class EmergencyCardView extends ConsumerWidget {
         name: p.name,
         middleNames: p.middleNames,
         surname: p.surname,
-        dateOfBirth: DateTime.parse(p.dateOfBirth),
+        dateOfBirth: p.dateOfBirth,
         gender: p.gender == 'male' ? Gender.male : Gender.female,
         bloodType: p.bloodType,
-        isOrganDonor: p.isOrganDonor == 'true',
+        isOrganDonor: p.isOrganDonor,
         chronicConditions: chronicConditions,
       );
 
@@ -356,7 +356,7 @@ class EmergencyCardView extends ConsumerWidget {
               ))
           .toList();
 
-      final medsData = await (db.select(db.medications)..where((tbl) => tbl.profileId.equals(pId) & tbl.isActive.equals('true'))).get();
+      final medsData = await (db.select(db.medications)..where((tbl) => tbl.profileId.equals(pId) & tbl.isActive.equals(true))).get();
       final medications = medsData
           .map((row) => Medication(
                 id: row.id,
@@ -364,9 +364,9 @@ class EmergencyCardView extends ConsumerWidget {
                 name: row.name,
                 dosage: row.dosage,
                 type: row.type ?? 'Other',
-                isActive: row.isActive == 'true',
-                notificationEnabled: row.notificationEnabled == 'true',
-                alarmEnabled: row.alarmEnabled == 'true',
+                isActive: row.isActive ?? true,
+                notificationEnabled: row.notificationEnabled ?? false,
+                alarmEnabled: row.alarmEnabled ?? false,
               ))
           .toList();
 

@@ -15,8 +15,8 @@ class CheckupsRepository {
       name: row.name,
       frequencyInMonths: row.frequencyInMonths,
       iconName: row.iconName,
-      isCustomInterval: row.isCustomInterval == 'true',
-      isActive: row.isActive != 'false',
+      isCustomInterval: row.isCustomInterval ?? false,
+      isActive: row.isActive ?? true,
     );
   }
 
@@ -24,7 +24,7 @@ class CheckupsRepository {
     return CheckupLog(
       id: row.id,
       checkupId: row.checkupId,
-      dateCompleted: DateTime.parse(row.dateCompleted),
+      dateCompleted: row.dateCompleted,
       location: row.location,
       doctorName: row.doctorName,
       notes: row.notes,
@@ -52,8 +52,8 @@ class CheckupsRepository {
         name: checkup.name,
         frequencyInMonths: checkup.frequencyInMonths,
         iconName: checkup.iconName,
-        isCustomInterval: checkup.isCustomInterval ? 'true' : 'false',
-        isActive: checkup.isActive ? 'true' : 'false',
+        isCustomInterval: checkup.isCustomInterval,
+        isActive: checkup.isActive,
       ),
     );
   }
@@ -66,8 +66,8 @@ class CheckupsRepository {
         name: checkup.name,
         frequencyInMonths: checkup.frequencyInMonths,
         iconName: checkup.iconName,
-        isCustomInterval: checkup.isCustomInterval ? 'true' : 'false',
-        isActive: checkup.isActive ? 'true' : 'false',
+        isCustomInterval: checkup.isCustomInterval,
+        isActive: checkup.isActive,
       ),
     );
   }
@@ -103,7 +103,7 @@ class CheckupsRepository {
       CheckupLogEntry(
         id: log.id,
         checkupId: log.checkupId,
-        dateCompleted: log.dateCompleted.toIso8601String(),
+        dateCompleted: log.dateCompleted,
         location: log.location,
         doctorName: log.doctorName,
         notes: log.notes,

@@ -34,9 +34,9 @@ class $ProfilesTable extends Profiles
   static const VerificationMeta _dateOfBirthMeta =
       const VerificationMeta('dateOfBirth');
   @override
-  late final GeneratedColumn<String> dateOfBirth = GeneratedColumn<String>(
+  late final GeneratedColumn<DateTime> dateOfBirth = GeneratedColumn<DateTime>(
       'dateOfBirth', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
   static const VerificationMeta _bloodTypeMeta =
       const VerificationMeta('bloodType');
   @override
@@ -51,33 +51,39 @@ class $ProfilesTable extends Profiles
   static const VerificationMeta _isOrganDonorMeta =
       const VerificationMeta('isOrganDonor');
   @override
-  late final GeneratedColumn<String> isOrganDonor = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> isOrganDonor = GeneratedColumn<bool>(
       'isOrganDonor', aliasedName, false,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('false'));
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("isOrganDonor" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _trackOvulationMeta =
       const VerificationMeta('trackOvulation');
   @override
-  late final GeneratedColumn<String> trackOvulation = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> trackOvulation = GeneratedColumn<bool>(
       'trackOvulation', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('true'));
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("trackOvulation" IN (0, 1))'),
+      defaultValue: const Constant(true));
   static const VerificationMeta _isArchivedMeta =
       const VerificationMeta('isArchived');
   @override
-  late final GeneratedColumn<String> isArchived = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> isArchived = GeneratedColumn<bool>(
       'isArchived', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('false'));
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("isArchived" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _archivedAtMeta =
       const VerificationMeta('archivedAt');
   @override
-  late final GeneratedColumn<String> archivedAt = GeneratedColumn<String>(
+  late final GeneratedColumn<DateTime> archivedAt = GeneratedColumn<DateTime>(
       'archivedAt', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _chronicConditionsMeta =
       const VerificationMeta('chronicConditions');
   @override
@@ -204,19 +210,19 @@ class $ProfilesTable extends Profiles
       surname: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}surname'])!,
       dateOfBirth: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}dateOfBirth'])!,
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}dateOfBirth'])!,
       bloodType: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}bloodType'])!,
       gender: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}gender'])!,
       isOrganDonor: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}isOrganDonor'])!,
+          .read(DriftSqlType.bool, data['${effectivePrefix}isOrganDonor'])!,
       trackOvulation: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}trackOvulation']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}trackOvulation']),
       isArchived: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}isArchived']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}isArchived']),
       archivedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}archivedAt']),
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}archivedAt']),
       chronicConditions: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}chronicConditions']),
     );
@@ -233,13 +239,13 @@ class ProfileEntry extends DataClass implements Insertable<ProfileEntry> {
   final String name;
   final String middleNames;
   final String surname;
-  final String dateOfBirth;
+  final DateTime dateOfBirth;
   final String bloodType;
   final String gender;
-  final String isOrganDonor;
-  final String? trackOvulation;
-  final String? isArchived;
-  final String? archivedAt;
+  final bool isOrganDonor;
+  final bool? trackOvulation;
+  final bool? isArchived;
+  final DateTime? archivedAt;
   final String? chronicConditions;
   const ProfileEntry(
       {required this.id,
@@ -261,18 +267,18 @@ class ProfileEntry extends DataClass implements Insertable<ProfileEntry> {
     map['name'] = Variable<String>(name);
     map['middleNames'] = Variable<String>(middleNames);
     map['surname'] = Variable<String>(surname);
-    map['dateOfBirth'] = Variable<String>(dateOfBirth);
+    map['dateOfBirth'] = Variable<DateTime>(dateOfBirth);
     map['bloodType'] = Variable<String>(bloodType);
     map['gender'] = Variable<String>(gender);
-    map['isOrganDonor'] = Variable<String>(isOrganDonor);
+    map['isOrganDonor'] = Variable<bool>(isOrganDonor);
     if (!nullToAbsent || trackOvulation != null) {
-      map['trackOvulation'] = Variable<String>(trackOvulation);
+      map['trackOvulation'] = Variable<bool>(trackOvulation);
     }
     if (!nullToAbsent || isArchived != null) {
-      map['isArchived'] = Variable<String>(isArchived);
+      map['isArchived'] = Variable<bool>(isArchived);
     }
     if (!nullToAbsent || archivedAt != null) {
-      map['archivedAt'] = Variable<String>(archivedAt);
+      map['archivedAt'] = Variable<DateTime>(archivedAt);
     }
     if (!nullToAbsent || chronicConditions != null) {
       map['chronicConditions'] = Variable<String>(chronicConditions);
@@ -313,13 +319,13 @@ class ProfileEntry extends DataClass implements Insertable<ProfileEntry> {
       name: serializer.fromJson<String>(json['name']),
       middleNames: serializer.fromJson<String>(json['middleNames']),
       surname: serializer.fromJson<String>(json['surname']),
-      dateOfBirth: serializer.fromJson<String>(json['dateOfBirth']),
+      dateOfBirth: serializer.fromJson<DateTime>(json['dateOfBirth']),
       bloodType: serializer.fromJson<String>(json['bloodType']),
       gender: serializer.fromJson<String>(json['gender']),
-      isOrganDonor: serializer.fromJson<String>(json['isOrganDonor']),
-      trackOvulation: serializer.fromJson<String?>(json['trackOvulation']),
-      isArchived: serializer.fromJson<String?>(json['isArchived']),
-      archivedAt: serializer.fromJson<String?>(json['archivedAt']),
+      isOrganDonor: serializer.fromJson<bool>(json['isOrganDonor']),
+      trackOvulation: serializer.fromJson<bool?>(json['trackOvulation']),
+      isArchived: serializer.fromJson<bool?>(json['isArchived']),
+      archivedAt: serializer.fromJson<DateTime?>(json['archivedAt']),
       chronicConditions:
           serializer.fromJson<String?>(json['chronicConditions']),
     );
@@ -332,13 +338,13 @@ class ProfileEntry extends DataClass implements Insertable<ProfileEntry> {
       'name': serializer.toJson<String>(name),
       'middleNames': serializer.toJson<String>(middleNames),
       'surname': serializer.toJson<String>(surname),
-      'dateOfBirth': serializer.toJson<String>(dateOfBirth),
+      'dateOfBirth': serializer.toJson<DateTime>(dateOfBirth),
       'bloodType': serializer.toJson<String>(bloodType),
       'gender': serializer.toJson<String>(gender),
-      'isOrganDonor': serializer.toJson<String>(isOrganDonor),
-      'trackOvulation': serializer.toJson<String?>(trackOvulation),
-      'isArchived': serializer.toJson<String?>(isArchived),
-      'archivedAt': serializer.toJson<String?>(archivedAt),
+      'isOrganDonor': serializer.toJson<bool>(isOrganDonor),
+      'trackOvulation': serializer.toJson<bool?>(trackOvulation),
+      'isArchived': serializer.toJson<bool?>(isArchived),
+      'archivedAt': serializer.toJson<DateTime?>(archivedAt),
       'chronicConditions': serializer.toJson<String?>(chronicConditions),
     };
   }
@@ -348,13 +354,13 @@ class ProfileEntry extends DataClass implements Insertable<ProfileEntry> {
           String? name,
           String? middleNames,
           String? surname,
-          String? dateOfBirth,
+          DateTime? dateOfBirth,
           String? bloodType,
           String? gender,
-          String? isOrganDonor,
-          Value<String?> trackOvulation = const Value.absent(),
-          Value<String?> isArchived = const Value.absent(),
-          Value<String?> archivedAt = const Value.absent(),
+          bool? isOrganDonor,
+          Value<bool?> trackOvulation = const Value.absent(),
+          Value<bool?> isArchived = const Value.absent(),
+          Value<DateTime?> archivedAt = const Value.absent(),
           Value<String?> chronicConditions = const Value.absent()}) =>
       ProfileEntry(
         id: id ?? this.id,
@@ -456,13 +462,13 @@ class ProfilesCompanion extends UpdateCompanion<ProfileEntry> {
   final Value<String> name;
   final Value<String> middleNames;
   final Value<String> surname;
-  final Value<String> dateOfBirth;
+  final Value<DateTime> dateOfBirth;
   final Value<String> bloodType;
   final Value<String> gender;
-  final Value<String> isOrganDonor;
-  final Value<String?> trackOvulation;
-  final Value<String?> isArchived;
-  final Value<String?> archivedAt;
+  final Value<bool> isOrganDonor;
+  final Value<bool?> trackOvulation;
+  final Value<bool?> isArchived;
+  final Value<DateTime?> archivedAt;
   final Value<String?> chronicConditions;
   final Value<int> rowid;
   const ProfilesCompanion({
@@ -485,7 +491,7 @@ class ProfilesCompanion extends UpdateCompanion<ProfileEntry> {
     required String name,
     required String middleNames,
     required String surname,
-    required String dateOfBirth,
+    required DateTime dateOfBirth,
     required String bloodType,
     required String gender,
     this.isOrganDonor = const Value.absent(),
@@ -506,13 +512,13 @@ class ProfilesCompanion extends UpdateCompanion<ProfileEntry> {
     Expression<String>? name,
     Expression<String>? middleNames,
     Expression<String>? surname,
-    Expression<String>? dateOfBirth,
+    Expression<DateTime>? dateOfBirth,
     Expression<String>? bloodType,
     Expression<String>? gender,
-    Expression<String>? isOrganDonor,
-    Expression<String>? trackOvulation,
-    Expression<String>? isArchived,
-    Expression<String>? archivedAt,
+    Expression<bool>? isOrganDonor,
+    Expression<bool>? trackOvulation,
+    Expression<bool>? isArchived,
+    Expression<DateTime>? archivedAt,
     Expression<String>? chronicConditions,
     Expression<int>? rowid,
   }) {
@@ -538,13 +544,13 @@ class ProfilesCompanion extends UpdateCompanion<ProfileEntry> {
       Value<String>? name,
       Value<String>? middleNames,
       Value<String>? surname,
-      Value<String>? dateOfBirth,
+      Value<DateTime>? dateOfBirth,
       Value<String>? bloodType,
       Value<String>? gender,
-      Value<String>? isOrganDonor,
-      Value<String?>? trackOvulation,
-      Value<String?>? isArchived,
-      Value<String?>? archivedAt,
+      Value<bool>? isOrganDonor,
+      Value<bool?>? trackOvulation,
+      Value<bool?>? isArchived,
+      Value<DateTime?>? archivedAt,
       Value<String?>? chronicConditions,
       Value<int>? rowid}) {
     return ProfilesCompanion(
@@ -580,7 +586,7 @@ class ProfilesCompanion extends UpdateCompanion<ProfileEntry> {
       map['surname'] = Variable<String>(surname.value);
     }
     if (dateOfBirth.present) {
-      map['dateOfBirth'] = Variable<String>(dateOfBirth.value);
+      map['dateOfBirth'] = Variable<DateTime>(dateOfBirth.value);
     }
     if (bloodType.present) {
       map['bloodType'] = Variable<String>(bloodType.value);
@@ -589,16 +595,16 @@ class ProfilesCompanion extends UpdateCompanion<ProfileEntry> {
       map['gender'] = Variable<String>(gender.value);
     }
     if (isOrganDonor.present) {
-      map['isOrganDonor'] = Variable<String>(isOrganDonor.value);
+      map['isOrganDonor'] = Variable<bool>(isOrganDonor.value);
     }
     if (trackOvulation.present) {
-      map['trackOvulation'] = Variable<String>(trackOvulation.value);
+      map['trackOvulation'] = Variable<bool>(trackOvulation.value);
     }
     if (isArchived.present) {
-      map['isArchived'] = Variable<String>(isArchived.value);
+      map['isArchived'] = Variable<bool>(isArchived.value);
     }
     if (archivedAt.present) {
-      map['archivedAt'] = Variable<String>(archivedAt.value);
+      map['archivedAt'] = Variable<DateTime>(archivedAt.value);
     }
     if (chronicConditions.present) {
       map['chronicConditions'] = Variable<String>(chronicConditions.value);
@@ -646,7 +652,10 @@ class $HistoryTable extends History
   @override
   late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
       'profileId', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES profiles (id) ON DELETE CASCADE'));
   static const VerificationMeta _titleMeta = const VerificationMeta('title');
   @override
   late final GeneratedColumn<String> title = GeneratedColumn<String>(
@@ -660,9 +669,9 @@ class $HistoryTable extends History
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _dateMeta = const VerificationMeta('date');
   @override
-  late final GeneratedColumn<String> date = GeneratedColumn<String>(
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
       'date', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
   static const VerificationMeta _eventTypeMeta =
       const VerificationMeta('eventType');
   @override
@@ -674,11 +683,13 @@ class $HistoryTable extends History
   static const VerificationMeta _hasTimeMeta =
       const VerificationMeta('hasTime');
   @override
-  late final GeneratedColumn<String> hasTime = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> hasTime = GeneratedColumn<bool>(
       'hasTime', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('true'));
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("hasTime" IN (0, 1))'),
+      defaultValue: const Constant(true));
   static const VerificationMeta _providerMeta =
       const VerificationMeta('provider');
   @override
@@ -778,11 +789,11 @@ class $HistoryTable extends History
       description: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}description'])!,
       date: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}date'])!,
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
       eventType: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}eventType']),
       hasTime: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}hasTime']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}hasTime']),
       provider: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}provider']),
       facility: attachedDatabase.typeMapping
@@ -801,9 +812,9 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
   final String profileId;
   final String title;
   final String description;
-  final String date;
+  final DateTime date;
   final String? eventType;
-  final String? hasTime;
+  final bool? hasTime;
   final String? provider;
   final String? facility;
   const HistoryEntry(
@@ -823,12 +834,12 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
     map['profileId'] = Variable<String>(profileId);
     map['title'] = Variable<String>(title);
     map['description'] = Variable<String>(description);
-    map['date'] = Variable<String>(date);
+    map['date'] = Variable<DateTime>(date);
     if (!nullToAbsent || eventType != null) {
       map['eventType'] = Variable<String>(eventType);
     }
     if (!nullToAbsent || hasTime != null) {
-      map['hasTime'] = Variable<String>(hasTime);
+      map['hasTime'] = Variable<bool>(hasTime);
     }
     if (!nullToAbsent || provider != null) {
       map['provider'] = Variable<String>(provider);
@@ -869,9 +880,9 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
       profileId: serializer.fromJson<String>(json['profileId']),
       title: serializer.fromJson<String>(json['title']),
       description: serializer.fromJson<String>(json['description']),
-      date: serializer.fromJson<String>(json['date']),
+      date: serializer.fromJson<DateTime>(json['date']),
       eventType: serializer.fromJson<String?>(json['eventType']),
-      hasTime: serializer.fromJson<String?>(json['hasTime']),
+      hasTime: serializer.fromJson<bool?>(json['hasTime']),
       provider: serializer.fromJson<String?>(json['provider']),
       facility: serializer.fromJson<String?>(json['facility']),
     );
@@ -884,9 +895,9 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
       'profileId': serializer.toJson<String>(profileId),
       'title': serializer.toJson<String>(title),
       'description': serializer.toJson<String>(description),
-      'date': serializer.toJson<String>(date),
+      'date': serializer.toJson<DateTime>(date),
       'eventType': serializer.toJson<String?>(eventType),
-      'hasTime': serializer.toJson<String?>(hasTime),
+      'hasTime': serializer.toJson<bool?>(hasTime),
       'provider': serializer.toJson<String?>(provider),
       'facility': serializer.toJson<String?>(facility),
     };
@@ -897,9 +908,9 @@ class HistoryEntry extends DataClass implements Insertable<HistoryEntry> {
           String? profileId,
           String? title,
           String? description,
-          String? date,
+          DateTime? date,
           Value<String?> eventType = const Value.absent(),
-          Value<String?> hasTime = const Value.absent(),
+          Value<bool?> hasTime = const Value.absent(),
           Value<String?> provider = const Value.absent(),
           Value<String?> facility = const Value.absent()}) =>
       HistoryEntry(
@@ -967,9 +978,9 @@ class HistoryCompanion extends UpdateCompanion<HistoryEntry> {
   final Value<String> profileId;
   final Value<String> title;
   final Value<String> description;
-  final Value<String> date;
+  final Value<DateTime> date;
   final Value<String?> eventType;
-  final Value<String?> hasTime;
+  final Value<bool?> hasTime;
   final Value<String?> provider;
   final Value<String?> facility;
   final Value<int> rowid;
@@ -990,7 +1001,7 @@ class HistoryCompanion extends UpdateCompanion<HistoryEntry> {
     required String profileId,
     required String title,
     required String description,
-    required String date,
+    required DateTime date,
     this.eventType = const Value.absent(),
     this.hasTime = const Value.absent(),
     this.provider = const Value.absent(),
@@ -1006,9 +1017,9 @@ class HistoryCompanion extends UpdateCompanion<HistoryEntry> {
     Expression<String>? profileId,
     Expression<String>? title,
     Expression<String>? description,
-    Expression<String>? date,
+    Expression<DateTime>? date,
     Expression<String>? eventType,
-    Expression<String>? hasTime,
+    Expression<bool>? hasTime,
     Expression<String>? provider,
     Expression<String>? facility,
     Expression<int>? rowid,
@@ -1032,9 +1043,9 @@ class HistoryCompanion extends UpdateCompanion<HistoryEntry> {
       Value<String>? profileId,
       Value<String>? title,
       Value<String>? description,
-      Value<String>? date,
+      Value<DateTime>? date,
       Value<String?>? eventType,
-      Value<String?>? hasTime,
+      Value<bool?>? hasTime,
       Value<String?>? provider,
       Value<String?>? facility,
       Value<int>? rowid}) {
@@ -1068,13 +1079,13 @@ class HistoryCompanion extends UpdateCompanion<HistoryEntry> {
       map['description'] = Variable<String>(description.value);
     }
     if (date.present) {
-      map['date'] = Variable<String>(date.value);
+      map['date'] = Variable<DateTime>(date.value);
     }
     if (eventType.present) {
       map['eventType'] = Variable<String>(eventType.value);
     }
     if (hasTime.present) {
-      map['hasTime'] = Variable<String>(hasTime.value);
+      map['hasTime'] = Variable<bool>(hasTime.value);
     }
     if (provider.present) {
       map['provider'] = Variable<String>(provider.value);
@@ -1122,7 +1133,10 @@ class $AttachmentsTable extends Attachments
   @override
   late final GeneratedColumn<String> historyId = GeneratedColumn<String>(
       'historyId', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES history (id) ON DELETE CASCADE'));
   static const VerificationMeta _filenameMeta =
       const VerificationMeta('filename');
   @override
@@ -1132,9 +1146,9 @@ class $AttachmentsTable extends Attachments
   static const VerificationMeta _uploadDateMeta =
       const VerificationMeta('uploadDate');
   @override
-  late final GeneratedColumn<String> uploadDate = GeneratedColumn<String>(
+  late final GeneratedColumn<DateTime> uploadDate = GeneratedColumn<DateTime>(
       'uploadDate', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
   static const VerificationMeta _byteLengthMeta =
       const VerificationMeta('byteLength');
   @override
@@ -1203,7 +1217,7 @@ class $AttachmentsTable extends Attachments
       filename: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}filename'])!,
       uploadDate: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}uploadDate'])!,
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}uploadDate'])!,
       byteLength: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}byteLength'])!,
     );
@@ -1219,7 +1233,7 @@ class AttachmentEntry extends DataClass implements Insertable<AttachmentEntry> {
   final String id;
   final String historyId;
   final String filename;
-  final String uploadDate;
+  final DateTime uploadDate;
   final int byteLength;
   const AttachmentEntry(
       {required this.id,
@@ -1233,7 +1247,7 @@ class AttachmentEntry extends DataClass implements Insertable<AttachmentEntry> {
     map['id'] = Variable<String>(id);
     map['historyId'] = Variable<String>(historyId);
     map['filename'] = Variable<String>(filename);
-    map['uploadDate'] = Variable<String>(uploadDate);
+    map['uploadDate'] = Variable<DateTime>(uploadDate);
     map['byteLength'] = Variable<int>(byteLength);
     return map;
   }
@@ -1255,7 +1269,7 @@ class AttachmentEntry extends DataClass implements Insertable<AttachmentEntry> {
       id: serializer.fromJson<String>(json['id']),
       historyId: serializer.fromJson<String>(json['historyId']),
       filename: serializer.fromJson<String>(json['filename']),
-      uploadDate: serializer.fromJson<String>(json['uploadDate']),
+      uploadDate: serializer.fromJson<DateTime>(json['uploadDate']),
       byteLength: serializer.fromJson<int>(json['byteLength']),
     );
   }
@@ -1266,7 +1280,7 @@ class AttachmentEntry extends DataClass implements Insertable<AttachmentEntry> {
       'id': serializer.toJson<String>(id),
       'historyId': serializer.toJson<String>(historyId),
       'filename': serializer.toJson<String>(filename),
-      'uploadDate': serializer.toJson<String>(uploadDate),
+      'uploadDate': serializer.toJson<DateTime>(uploadDate),
       'byteLength': serializer.toJson<int>(byteLength),
     };
   }
@@ -1275,7 +1289,7 @@ class AttachmentEntry extends DataClass implements Insertable<AttachmentEntry> {
           {String? id,
           String? historyId,
           String? filename,
-          String? uploadDate,
+          DateTime? uploadDate,
           int? byteLength}) =>
       AttachmentEntry(
         id: id ?? this.id,
@@ -1326,7 +1340,7 @@ class AttachmentsCompanion extends UpdateCompanion<AttachmentEntry> {
   final Value<String> id;
   final Value<String> historyId;
   final Value<String> filename;
-  final Value<String> uploadDate;
+  final Value<DateTime> uploadDate;
   final Value<int> byteLength;
   final Value<int> rowid;
   const AttachmentsCompanion({
@@ -1341,7 +1355,7 @@ class AttachmentsCompanion extends UpdateCompanion<AttachmentEntry> {
     required String id,
     required String historyId,
     required String filename,
-    required String uploadDate,
+    required DateTime uploadDate,
     required int byteLength,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
@@ -1353,7 +1367,7 @@ class AttachmentsCompanion extends UpdateCompanion<AttachmentEntry> {
     Expression<String>? id,
     Expression<String>? historyId,
     Expression<String>? filename,
-    Expression<String>? uploadDate,
+    Expression<DateTime>? uploadDate,
     Expression<int>? byteLength,
     Expression<int>? rowid,
   }) {
@@ -1371,7 +1385,7 @@ class AttachmentsCompanion extends UpdateCompanion<AttachmentEntry> {
       {Value<String>? id,
       Value<String>? historyId,
       Value<String>? filename,
-      Value<String>? uploadDate,
+      Value<DateTime>? uploadDate,
       Value<int>? byteLength,
       Value<int>? rowid}) {
     return AttachmentsCompanion(
@@ -1397,7 +1411,7 @@ class AttachmentsCompanion extends UpdateCompanion<AttachmentEntry> {
       map['filename'] = Variable<String>(filename.value);
     }
     if (uploadDate.present) {
-      map['uploadDate'] = Variable<String>(uploadDate.value);
+      map['uploadDate'] = Variable<DateTime>(uploadDate.value);
     }
     if (byteLength.present) {
       map['byteLength'] = Variable<int>(byteLength.value);
@@ -1438,7 +1452,10 @@ class $AllergyTable extends Allergy
   @override
   late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
       'profileId', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES profiles (id) ON DELETE CASCADE'));
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
@@ -1704,7 +1721,10 @@ class $MedicationsTable extends Medications
   @override
   late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
       'profileId', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES profiles (id) ON DELETE CASCADE'));
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
@@ -1725,19 +1745,23 @@ class $MedicationsTable extends Medications
   static const VerificationMeta _notificationEnabledMeta =
       const VerificationMeta('notificationEnabled');
   @override
-  late final GeneratedColumn<String> notificationEnabled =
-      GeneratedColumn<String>('notificationEnabled', aliasedName, true,
-          type: DriftSqlType.string,
-          requiredDuringInsert: false,
-          defaultValue: const Constant('false'));
+  late final GeneratedColumn<bool> notificationEnabled = GeneratedColumn<bool>(
+      'notificationEnabled', aliasedName, true,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("notificationEnabled" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _alarmEnabledMeta =
       const VerificationMeta('alarmEnabled');
   @override
-  late final GeneratedColumn<String> alarmEnabled = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> alarmEnabled = GeneratedColumn<bool>(
       'alarmEnabled', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('false'));
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("alarmEnabled" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _timeOfDayMeta =
       const VerificationMeta('timeOfDay');
   @override
@@ -1747,11 +1771,13 @@ class $MedicationsTable extends Medications
   static const VerificationMeta _isActiveMeta =
       const VerificationMeta('isActive');
   @override
-  late final GeneratedColumn<String> isActive = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
       'isActive', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('true'));
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("isActive" IN (0, 1))'),
+      defaultValue: const Constant(true));
   static const VerificationMeta _daysOfWeekMeta =
       const VerificationMeta('daysOfWeek');
   @override
@@ -1767,19 +1793,23 @@ class $MedicationsTable extends Medications
   static const VerificationMeta _isAsNeededMeta =
       const VerificationMeta('isAsNeeded');
   @override
-  late final GeneratedColumn<String> isAsNeeded = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> isAsNeeded = GeneratedColumn<bool>(
       'isAsNeeded', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('false'));
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("isAsNeeded" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _trackInventoryMeta =
       const VerificationMeta('trackInventory');
   @override
-  late final GeneratedColumn<String> trackInventory = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> trackInventory = GeneratedColumn<bool>(
       'trackInventory', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('false'));
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("trackInventory" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _stockQuantityMeta =
       const VerificationMeta('stockQuantity');
   @override
@@ -1929,21 +1959,21 @@ class $MedicationsTable extends Medications
       type: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}type']),
       notificationEnabled: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}notificationEnabled']),
+          DriftSqlType.bool, data['${effectivePrefix}notificationEnabled']),
       alarmEnabled: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}alarmEnabled']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}alarmEnabled']),
       timeOfDay: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}timeOfDay'])!,
       isActive: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}isActive']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}isActive']),
       daysOfWeek: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}daysOfWeek']),
       timesOfDay: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}timesOfDay']),
       isAsNeeded: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}isAsNeeded']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}isAsNeeded']),
       trackInventory: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}trackInventory']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}trackInventory']),
       stockQuantity: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}stockQuantity']),
       lowStockThreshold: attachedDatabase.typeMapping.read(
@@ -1963,14 +1993,14 @@ class MedicationEntry extends DataClass implements Insertable<MedicationEntry> {
   final String name;
   final String dosage;
   final String? type;
-  final String? notificationEnabled;
-  final String? alarmEnabled;
+  final bool? notificationEnabled;
+  final bool? alarmEnabled;
   final String timeOfDay;
-  final String? isActive;
+  final bool? isActive;
   final String? daysOfWeek;
   final String? timesOfDay;
-  final String? isAsNeeded;
-  final String? trackInventory;
+  final bool? isAsNeeded;
+  final bool? trackInventory;
   final double? stockQuantity;
   final double? lowStockThreshold;
   const MedicationEntry(
@@ -2000,14 +2030,14 @@ class MedicationEntry extends DataClass implements Insertable<MedicationEntry> {
       map['type'] = Variable<String>(type);
     }
     if (!nullToAbsent || notificationEnabled != null) {
-      map['notificationEnabled'] = Variable<String>(notificationEnabled);
+      map['notificationEnabled'] = Variable<bool>(notificationEnabled);
     }
     if (!nullToAbsent || alarmEnabled != null) {
-      map['alarmEnabled'] = Variable<String>(alarmEnabled);
+      map['alarmEnabled'] = Variable<bool>(alarmEnabled);
     }
     map['timeOfDay'] = Variable<String>(timeOfDay);
     if (!nullToAbsent || isActive != null) {
-      map['isActive'] = Variable<String>(isActive);
+      map['isActive'] = Variable<bool>(isActive);
     }
     if (!nullToAbsent || daysOfWeek != null) {
       map['daysOfWeek'] = Variable<String>(daysOfWeek);
@@ -2016,10 +2046,10 @@ class MedicationEntry extends DataClass implements Insertable<MedicationEntry> {
       map['timesOfDay'] = Variable<String>(timesOfDay);
     }
     if (!nullToAbsent || isAsNeeded != null) {
-      map['isAsNeeded'] = Variable<String>(isAsNeeded);
+      map['isAsNeeded'] = Variable<bool>(isAsNeeded);
     }
     if (!nullToAbsent || trackInventory != null) {
-      map['trackInventory'] = Variable<String>(trackInventory);
+      map['trackInventory'] = Variable<bool>(trackInventory);
     }
     if (!nullToAbsent || stockQuantity != null) {
       map['stockQuantity'] = Variable<double>(stockQuantity);
@@ -2078,14 +2108,14 @@ class MedicationEntry extends DataClass implements Insertable<MedicationEntry> {
       dosage: serializer.fromJson<String>(json['dosage']),
       type: serializer.fromJson<String?>(json['type']),
       notificationEnabled:
-          serializer.fromJson<String?>(json['notificationEnabled']),
-      alarmEnabled: serializer.fromJson<String?>(json['alarmEnabled']),
+          serializer.fromJson<bool?>(json['notificationEnabled']),
+      alarmEnabled: serializer.fromJson<bool?>(json['alarmEnabled']),
       timeOfDay: serializer.fromJson<String>(json['timeOfDay']),
-      isActive: serializer.fromJson<String?>(json['isActive']),
+      isActive: serializer.fromJson<bool?>(json['isActive']),
       daysOfWeek: serializer.fromJson<String?>(json['daysOfWeek']),
       timesOfDay: serializer.fromJson<String?>(json['timesOfDay']),
-      isAsNeeded: serializer.fromJson<String?>(json['isAsNeeded']),
-      trackInventory: serializer.fromJson<String?>(json['trackInventory']),
+      isAsNeeded: serializer.fromJson<bool?>(json['isAsNeeded']),
+      trackInventory: serializer.fromJson<bool?>(json['trackInventory']),
       stockQuantity: serializer.fromJson<double?>(json['stockQuantity']),
       lowStockThreshold:
           serializer.fromJson<double?>(json['lowStockThreshold']),
@@ -2100,14 +2130,14 @@ class MedicationEntry extends DataClass implements Insertable<MedicationEntry> {
       'name': serializer.toJson<String>(name),
       'dosage': serializer.toJson<String>(dosage),
       'type': serializer.toJson<String?>(type),
-      'notificationEnabled': serializer.toJson<String?>(notificationEnabled),
-      'alarmEnabled': serializer.toJson<String?>(alarmEnabled),
+      'notificationEnabled': serializer.toJson<bool?>(notificationEnabled),
+      'alarmEnabled': serializer.toJson<bool?>(alarmEnabled),
       'timeOfDay': serializer.toJson<String>(timeOfDay),
-      'isActive': serializer.toJson<String?>(isActive),
+      'isActive': serializer.toJson<bool?>(isActive),
       'daysOfWeek': serializer.toJson<String?>(daysOfWeek),
       'timesOfDay': serializer.toJson<String?>(timesOfDay),
-      'isAsNeeded': serializer.toJson<String?>(isAsNeeded),
-      'trackInventory': serializer.toJson<String?>(trackInventory),
+      'isAsNeeded': serializer.toJson<bool?>(isAsNeeded),
+      'trackInventory': serializer.toJson<bool?>(trackInventory),
       'stockQuantity': serializer.toJson<double?>(stockQuantity),
       'lowStockThreshold': serializer.toJson<double?>(lowStockThreshold),
     };
@@ -2119,14 +2149,14 @@ class MedicationEntry extends DataClass implements Insertable<MedicationEntry> {
           String? name,
           String? dosage,
           Value<String?> type = const Value.absent(),
-          Value<String?> notificationEnabled = const Value.absent(),
-          Value<String?> alarmEnabled = const Value.absent(),
+          Value<bool?> notificationEnabled = const Value.absent(),
+          Value<bool?> alarmEnabled = const Value.absent(),
           String? timeOfDay,
-          Value<String?> isActive = const Value.absent(),
+          Value<bool?> isActive = const Value.absent(),
           Value<String?> daysOfWeek = const Value.absent(),
           Value<String?> timesOfDay = const Value.absent(),
-          Value<String?> isAsNeeded = const Value.absent(),
-          Value<String?> trackInventory = const Value.absent(),
+          Value<bool?> isAsNeeded = const Value.absent(),
+          Value<bool?> trackInventory = const Value.absent(),
           Value<double?> stockQuantity = const Value.absent(),
           Value<double?> lowStockThreshold = const Value.absent()}) =>
       MedicationEntry(
@@ -2252,14 +2282,14 @@ class MedicationsCompanion extends UpdateCompanion<MedicationEntry> {
   final Value<String> name;
   final Value<String> dosage;
   final Value<String?> type;
-  final Value<String?> notificationEnabled;
-  final Value<String?> alarmEnabled;
+  final Value<bool?> notificationEnabled;
+  final Value<bool?> alarmEnabled;
   final Value<String> timeOfDay;
-  final Value<String?> isActive;
+  final Value<bool?> isActive;
   final Value<String?> daysOfWeek;
   final Value<String?> timesOfDay;
-  final Value<String?> isAsNeeded;
-  final Value<String?> trackInventory;
+  final Value<bool?> isAsNeeded;
+  final Value<bool?> trackInventory;
   final Value<double?> stockQuantity;
   final Value<double?> lowStockThreshold;
   final Value<int> rowid;
@@ -2309,14 +2339,14 @@ class MedicationsCompanion extends UpdateCompanion<MedicationEntry> {
     Expression<String>? name,
     Expression<String>? dosage,
     Expression<String>? type,
-    Expression<String>? notificationEnabled,
-    Expression<String>? alarmEnabled,
+    Expression<bool>? notificationEnabled,
+    Expression<bool>? alarmEnabled,
     Expression<String>? timeOfDay,
-    Expression<String>? isActive,
+    Expression<bool>? isActive,
     Expression<String>? daysOfWeek,
     Expression<String>? timesOfDay,
-    Expression<String>? isAsNeeded,
-    Expression<String>? trackInventory,
+    Expression<bool>? isAsNeeded,
+    Expression<bool>? trackInventory,
     Expression<double>? stockQuantity,
     Expression<double>? lowStockThreshold,
     Expression<int>? rowid,
@@ -2348,14 +2378,14 @@ class MedicationsCompanion extends UpdateCompanion<MedicationEntry> {
       Value<String>? name,
       Value<String>? dosage,
       Value<String?>? type,
-      Value<String?>? notificationEnabled,
-      Value<String?>? alarmEnabled,
+      Value<bool?>? notificationEnabled,
+      Value<bool?>? alarmEnabled,
       Value<String>? timeOfDay,
-      Value<String?>? isActive,
+      Value<bool?>? isActive,
       Value<String?>? daysOfWeek,
       Value<String?>? timesOfDay,
-      Value<String?>? isAsNeeded,
-      Value<String?>? trackInventory,
+      Value<bool?>? isAsNeeded,
+      Value<bool?>? trackInventory,
       Value<double?>? stockQuantity,
       Value<double?>? lowStockThreshold,
       Value<int>? rowid}) {
@@ -2398,16 +2428,16 @@ class MedicationsCompanion extends UpdateCompanion<MedicationEntry> {
       map['type'] = Variable<String>(type.value);
     }
     if (notificationEnabled.present) {
-      map['notificationEnabled'] = Variable<String>(notificationEnabled.value);
+      map['notificationEnabled'] = Variable<bool>(notificationEnabled.value);
     }
     if (alarmEnabled.present) {
-      map['alarmEnabled'] = Variable<String>(alarmEnabled.value);
+      map['alarmEnabled'] = Variable<bool>(alarmEnabled.value);
     }
     if (timeOfDay.present) {
       map['timeOfDay'] = Variable<String>(timeOfDay.value);
     }
     if (isActive.present) {
-      map['isActive'] = Variable<String>(isActive.value);
+      map['isActive'] = Variable<bool>(isActive.value);
     }
     if (daysOfWeek.present) {
       map['daysOfWeek'] = Variable<String>(daysOfWeek.value);
@@ -2416,10 +2446,10 @@ class MedicationsCompanion extends UpdateCompanion<MedicationEntry> {
       map['timesOfDay'] = Variable<String>(timesOfDay.value);
     }
     if (isAsNeeded.present) {
-      map['isAsNeeded'] = Variable<String>(isAsNeeded.value);
+      map['isAsNeeded'] = Variable<bool>(isAsNeeded.value);
     }
     if (trackInventory.present) {
-      map['trackInventory'] = Variable<String>(trackInventory.value);
+      map['trackInventory'] = Variable<bool>(trackInventory.value);
     }
     if (stockQuantity.present) {
       map['stockQuantity'] = Variable<double>(stockQuantity.value);
@@ -2473,21 +2503,26 @@ class $MedicationLogsTable extends MedicationLogs
   @override
   late final GeneratedColumn<String> medicationId = GeneratedColumn<String>(
       'medicationId', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES medications (id) ON DELETE CASCADE'));
   static const VerificationMeta _timestampMeta =
       const VerificationMeta('timestamp');
   @override
-  late final GeneratedColumn<String> timestamp = GeneratedColumn<String>(
+  late final GeneratedColumn<DateTime> timestamp = GeneratedColumn<DateTime>(
       'timestamp', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
   static const VerificationMeta _isTakenMeta =
       const VerificationMeta('isTaken');
   @override
-  late final GeneratedColumn<String> isTaken = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> isTaken = GeneratedColumn<bool>(
       'isTaken', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('true'));
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("isTaken" IN (0, 1))'),
+      defaultValue: const Constant(true));
   static const VerificationMeta _dosageMeta = const VerificationMeta('dosage');
   @override
   late final GeneratedColumn<String> dosage = GeneratedColumn<String>(
@@ -2547,9 +2582,9 @@ class $MedicationLogsTable extends MedicationLogs
       medicationId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}medicationId'])!,
       timestamp: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}timestamp'])!,
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}timestamp'])!,
       isTaken: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}isTaken']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}isTaken']),
       dosage: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}dosage']),
     );
@@ -2565,8 +2600,8 @@ class MedicationLogEntry extends DataClass
     implements Insertable<MedicationLogEntry> {
   final String id;
   final String medicationId;
-  final String timestamp;
-  final String? isTaken;
+  final DateTime timestamp;
+  final bool? isTaken;
   final String? dosage;
   const MedicationLogEntry(
       {required this.id,
@@ -2579,9 +2614,9 @@ class MedicationLogEntry extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['medicationId'] = Variable<String>(medicationId);
-    map['timestamp'] = Variable<String>(timestamp);
+    map['timestamp'] = Variable<DateTime>(timestamp);
     if (!nullToAbsent || isTaken != null) {
-      map['isTaken'] = Variable<String>(isTaken);
+      map['isTaken'] = Variable<bool>(isTaken);
     }
     if (!nullToAbsent || dosage != null) {
       map['dosage'] = Variable<String>(dosage);
@@ -2608,8 +2643,8 @@ class MedicationLogEntry extends DataClass
     return MedicationLogEntry(
       id: serializer.fromJson<String>(json['id']),
       medicationId: serializer.fromJson<String>(json['medicationId']),
-      timestamp: serializer.fromJson<String>(json['timestamp']),
-      isTaken: serializer.fromJson<String?>(json['isTaken']),
+      timestamp: serializer.fromJson<DateTime>(json['timestamp']),
+      isTaken: serializer.fromJson<bool?>(json['isTaken']),
       dosage: serializer.fromJson<String?>(json['dosage']),
     );
   }
@@ -2619,8 +2654,8 @@ class MedicationLogEntry extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'medicationId': serializer.toJson<String>(medicationId),
-      'timestamp': serializer.toJson<String>(timestamp),
-      'isTaken': serializer.toJson<String?>(isTaken),
+      'timestamp': serializer.toJson<DateTime>(timestamp),
+      'isTaken': serializer.toJson<bool?>(isTaken),
       'dosage': serializer.toJson<String?>(dosage),
     };
   }
@@ -2628,8 +2663,8 @@ class MedicationLogEntry extends DataClass
   MedicationLogEntry copyWith(
           {String? id,
           String? medicationId,
-          String? timestamp,
-          Value<String?> isTaken = const Value.absent(),
+          DateTime? timestamp,
+          Value<bool?> isTaken = const Value.absent(),
           Value<String?> dosage = const Value.absent()}) =>
       MedicationLogEntry(
         id: id ?? this.id,
@@ -2678,8 +2713,8 @@ class MedicationLogEntry extends DataClass
 class MedicationLogsCompanion extends UpdateCompanion<MedicationLogEntry> {
   final Value<String> id;
   final Value<String> medicationId;
-  final Value<String> timestamp;
-  final Value<String?> isTaken;
+  final Value<DateTime> timestamp;
+  final Value<bool?> isTaken;
   final Value<String?> dosage;
   final Value<int> rowid;
   const MedicationLogsCompanion({
@@ -2693,7 +2728,7 @@ class MedicationLogsCompanion extends UpdateCompanion<MedicationLogEntry> {
   MedicationLogsCompanion.insert({
     required String id,
     required String medicationId,
-    required String timestamp,
+    required DateTime timestamp,
     this.isTaken = const Value.absent(),
     this.dosage = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -2703,8 +2738,8 @@ class MedicationLogsCompanion extends UpdateCompanion<MedicationLogEntry> {
   static Insertable<MedicationLogEntry> custom({
     Expression<String>? id,
     Expression<String>? medicationId,
-    Expression<String>? timestamp,
-    Expression<String>? isTaken,
+    Expression<DateTime>? timestamp,
+    Expression<bool>? isTaken,
     Expression<String>? dosage,
     Expression<int>? rowid,
   }) {
@@ -2721,8 +2756,8 @@ class MedicationLogsCompanion extends UpdateCompanion<MedicationLogEntry> {
   MedicationLogsCompanion copyWith(
       {Value<String>? id,
       Value<String>? medicationId,
-      Value<String>? timestamp,
-      Value<String?>? isTaken,
+      Value<DateTime>? timestamp,
+      Value<bool?>? isTaken,
       Value<String?>? dosage,
       Value<int>? rowid}) {
     return MedicationLogsCompanion(
@@ -2745,10 +2780,10 @@ class MedicationLogsCompanion extends UpdateCompanion<MedicationLogEntry> {
       map['medicationId'] = Variable<String>(medicationId.value);
     }
     if (timestamp.present) {
-      map['timestamp'] = Variable<String>(timestamp.value);
+      map['timestamp'] = Variable<DateTime>(timestamp.value);
     }
     if (isTaken.present) {
-      map['isTaken'] = Variable<String>(isTaken.value);
+      map['isTaken'] = Variable<bool>(isTaken.value);
     }
     if (dosage.present) {
       map['dosage'] = Variable<String>(dosage.value);
@@ -2789,7 +2824,10 @@ class $CheckupsTable extends Checkups
   @override
   late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
       'profileId', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES profiles (id) ON DELETE CASCADE'));
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
@@ -2810,19 +2848,23 @@ class $CheckupsTable extends Checkups
   static const VerificationMeta _isCustomIntervalMeta =
       const VerificationMeta('isCustomInterval');
   @override
-  late final GeneratedColumn<String> isCustomInterval = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> isCustomInterval = GeneratedColumn<bool>(
       'isCustomInterval', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('false'));
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("isCustomInterval" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _isActiveMeta =
       const VerificationMeta('isActive');
   @override
-  late final GeneratedColumn<String> isActive = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
       'isActive', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('true'));
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("isActive" IN (0, 1))'),
+      defaultValue: const Constant(true));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -2901,10 +2943,10 @@ class $CheckupsTable extends Checkups
           .read(DriftSqlType.int, data['${effectivePrefix}frequencyInMonths'])!,
       iconName: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}iconName']),
-      isCustomInterval: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}isCustomInterval']),
+      isCustomInterval: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}isCustomInterval']),
       isActive: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}isActive']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}isActive']),
     );
   }
 
@@ -2920,8 +2962,8 @@ class CheckupEntry extends DataClass implements Insertable<CheckupEntry> {
   final String name;
   final int frequencyInMonths;
   final String? iconName;
-  final String? isCustomInterval;
-  final String? isActive;
+  final bool? isCustomInterval;
+  final bool? isActive;
   const CheckupEntry(
       {required this.id,
       required this.profileId,
@@ -2941,10 +2983,10 @@ class CheckupEntry extends DataClass implements Insertable<CheckupEntry> {
       map['iconName'] = Variable<String>(iconName);
     }
     if (!nullToAbsent || isCustomInterval != null) {
-      map['isCustomInterval'] = Variable<String>(isCustomInterval);
+      map['isCustomInterval'] = Variable<bool>(isCustomInterval);
     }
     if (!nullToAbsent || isActive != null) {
-      map['isActive'] = Variable<String>(isActive);
+      map['isActive'] = Variable<bool>(isActive);
     }
     return map;
   }
@@ -2976,8 +3018,8 @@ class CheckupEntry extends DataClass implements Insertable<CheckupEntry> {
       name: serializer.fromJson<String>(json['name']),
       frequencyInMonths: serializer.fromJson<int>(json['frequencyInMonths']),
       iconName: serializer.fromJson<String?>(json['iconName']),
-      isCustomInterval: serializer.fromJson<String?>(json['isCustomInterval']),
-      isActive: serializer.fromJson<String?>(json['isActive']),
+      isCustomInterval: serializer.fromJson<bool?>(json['isCustomInterval']),
+      isActive: serializer.fromJson<bool?>(json['isActive']),
     );
   }
   @override
@@ -2989,8 +3031,8 @@ class CheckupEntry extends DataClass implements Insertable<CheckupEntry> {
       'name': serializer.toJson<String>(name),
       'frequencyInMonths': serializer.toJson<int>(frequencyInMonths),
       'iconName': serializer.toJson<String?>(iconName),
-      'isCustomInterval': serializer.toJson<String?>(isCustomInterval),
-      'isActive': serializer.toJson<String?>(isActive),
+      'isCustomInterval': serializer.toJson<bool?>(isCustomInterval),
+      'isActive': serializer.toJson<bool?>(isActive),
     };
   }
 
@@ -3000,8 +3042,8 @@ class CheckupEntry extends DataClass implements Insertable<CheckupEntry> {
           String? name,
           int? frequencyInMonths,
           Value<String?> iconName = const Value.absent(),
-          Value<String?> isCustomInterval = const Value.absent(),
-          Value<String?> isActive = const Value.absent()}) =>
+          Value<bool?> isCustomInterval = const Value.absent(),
+          Value<bool?> isActive = const Value.absent()}) =>
       CheckupEntry(
         id: id ?? this.id,
         profileId: profileId ?? this.profileId,
@@ -3065,8 +3107,8 @@ class CheckupsCompanion extends UpdateCompanion<CheckupEntry> {
   final Value<String> name;
   final Value<int> frequencyInMonths;
   final Value<String?> iconName;
-  final Value<String?> isCustomInterval;
-  final Value<String?> isActive;
+  final Value<bool?> isCustomInterval;
+  final Value<bool?> isActive;
   final Value<int> rowid;
   const CheckupsCompanion({
     this.id = const Value.absent(),
@@ -3097,8 +3139,8 @@ class CheckupsCompanion extends UpdateCompanion<CheckupEntry> {
     Expression<String>? name,
     Expression<int>? frequencyInMonths,
     Expression<String>? iconName,
-    Expression<String>? isCustomInterval,
-    Expression<String>? isActive,
+    Expression<bool>? isCustomInterval,
+    Expression<bool>? isActive,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3119,8 +3161,8 @@ class CheckupsCompanion extends UpdateCompanion<CheckupEntry> {
       Value<String>? name,
       Value<int>? frequencyInMonths,
       Value<String?>? iconName,
-      Value<String?>? isCustomInterval,
-      Value<String?>? isActive,
+      Value<bool?>? isCustomInterval,
+      Value<bool?>? isActive,
       Value<int>? rowid}) {
     return CheckupsCompanion(
       id: id ?? this.id,
@@ -3153,10 +3195,10 @@ class CheckupsCompanion extends UpdateCompanion<CheckupEntry> {
       map['iconName'] = Variable<String>(iconName.value);
     }
     if (isCustomInterval.present) {
-      map['isCustomInterval'] = Variable<String>(isCustomInterval.value);
+      map['isCustomInterval'] = Variable<bool>(isCustomInterval.value);
     }
     if (isActive.present) {
-      map['isActive'] = Variable<String>(isActive.value);
+      map['isActive'] = Variable<bool>(isActive.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -3196,13 +3238,16 @@ class $CheckupLogsTable extends CheckupLogs
   @override
   late final GeneratedColumn<String> checkupId = GeneratedColumn<String>(
       'checkupId', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES checkups (id) ON DELETE CASCADE'));
   static const VerificationMeta _dateCompletedMeta =
       const VerificationMeta('dateCompleted');
   @override
-  late final GeneratedColumn<String> dateCompleted = GeneratedColumn<String>(
-      'dateCompleted', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+  late final GeneratedColumn<DateTime> dateCompleted =
+      GeneratedColumn<DateTime>('dateCompleted', aliasedName, false,
+          type: DriftSqlType.dateTime, requiredDuringInsert: true);
   static const VerificationMeta _locationMeta =
       const VerificationMeta('location');
   @override
@@ -3279,8 +3324,8 @@ class $CheckupLogsTable extends CheckupLogs
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       checkupId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}checkupId'])!,
-      dateCompleted: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}dateCompleted'])!,
+      dateCompleted: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}dateCompleted'])!,
       location: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}location']),
       doctorName: attachedDatabase.typeMapping
@@ -3299,7 +3344,7 @@ class $CheckupLogsTable extends CheckupLogs
 class CheckupLogEntry extends DataClass implements Insertable<CheckupLogEntry> {
   final String id;
   final String checkupId;
-  final String dateCompleted;
+  final DateTime dateCompleted;
   final String? location;
   final String? doctorName;
   final String? notes;
@@ -3315,7 +3360,7 @@ class CheckupLogEntry extends DataClass implements Insertable<CheckupLogEntry> {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['checkupId'] = Variable<String>(checkupId);
-    map['dateCompleted'] = Variable<String>(dateCompleted);
+    map['dateCompleted'] = Variable<DateTime>(dateCompleted);
     if (!nullToAbsent || location != null) {
       map['location'] = Variable<String>(location);
     }
@@ -3350,7 +3395,7 @@ class CheckupLogEntry extends DataClass implements Insertable<CheckupLogEntry> {
     return CheckupLogEntry(
       id: serializer.fromJson<String>(json['id']),
       checkupId: serializer.fromJson<String>(json['checkupId']),
-      dateCompleted: serializer.fromJson<String>(json['dateCompleted']),
+      dateCompleted: serializer.fromJson<DateTime>(json['dateCompleted']),
       location: serializer.fromJson<String?>(json['location']),
       doctorName: serializer.fromJson<String?>(json['doctorName']),
       notes: serializer.fromJson<String?>(json['notes']),
@@ -3362,7 +3407,7 @@ class CheckupLogEntry extends DataClass implements Insertable<CheckupLogEntry> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'checkupId': serializer.toJson<String>(checkupId),
-      'dateCompleted': serializer.toJson<String>(dateCompleted),
+      'dateCompleted': serializer.toJson<DateTime>(dateCompleted),
       'location': serializer.toJson<String?>(location),
       'doctorName': serializer.toJson<String?>(doctorName),
       'notes': serializer.toJson<String?>(notes),
@@ -3372,7 +3417,7 @@ class CheckupLogEntry extends DataClass implements Insertable<CheckupLogEntry> {
   CheckupLogEntry copyWith(
           {String? id,
           String? checkupId,
-          String? dateCompleted,
+          DateTime? dateCompleted,
           Value<String?> location = const Value.absent(),
           Value<String?> doctorName = const Value.absent(),
           Value<String?> notes = const Value.absent()}) =>
@@ -3429,7 +3474,7 @@ class CheckupLogEntry extends DataClass implements Insertable<CheckupLogEntry> {
 class CheckupLogsCompanion extends UpdateCompanion<CheckupLogEntry> {
   final Value<String> id;
   final Value<String> checkupId;
-  final Value<String> dateCompleted;
+  final Value<DateTime> dateCompleted;
   final Value<String?> location;
   final Value<String?> doctorName;
   final Value<String?> notes;
@@ -3446,7 +3491,7 @@ class CheckupLogsCompanion extends UpdateCompanion<CheckupLogEntry> {
   CheckupLogsCompanion.insert({
     required String id,
     required String checkupId,
-    required String dateCompleted,
+    required DateTime dateCompleted,
     this.location = const Value.absent(),
     this.doctorName = const Value.absent(),
     this.notes = const Value.absent(),
@@ -3457,7 +3502,7 @@ class CheckupLogsCompanion extends UpdateCompanion<CheckupLogEntry> {
   static Insertable<CheckupLogEntry> custom({
     Expression<String>? id,
     Expression<String>? checkupId,
-    Expression<String>? dateCompleted,
+    Expression<DateTime>? dateCompleted,
     Expression<String>? location,
     Expression<String>? doctorName,
     Expression<String>? notes,
@@ -3477,7 +3522,7 @@ class CheckupLogsCompanion extends UpdateCompanion<CheckupLogEntry> {
   CheckupLogsCompanion copyWith(
       {Value<String>? id,
       Value<String>? checkupId,
-      Value<String>? dateCompleted,
+      Value<DateTime>? dateCompleted,
       Value<String?>? location,
       Value<String?>? doctorName,
       Value<String?>? notes,
@@ -3503,7 +3548,7 @@ class CheckupLogsCompanion extends UpdateCompanion<CheckupLogEntry> {
       map['checkupId'] = Variable<String>(checkupId.value);
     }
     if (dateCompleted.present) {
-      map['dateCompleted'] = Variable<String>(dateCompleted.value);
+      map['dateCompleted'] = Variable<DateTime>(dateCompleted.value);
     }
     if (location.present) {
       map['location'] = Variable<String>(location.value);
@@ -3551,19 +3596,22 @@ class $PeriodCyclesTable extends PeriodCycles
   @override
   late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
       'profileId', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES profiles (id) ON DELETE CASCADE'));
   static const VerificationMeta _startDateMeta =
       const VerificationMeta('startDate');
   @override
-  late final GeneratedColumn<String> startDate = GeneratedColumn<String>(
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
       'startDate', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
   static const VerificationMeta _endDateMeta =
       const VerificationMeta('endDate');
   @override
-  late final GeneratedColumn<String> endDate = GeneratedColumn<String>(
+  late final GeneratedColumn<DateTime> endDate = GeneratedColumn<DateTime>(
       'endDate', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [id, profileId, startDate, endDate];
   @override
@@ -3611,9 +3659,9 @@ class $PeriodCyclesTable extends PeriodCycles
       profileId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}profileId'])!,
       startDate: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}startDate'])!,
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}startDate'])!,
       endDate: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}endDate']),
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}endDate']),
     );
   }
 
@@ -3627,8 +3675,8 @@ class PeriodCycleEntry extends DataClass
     implements Insertable<PeriodCycleEntry> {
   final String id;
   final String profileId;
-  final String startDate;
-  final String? endDate;
+  final DateTime startDate;
+  final DateTime? endDate;
   const PeriodCycleEntry(
       {required this.id,
       required this.profileId,
@@ -3639,9 +3687,9 @@ class PeriodCycleEntry extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['profileId'] = Variable<String>(profileId);
-    map['startDate'] = Variable<String>(startDate);
+    map['startDate'] = Variable<DateTime>(startDate);
     if (!nullToAbsent || endDate != null) {
-      map['endDate'] = Variable<String>(endDate);
+      map['endDate'] = Variable<DateTime>(endDate);
     }
     return map;
   }
@@ -3663,8 +3711,8 @@ class PeriodCycleEntry extends DataClass
     return PeriodCycleEntry(
       id: serializer.fromJson<String>(json['id']),
       profileId: serializer.fromJson<String>(json['profileId']),
-      startDate: serializer.fromJson<String>(json['startDate']),
-      endDate: serializer.fromJson<String?>(json['endDate']),
+      startDate: serializer.fromJson<DateTime>(json['startDate']),
+      endDate: serializer.fromJson<DateTime?>(json['endDate']),
     );
   }
   @override
@@ -3673,16 +3721,16 @@ class PeriodCycleEntry extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'profileId': serializer.toJson<String>(profileId),
-      'startDate': serializer.toJson<String>(startDate),
-      'endDate': serializer.toJson<String?>(endDate),
+      'startDate': serializer.toJson<DateTime>(startDate),
+      'endDate': serializer.toJson<DateTime?>(endDate),
     };
   }
 
   PeriodCycleEntry copyWith(
           {String? id,
           String? profileId,
-          String? startDate,
-          Value<String?> endDate = const Value.absent()}) =>
+          DateTime? startDate,
+          Value<DateTime?> endDate = const Value.absent()}) =>
       PeriodCycleEntry(
         id: id ?? this.id,
         profileId: profileId ?? this.profileId,
@@ -3724,8 +3772,8 @@ class PeriodCycleEntry extends DataClass
 class PeriodCyclesCompanion extends UpdateCompanion<PeriodCycleEntry> {
   final Value<String> id;
   final Value<String> profileId;
-  final Value<String> startDate;
-  final Value<String?> endDate;
+  final Value<DateTime> startDate;
+  final Value<DateTime?> endDate;
   final Value<int> rowid;
   const PeriodCyclesCompanion({
     this.id = const Value.absent(),
@@ -3737,7 +3785,7 @@ class PeriodCyclesCompanion extends UpdateCompanion<PeriodCycleEntry> {
   PeriodCyclesCompanion.insert({
     required String id,
     required String profileId,
-    required String startDate,
+    required DateTime startDate,
     this.endDate = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
@@ -3746,8 +3794,8 @@ class PeriodCyclesCompanion extends UpdateCompanion<PeriodCycleEntry> {
   static Insertable<PeriodCycleEntry> custom({
     Expression<String>? id,
     Expression<String>? profileId,
-    Expression<String>? startDate,
-    Expression<String>? endDate,
+    Expression<DateTime>? startDate,
+    Expression<DateTime>? endDate,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3762,8 +3810,8 @@ class PeriodCyclesCompanion extends UpdateCompanion<PeriodCycleEntry> {
   PeriodCyclesCompanion copyWith(
       {Value<String>? id,
       Value<String>? profileId,
-      Value<String>? startDate,
-      Value<String?>? endDate,
+      Value<DateTime>? startDate,
+      Value<DateTime?>? endDate,
       Value<int>? rowid}) {
     return PeriodCyclesCompanion(
       id: id ?? this.id,
@@ -3784,10 +3832,10 @@ class PeriodCyclesCompanion extends UpdateCompanion<PeriodCycleEntry> {
       map['profileId'] = Variable<String>(profileId.value);
     }
     if (startDate.present) {
-      map['startDate'] = Variable<String>(startDate.value);
+      map['startDate'] = Variable<DateTime>(startDate.value);
     }
     if (endDate.present) {
-      map['endDate'] = Variable<String>(endDate.value);
+      map['endDate'] = Variable<DateTime>(endDate.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -3824,12 +3872,15 @@ class $PeriodLogsTable extends PeriodLogs
   @override
   late final GeneratedColumn<String> cycleId = GeneratedColumn<String>(
       'cycleId', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES period_cycles (id) ON DELETE CASCADE'));
   static const VerificationMeta _dateMeta = const VerificationMeta('date');
   @override
-  late final GeneratedColumn<String> date = GeneratedColumn<String>(
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
       'date', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
   static const VerificationMeta _flowLevelMeta =
       const VerificationMeta('flowLevel');
   @override
@@ -3905,7 +3956,7 @@ class $PeriodLogsTable extends PeriodLogs
       cycleId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}cycleId'])!,
       date: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}date'])!,
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
       flowLevel: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}flowLevel']),
       moods: attachedDatabase.typeMapping
@@ -3924,7 +3975,7 @@ class $PeriodLogsTable extends PeriodLogs
 class PeriodLogEntry extends DataClass implements Insertable<PeriodLogEntry> {
   final String id;
   final String cycleId;
-  final String date;
+  final DateTime date;
   final String? flowLevel;
   final String? moods;
   final String? physicalSymptoms;
@@ -3940,7 +3991,7 @@ class PeriodLogEntry extends DataClass implements Insertable<PeriodLogEntry> {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['cycleId'] = Variable<String>(cycleId);
-    map['date'] = Variable<String>(date);
+    map['date'] = Variable<DateTime>(date);
     if (!nullToAbsent || flowLevel != null) {
       map['flowLevel'] = Variable<String>(flowLevel);
     }
@@ -3975,7 +4026,7 @@ class PeriodLogEntry extends DataClass implements Insertable<PeriodLogEntry> {
     return PeriodLogEntry(
       id: serializer.fromJson<String>(json['id']),
       cycleId: serializer.fromJson<String>(json['cycleId']),
-      date: serializer.fromJson<String>(json['date']),
+      date: serializer.fromJson<DateTime>(json['date']),
       flowLevel: serializer.fromJson<String?>(json['flowLevel']),
       moods: serializer.fromJson<String?>(json['moods']),
       physicalSymptoms: serializer.fromJson<String?>(json['physicalSymptoms']),
@@ -3987,7 +4038,7 @@ class PeriodLogEntry extends DataClass implements Insertable<PeriodLogEntry> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'cycleId': serializer.toJson<String>(cycleId),
-      'date': serializer.toJson<String>(date),
+      'date': serializer.toJson<DateTime>(date),
       'flowLevel': serializer.toJson<String?>(flowLevel),
       'moods': serializer.toJson<String?>(moods),
       'physicalSymptoms': serializer.toJson<String?>(physicalSymptoms),
@@ -3997,7 +4048,7 @@ class PeriodLogEntry extends DataClass implements Insertable<PeriodLogEntry> {
   PeriodLogEntry copyWith(
           {String? id,
           String? cycleId,
-          String? date,
+          DateTime? date,
           Value<String?> flowLevel = const Value.absent(),
           Value<String?> moods = const Value.absent(),
           Value<String?> physicalSymptoms = const Value.absent()}) =>
@@ -4055,7 +4106,7 @@ class PeriodLogEntry extends DataClass implements Insertable<PeriodLogEntry> {
 class PeriodLogsCompanion extends UpdateCompanion<PeriodLogEntry> {
   final Value<String> id;
   final Value<String> cycleId;
-  final Value<String> date;
+  final Value<DateTime> date;
   final Value<String?> flowLevel;
   final Value<String?> moods;
   final Value<String?> physicalSymptoms;
@@ -4072,7 +4123,7 @@ class PeriodLogsCompanion extends UpdateCompanion<PeriodLogEntry> {
   PeriodLogsCompanion.insert({
     required String id,
     required String cycleId,
-    required String date,
+    required DateTime date,
     this.flowLevel = const Value.absent(),
     this.moods = const Value.absent(),
     this.physicalSymptoms = const Value.absent(),
@@ -4083,7 +4134,7 @@ class PeriodLogsCompanion extends UpdateCompanion<PeriodLogEntry> {
   static Insertable<PeriodLogEntry> custom({
     Expression<String>? id,
     Expression<String>? cycleId,
-    Expression<String>? date,
+    Expression<DateTime>? date,
     Expression<String>? flowLevel,
     Expression<String>? moods,
     Expression<String>? physicalSymptoms,
@@ -4103,7 +4154,7 @@ class PeriodLogsCompanion extends UpdateCompanion<PeriodLogEntry> {
   PeriodLogsCompanion copyWith(
       {Value<String>? id,
       Value<String>? cycleId,
-      Value<String>? date,
+      Value<DateTime>? date,
       Value<String?>? flowLevel,
       Value<String?>? moods,
       Value<String?>? physicalSymptoms,
@@ -4129,7 +4180,7 @@ class PeriodLogsCompanion extends UpdateCompanion<PeriodLogEntry> {
       map['cycleId'] = Variable<String>(cycleId.value);
     }
     if (date.present) {
-      map['date'] = Variable<String>(date.value);
+      map['date'] = Variable<DateTime>(date.value);
     }
     if (flowLevel.present) {
       map['flowLevel'] = Variable<String>(flowLevel.value);
@@ -4177,7 +4228,10 @@ class $VitalLogsTable extends VitalLogs
   @override
   late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
       'profileId', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES profiles (id) ON DELETE CASCADE'));
   static const VerificationMeta _typeMeta = const VerificationMeta('type');
   @override
   late final GeneratedColumn<String> type = GeneratedColumn<String>(
@@ -4185,9 +4239,9 @@ class $VitalLogsTable extends VitalLogs
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _dateMeta = const VerificationMeta('date');
   @override
-  late final GeneratedColumn<String> date = GeneratedColumn<String>(
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
       'date', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
   static const VerificationMeta _value1Meta = const VerificationMeta('value1');
   @override
   late final GeneratedColumn<double> value1 = GeneratedColumn<double>(
@@ -4280,7 +4334,7 @@ class $VitalLogsTable extends VitalLogs
       type: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
       date: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}date'])!,
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
       value1: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}value1'])!,
       value2: attachedDatabase.typeMapping
@@ -4302,7 +4356,7 @@ class VitalLogEntry extends DataClass implements Insertable<VitalLogEntry> {
   final String id;
   final String profileId;
   final String type;
-  final String date;
+  final DateTime date;
   final double value1;
   final double? value2;
   final String unit;
@@ -4322,7 +4376,7 @@ class VitalLogEntry extends DataClass implements Insertable<VitalLogEntry> {
     map['id'] = Variable<String>(id);
     map['profileId'] = Variable<String>(profileId);
     map['type'] = Variable<String>(type);
-    map['date'] = Variable<String>(date);
+    map['date'] = Variable<DateTime>(date);
     map['value1'] = Variable<double>(value1);
     if (!nullToAbsent || value2 != null) {
       map['value2'] = Variable<double>(value2);
@@ -4355,7 +4409,7 @@ class VitalLogEntry extends DataClass implements Insertable<VitalLogEntry> {
       id: serializer.fromJson<String>(json['id']),
       profileId: serializer.fromJson<String>(json['profileId']),
       type: serializer.fromJson<String>(json['type']),
-      date: serializer.fromJson<String>(json['date']),
+      date: serializer.fromJson<DateTime>(json['date']),
       value1: serializer.fromJson<double>(json['value1']),
       value2: serializer.fromJson<double?>(json['value2']),
       unit: serializer.fromJson<String>(json['unit']),
@@ -4369,7 +4423,7 @@ class VitalLogEntry extends DataClass implements Insertable<VitalLogEntry> {
       'id': serializer.toJson<String>(id),
       'profileId': serializer.toJson<String>(profileId),
       'type': serializer.toJson<String>(type),
-      'date': serializer.toJson<String>(date),
+      'date': serializer.toJson<DateTime>(date),
       'value1': serializer.toJson<double>(value1),
       'value2': serializer.toJson<double?>(value2),
       'unit': serializer.toJson<String>(unit),
@@ -4381,7 +4435,7 @@ class VitalLogEntry extends DataClass implements Insertable<VitalLogEntry> {
           {String? id,
           String? profileId,
           String? type,
-          String? date,
+          DateTime? date,
           double? value1,
           Value<double?> value2 = const Value.absent(),
           String? unit,
@@ -4445,7 +4499,7 @@ class VitalLogsCompanion extends UpdateCompanion<VitalLogEntry> {
   final Value<String> id;
   final Value<String> profileId;
   final Value<String> type;
-  final Value<String> date;
+  final Value<DateTime> date;
   final Value<double> value1;
   final Value<double?> value2;
   final Value<String> unit;
@@ -4466,7 +4520,7 @@ class VitalLogsCompanion extends UpdateCompanion<VitalLogEntry> {
     required String id,
     required String profileId,
     required String type,
-    required String date,
+    required DateTime date,
     required double value1,
     this.value2 = const Value.absent(),
     required String unit,
@@ -4482,7 +4536,7 @@ class VitalLogsCompanion extends UpdateCompanion<VitalLogEntry> {
     Expression<String>? id,
     Expression<String>? profileId,
     Expression<String>? type,
-    Expression<String>? date,
+    Expression<DateTime>? date,
     Expression<double>? value1,
     Expression<double>? value2,
     Expression<String>? unit,
@@ -4506,7 +4560,7 @@ class VitalLogsCompanion extends UpdateCompanion<VitalLogEntry> {
       {Value<String>? id,
       Value<String>? profileId,
       Value<String>? type,
-      Value<String>? date,
+      Value<DateTime>? date,
       Value<double>? value1,
       Value<double?>? value2,
       Value<String>? unit,
@@ -4538,7 +4592,7 @@ class VitalLogsCompanion extends UpdateCompanion<VitalLogEntry> {
       map['type'] = Variable<String>(type.value);
     }
     if (date.present) {
-      map['date'] = Variable<String>(date.value);
+      map['date'] = Variable<DateTime>(date.value);
     }
     if (value1.present) {
       map['value1'] = Variable<double>(value1.value);
@@ -4783,7 +4837,10 @@ class $EmergencyContactsTable extends EmergencyContacts
   @override
   late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
       'profileId', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES profiles (id) ON DELETE CASCADE'));
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
@@ -5097,79 +5154,100 @@ class $LockScreenSettingsTable extends LockScreenSettings
   @override
   late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
       'profileId', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES profiles (id) ON DELETE CASCADE'));
   static const VerificationMeta _showNameMeta =
       const VerificationMeta('showName');
   @override
-  late final GeneratedColumn<String> showName = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> showName = GeneratedColumn<bool>(
       'showName', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('true'));
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("showName" IN (0, 1))'),
+      defaultValue: const Constant(true));
   static const VerificationMeta _showAgeMeta =
       const VerificationMeta('showAge');
   @override
-  late final GeneratedColumn<String> showAge = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> showAge = GeneratedColumn<bool>(
       'showAge', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('true'));
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("showAge" IN (0, 1))'),
+      defaultValue: const Constant(true));
   static const VerificationMeta _showBloodTypeMeta =
       const VerificationMeta('showBloodType');
   @override
-  late final GeneratedColumn<String> showBloodType = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> showBloodType = GeneratedColumn<bool>(
       'showBloodType', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('true'));
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("showBloodType" IN (0, 1))'),
+      defaultValue: const Constant(true));
   static const VerificationMeta _showOrganDonorMeta =
       const VerificationMeta('showOrganDonor');
   @override
-  late final GeneratedColumn<String> showOrganDonor = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> showOrganDonor = GeneratedColumn<bool>(
       'showOrganDonor', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('true'));
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("showOrganDonor" IN (0, 1))'),
+      defaultValue: const Constant(true));
   static const VerificationMeta _showChronicConditionsMeta =
       const VerificationMeta('showChronicConditions');
   @override
-  late final GeneratedColumn<String> showChronicConditions =
-      GeneratedColumn<String>('showChronicConditions', aliasedName, true,
-          type: DriftSqlType.string,
+  late final GeneratedColumn<bool> showChronicConditions =
+      GeneratedColumn<bool>('showChronicConditions', aliasedName, true,
+          type: DriftSqlType.bool,
           requiredDuringInsert: false,
-          defaultValue: const Constant('true'));
+          defaultConstraints: GeneratedColumn.constraintIsAlways(
+              'CHECK ("showChronicConditions" IN (0, 1))'),
+          defaultValue: const Constant(true));
   static const VerificationMeta _showAllergiesMeta =
       const VerificationMeta('showAllergies');
   @override
-  late final GeneratedColumn<String> showAllergies = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> showAllergies = GeneratedColumn<bool>(
       'showAllergies', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('true'));
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("showAllergies" IN (0, 1))'),
+      defaultValue: const Constant(true));
   static const VerificationMeta _showMedicationsMeta =
       const VerificationMeta('showMedications');
   @override
-  late final GeneratedColumn<String> showMedications = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> showMedications = GeneratedColumn<bool>(
       'showMedications', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('true'));
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("showMedications" IN (0, 1))'),
+      defaultValue: const Constant(true));
   static const VerificationMeta _showContactsMeta =
       const VerificationMeta('showContacts');
   @override
-  late final GeneratedColumn<String> showContacts = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> showContacts = GeneratedColumn<bool>(
       'showContacts', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('true'));
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("showContacts" IN (0, 1))'),
+      defaultValue: const Constant(true));
   static const VerificationMeta _isEnabledMeta =
       const VerificationMeta('isEnabled');
   @override
-  late final GeneratedColumn<String> isEnabled = GeneratedColumn<String>(
+  late final GeneratedColumn<bool> isEnabled = GeneratedColumn<bool>(
       'isEnabled', aliasedName, true,
-      type: DriftSqlType.string,
+      type: DriftSqlType.bool,
       requiredDuringInsert: false,
-      defaultValue: const Constant('false'));
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("isEnabled" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns => [
         profileId,
@@ -5260,23 +5338,23 @@ class $LockScreenSettingsTable extends LockScreenSettings
       profileId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}profileId'])!,
       showName: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}showName']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}showName']),
       showAge: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}showAge']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}showAge']),
       showBloodType: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}showBloodType']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}showBloodType']),
       showOrganDonor: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}showOrganDonor']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}showOrganDonor']),
       showChronicConditions: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}showChronicConditions']),
+          DriftSqlType.bool, data['${effectivePrefix}showChronicConditions']),
       showAllergies: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}showAllergies']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}showAllergies']),
       showMedications: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}showMedications']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}showMedications']),
       showContacts: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}showContacts']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}showContacts']),
       isEnabled: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}isEnabled']),
+          .read(DriftSqlType.bool, data['${effectivePrefix}isEnabled']),
     );
   }
 
@@ -5289,15 +5367,15 @@ class $LockScreenSettingsTable extends LockScreenSettings
 class LockScreenSettingEntry extends DataClass
     implements Insertable<LockScreenSettingEntry> {
   final String profileId;
-  final String? showName;
-  final String? showAge;
-  final String? showBloodType;
-  final String? showOrganDonor;
-  final String? showChronicConditions;
-  final String? showAllergies;
-  final String? showMedications;
-  final String? showContacts;
-  final String? isEnabled;
+  final bool? showName;
+  final bool? showAge;
+  final bool? showBloodType;
+  final bool? showOrganDonor;
+  final bool? showChronicConditions;
+  final bool? showAllergies;
+  final bool? showMedications;
+  final bool? showContacts;
+  final bool? isEnabled;
   const LockScreenSettingEntry(
       {required this.profileId,
       this.showName,
@@ -5314,31 +5392,31 @@ class LockScreenSettingEntry extends DataClass
     final map = <String, Expression>{};
     map['profileId'] = Variable<String>(profileId);
     if (!nullToAbsent || showName != null) {
-      map['showName'] = Variable<String>(showName);
+      map['showName'] = Variable<bool>(showName);
     }
     if (!nullToAbsent || showAge != null) {
-      map['showAge'] = Variable<String>(showAge);
+      map['showAge'] = Variable<bool>(showAge);
     }
     if (!nullToAbsent || showBloodType != null) {
-      map['showBloodType'] = Variable<String>(showBloodType);
+      map['showBloodType'] = Variable<bool>(showBloodType);
     }
     if (!nullToAbsent || showOrganDonor != null) {
-      map['showOrganDonor'] = Variable<String>(showOrganDonor);
+      map['showOrganDonor'] = Variable<bool>(showOrganDonor);
     }
     if (!nullToAbsent || showChronicConditions != null) {
-      map['showChronicConditions'] = Variable<String>(showChronicConditions);
+      map['showChronicConditions'] = Variable<bool>(showChronicConditions);
     }
     if (!nullToAbsent || showAllergies != null) {
-      map['showAllergies'] = Variable<String>(showAllergies);
+      map['showAllergies'] = Variable<bool>(showAllergies);
     }
     if (!nullToAbsent || showMedications != null) {
-      map['showMedications'] = Variable<String>(showMedications);
+      map['showMedications'] = Variable<bool>(showMedications);
     }
     if (!nullToAbsent || showContacts != null) {
-      map['showContacts'] = Variable<String>(showContacts);
+      map['showContacts'] = Variable<bool>(showContacts);
     }
     if (!nullToAbsent || isEnabled != null) {
-      map['isEnabled'] = Variable<String>(isEnabled);
+      map['isEnabled'] = Variable<bool>(isEnabled);
     }
     return map;
   }
@@ -5381,16 +5459,16 @@ class LockScreenSettingEntry extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return LockScreenSettingEntry(
       profileId: serializer.fromJson<String>(json['profileId']),
-      showName: serializer.fromJson<String?>(json['showName']),
-      showAge: serializer.fromJson<String?>(json['showAge']),
-      showBloodType: serializer.fromJson<String?>(json['showBloodType']),
-      showOrganDonor: serializer.fromJson<String?>(json['showOrganDonor']),
+      showName: serializer.fromJson<bool?>(json['showName']),
+      showAge: serializer.fromJson<bool?>(json['showAge']),
+      showBloodType: serializer.fromJson<bool?>(json['showBloodType']),
+      showOrganDonor: serializer.fromJson<bool?>(json['showOrganDonor']),
       showChronicConditions:
-          serializer.fromJson<String?>(json['showChronicConditions']),
-      showAllergies: serializer.fromJson<String?>(json['showAllergies']),
-      showMedications: serializer.fromJson<String?>(json['showMedications']),
-      showContacts: serializer.fromJson<String?>(json['showContacts']),
-      isEnabled: serializer.fromJson<String?>(json['isEnabled']),
+          serializer.fromJson<bool?>(json['showChronicConditions']),
+      showAllergies: serializer.fromJson<bool?>(json['showAllergies']),
+      showMedications: serializer.fromJson<bool?>(json['showMedications']),
+      showContacts: serializer.fromJson<bool?>(json['showContacts']),
+      isEnabled: serializer.fromJson<bool?>(json['isEnabled']),
     );
   }
   @override
@@ -5398,30 +5476,29 @@ class LockScreenSettingEntry extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'profileId': serializer.toJson<String>(profileId),
-      'showName': serializer.toJson<String?>(showName),
-      'showAge': serializer.toJson<String?>(showAge),
-      'showBloodType': serializer.toJson<String?>(showBloodType),
-      'showOrganDonor': serializer.toJson<String?>(showOrganDonor),
-      'showChronicConditions':
-          serializer.toJson<String?>(showChronicConditions),
-      'showAllergies': serializer.toJson<String?>(showAllergies),
-      'showMedications': serializer.toJson<String?>(showMedications),
-      'showContacts': serializer.toJson<String?>(showContacts),
-      'isEnabled': serializer.toJson<String?>(isEnabled),
+      'showName': serializer.toJson<bool?>(showName),
+      'showAge': serializer.toJson<bool?>(showAge),
+      'showBloodType': serializer.toJson<bool?>(showBloodType),
+      'showOrganDonor': serializer.toJson<bool?>(showOrganDonor),
+      'showChronicConditions': serializer.toJson<bool?>(showChronicConditions),
+      'showAllergies': serializer.toJson<bool?>(showAllergies),
+      'showMedications': serializer.toJson<bool?>(showMedications),
+      'showContacts': serializer.toJson<bool?>(showContacts),
+      'isEnabled': serializer.toJson<bool?>(isEnabled),
     };
   }
 
   LockScreenSettingEntry copyWith(
           {String? profileId,
-          Value<String?> showName = const Value.absent(),
-          Value<String?> showAge = const Value.absent(),
-          Value<String?> showBloodType = const Value.absent(),
-          Value<String?> showOrganDonor = const Value.absent(),
-          Value<String?> showChronicConditions = const Value.absent(),
-          Value<String?> showAllergies = const Value.absent(),
-          Value<String?> showMedications = const Value.absent(),
-          Value<String?> showContacts = const Value.absent(),
-          Value<String?> isEnabled = const Value.absent()}) =>
+          Value<bool?> showName = const Value.absent(),
+          Value<bool?> showAge = const Value.absent(),
+          Value<bool?> showBloodType = const Value.absent(),
+          Value<bool?> showOrganDonor = const Value.absent(),
+          Value<bool?> showChronicConditions = const Value.absent(),
+          Value<bool?> showAllergies = const Value.absent(),
+          Value<bool?> showMedications = const Value.absent(),
+          Value<bool?> showContacts = const Value.absent(),
+          Value<bool?> isEnabled = const Value.absent()}) =>
       LockScreenSettingEntry(
         profileId: profileId ?? this.profileId,
         showName: showName.present ? showName.value : this.showName,
@@ -5517,15 +5594,15 @@ class LockScreenSettingEntry extends DataClass
 class LockScreenSettingsCompanion
     extends UpdateCompanion<LockScreenSettingEntry> {
   final Value<String> profileId;
-  final Value<String?> showName;
-  final Value<String?> showAge;
-  final Value<String?> showBloodType;
-  final Value<String?> showOrganDonor;
-  final Value<String?> showChronicConditions;
-  final Value<String?> showAllergies;
-  final Value<String?> showMedications;
-  final Value<String?> showContacts;
-  final Value<String?> isEnabled;
+  final Value<bool?> showName;
+  final Value<bool?> showAge;
+  final Value<bool?> showBloodType;
+  final Value<bool?> showOrganDonor;
+  final Value<bool?> showChronicConditions;
+  final Value<bool?> showAllergies;
+  final Value<bool?> showMedications;
+  final Value<bool?> showContacts;
+  final Value<bool?> isEnabled;
   final Value<int> rowid;
   const LockScreenSettingsCompanion({
     this.profileId = const Value.absent(),
@@ -5555,15 +5632,15 @@ class LockScreenSettingsCompanion
   }) : profileId = Value(profileId);
   static Insertable<LockScreenSettingEntry> custom({
     Expression<String>? profileId,
-    Expression<String>? showName,
-    Expression<String>? showAge,
-    Expression<String>? showBloodType,
-    Expression<String>? showOrganDonor,
-    Expression<String>? showChronicConditions,
-    Expression<String>? showAllergies,
-    Expression<String>? showMedications,
-    Expression<String>? showContacts,
-    Expression<String>? isEnabled,
+    Expression<bool>? showName,
+    Expression<bool>? showAge,
+    Expression<bool>? showBloodType,
+    Expression<bool>? showOrganDonor,
+    Expression<bool>? showChronicConditions,
+    Expression<bool>? showAllergies,
+    Expression<bool>? showMedications,
+    Expression<bool>? showContacts,
+    Expression<bool>? isEnabled,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -5584,15 +5661,15 @@ class LockScreenSettingsCompanion
 
   LockScreenSettingsCompanion copyWith(
       {Value<String>? profileId,
-      Value<String?>? showName,
-      Value<String?>? showAge,
-      Value<String?>? showBloodType,
-      Value<String?>? showOrganDonor,
-      Value<String?>? showChronicConditions,
-      Value<String?>? showAllergies,
-      Value<String?>? showMedications,
-      Value<String?>? showContacts,
-      Value<String?>? isEnabled,
+      Value<bool?>? showName,
+      Value<bool?>? showAge,
+      Value<bool?>? showBloodType,
+      Value<bool?>? showOrganDonor,
+      Value<bool?>? showChronicConditions,
+      Value<bool?>? showAllergies,
+      Value<bool?>? showMedications,
+      Value<bool?>? showContacts,
+      Value<bool?>? isEnabled,
       Value<int>? rowid}) {
     return LockScreenSettingsCompanion(
       profileId: profileId ?? this.profileId,
@@ -5617,32 +5694,32 @@ class LockScreenSettingsCompanion
       map['profileId'] = Variable<String>(profileId.value);
     }
     if (showName.present) {
-      map['showName'] = Variable<String>(showName.value);
+      map['showName'] = Variable<bool>(showName.value);
     }
     if (showAge.present) {
-      map['showAge'] = Variable<String>(showAge.value);
+      map['showAge'] = Variable<bool>(showAge.value);
     }
     if (showBloodType.present) {
-      map['showBloodType'] = Variable<String>(showBloodType.value);
+      map['showBloodType'] = Variable<bool>(showBloodType.value);
     }
     if (showOrganDonor.present) {
-      map['showOrganDonor'] = Variable<String>(showOrganDonor.value);
+      map['showOrganDonor'] = Variable<bool>(showOrganDonor.value);
     }
     if (showChronicConditions.present) {
       map['showChronicConditions'] =
-          Variable<String>(showChronicConditions.value);
+          Variable<bool>(showChronicConditions.value);
     }
     if (showAllergies.present) {
-      map['showAllergies'] = Variable<String>(showAllergies.value);
+      map['showAllergies'] = Variable<bool>(showAllergies.value);
     }
     if (showMedications.present) {
-      map['showMedications'] = Variable<String>(showMedications.value);
+      map['showMedications'] = Variable<bool>(showMedications.value);
     }
     if (showContacts.present) {
-      map['showContacts'] = Variable<String>(showContacts.value);
+      map['showContacts'] = Variable<bool>(showContacts.value);
     }
     if (isEnabled.present) {
-      map['isEnabled'] = Variable<String>(isEnabled.value);
+      map['isEnabled'] = Variable<bool>(isEnabled.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -5708,6 +5785,95 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         emergencyContacts,
         lockScreenSettings
       ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
+        [
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('profiles',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('history', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('history',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('attachments', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('profiles',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('allergy', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('profiles',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('medications', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('medications',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('medication_logs', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('profiles',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('checkups', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('checkups',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('checkup_logs', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('profiles',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('period_cycles', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('period_cycles',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('period_logs', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('profiles',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('vital_logs', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('profiles',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('emergency_contacts', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('profiles',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('lock_screen_settings', kind: UpdateKind.delete),
+            ],
+          ),
+        ],
+      );
 }
 
 typedef $$ProfilesTableCreateCompanionBuilder = ProfilesCompanion Function({
@@ -5715,13 +5881,13 @@ typedef $$ProfilesTableCreateCompanionBuilder = ProfilesCompanion Function({
   required String name,
   required String middleNames,
   required String surname,
-  required String dateOfBirth,
+  required DateTime dateOfBirth,
   required String bloodType,
   required String gender,
-  Value<String> isOrganDonor,
-  Value<String?> trackOvulation,
-  Value<String?> isArchived,
-  Value<String?> archivedAt,
+  Value<bool> isOrganDonor,
+  Value<bool?> trackOvulation,
+  Value<bool?> isArchived,
+  Value<DateTime?> archivedAt,
   Value<String?> chronicConditions,
   Value<int> rowid,
 });
@@ -5730,13 +5896,13 @@ typedef $$ProfilesTableUpdateCompanionBuilder = ProfilesCompanion Function({
   Value<String> name,
   Value<String> middleNames,
   Value<String> surname,
-  Value<String> dateOfBirth,
+  Value<DateTime> dateOfBirth,
   Value<String> bloodType,
   Value<String> gender,
-  Value<String> isOrganDonor,
-  Value<String?> trackOvulation,
-  Value<String?> isArchived,
-  Value<String?> archivedAt,
+  Value<bool> isOrganDonor,
+  Value<bool?> trackOvulation,
+  Value<bool?> isArchived,
+  Value<DateTime?> archivedAt,
   Value<String?> chronicConditions,
   Value<int> rowid,
 });
@@ -5762,13 +5928,13 @@ class $$ProfilesTableTableManager extends RootTableManager<
             Value<String> name = const Value.absent(),
             Value<String> middleNames = const Value.absent(),
             Value<String> surname = const Value.absent(),
-            Value<String> dateOfBirth = const Value.absent(),
+            Value<DateTime> dateOfBirth = const Value.absent(),
             Value<String> bloodType = const Value.absent(),
             Value<String> gender = const Value.absent(),
-            Value<String> isOrganDonor = const Value.absent(),
-            Value<String?> trackOvulation = const Value.absent(),
-            Value<String?> isArchived = const Value.absent(),
-            Value<String?> archivedAt = const Value.absent(),
+            Value<bool> isOrganDonor = const Value.absent(),
+            Value<bool?> trackOvulation = const Value.absent(),
+            Value<bool?> isArchived = const Value.absent(),
+            Value<DateTime?> archivedAt = const Value.absent(),
             Value<String?> chronicConditions = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -5792,13 +5958,13 @@ class $$ProfilesTableTableManager extends RootTableManager<
             required String name,
             required String middleNames,
             required String surname,
-            required String dateOfBirth,
+            required DateTime dateOfBirth,
             required String bloodType,
             required String gender,
-            Value<String> isOrganDonor = const Value.absent(),
-            Value<String?> trackOvulation = const Value.absent(),
-            Value<String?> isArchived = const Value.absent(),
-            Value<String?> archivedAt = const Value.absent(),
+            Value<bool> isOrganDonor = const Value.absent(),
+            Value<bool?> trackOvulation = const Value.absent(),
+            Value<bool?> isArchived = const Value.absent(),
+            Value<DateTime?> archivedAt = const Value.absent(),
             Value<String?> chronicConditions = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -5843,7 +6009,7 @@ class $$ProfilesTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get dateOfBirth => $state.composableBuilder(
+  ColumnFilters<DateTime> get dateOfBirth => $state.composableBuilder(
       column: $state.table.dateOfBirth,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
@@ -5858,22 +6024,22 @@ class $$ProfilesTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get isOrganDonor => $state.composableBuilder(
+  ColumnFilters<bool> get isOrganDonor => $state.composableBuilder(
       column: $state.table.isOrganDonor,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get trackOvulation => $state.composableBuilder(
+  ColumnFilters<bool> get trackOvulation => $state.composableBuilder(
       column: $state.table.trackOvulation,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get isArchived => $state.composableBuilder(
+  ColumnFilters<bool> get isArchived => $state.composableBuilder(
       column: $state.table.isArchived,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get archivedAt => $state.composableBuilder(
+  ColumnFilters<DateTime> get archivedAt => $state.composableBuilder(
       column: $state.table.archivedAt,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
@@ -5882,6 +6048,118 @@ class $$ProfilesTableFilterComposer
       column: $state.table.chronicConditions,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ComposableFilter historyRefs(
+      ComposableFilter Function($$HistoryTableFilterComposer f) f) {
+    final $$HistoryTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $state.db.history,
+        getReferencedColumn: (t) => t.profileId,
+        builder: (joinBuilder, parentComposers) => $$HistoryTableFilterComposer(
+            ComposerState(
+                $state.db, $state.db.history, joinBuilder, parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter allergyRefs(
+      ComposableFilter Function($$AllergyTableFilterComposer f) f) {
+    final $$AllergyTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $state.db.allergy,
+        getReferencedColumn: (t) => t.profileId,
+        builder: (joinBuilder, parentComposers) => $$AllergyTableFilterComposer(
+            ComposerState(
+                $state.db, $state.db.allergy, joinBuilder, parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter medicationsRefs(
+      ComposableFilter Function($$MedicationsTableFilterComposer f) f) {
+    final $$MedicationsTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $state.db.medications,
+        getReferencedColumn: (t) => t.profileId,
+        builder: (joinBuilder, parentComposers) =>
+            $$MedicationsTableFilterComposer(ComposerState($state.db,
+                $state.db.medications, joinBuilder, parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter checkupsRefs(
+      ComposableFilter Function($$CheckupsTableFilterComposer f) f) {
+    final $$CheckupsTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $state.db.checkups,
+        getReferencedColumn: (t) => t.profileId,
+        builder: (joinBuilder, parentComposers) =>
+            $$CheckupsTableFilterComposer(ComposerState(
+                $state.db, $state.db.checkups, joinBuilder, parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter periodCyclesRefs(
+      ComposableFilter Function($$PeriodCyclesTableFilterComposer f) f) {
+    final $$PeriodCyclesTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $state.db.periodCycles,
+        getReferencedColumn: (t) => t.profileId,
+        builder: (joinBuilder, parentComposers) =>
+            $$PeriodCyclesTableFilterComposer(ComposerState($state.db,
+                $state.db.periodCycles, joinBuilder, parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter vitalLogsRefs(
+      ComposableFilter Function($$VitalLogsTableFilterComposer f) f) {
+    final $$VitalLogsTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $state.db.vitalLogs,
+        getReferencedColumn: (t) => t.profileId,
+        builder: (joinBuilder, parentComposers) =>
+            $$VitalLogsTableFilterComposer(ComposerState(
+                $state.db, $state.db.vitalLogs, joinBuilder, parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter emergencyContactsRefs(
+      ComposableFilter Function($$EmergencyContactsTableFilterComposer f) f) {
+    final $$EmergencyContactsTableFilterComposer composer =
+        $state.composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $state.db.emergencyContacts,
+            getReferencedColumn: (t) => t.profileId,
+            builder: (joinBuilder, parentComposers) =>
+                $$EmergencyContactsTableFilterComposer(ComposerState(
+                    $state.db,
+                    $state.db.emergencyContacts,
+                    joinBuilder,
+                    parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter lockScreenSettingsRefs(
+      ComposableFilter Function($$LockScreenSettingsTableFilterComposer f) f) {
+    final $$LockScreenSettingsTableFilterComposer composer = $state
+        .composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $state.db.lockScreenSettings,
+            getReferencedColumn: (t) => t.profileId,
+            builder: (joinBuilder, parentComposers) =>
+                $$LockScreenSettingsTableFilterComposer(ComposerState(
+                    $state.db,
+                    $state.db.lockScreenSettings,
+                    joinBuilder,
+                    parentComposers)));
+    return f(composer);
+  }
 }
 
 class $$ProfilesTableOrderingComposer
@@ -5907,7 +6185,7 @@ class $$ProfilesTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get dateOfBirth => $state.composableBuilder(
+  ColumnOrderings<DateTime> get dateOfBirth => $state.composableBuilder(
       column: $state.table.dateOfBirth,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
@@ -5922,22 +6200,22 @@ class $$ProfilesTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get isOrganDonor => $state.composableBuilder(
+  ColumnOrderings<bool> get isOrganDonor => $state.composableBuilder(
       column: $state.table.isOrganDonor,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get trackOvulation => $state.composableBuilder(
+  ColumnOrderings<bool> get trackOvulation => $state.composableBuilder(
       column: $state.table.trackOvulation,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get isArchived => $state.composableBuilder(
+  ColumnOrderings<bool> get isArchived => $state.composableBuilder(
       column: $state.table.isArchived,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get archivedAt => $state.composableBuilder(
+  ColumnOrderings<DateTime> get archivedAt => $state.composableBuilder(
       column: $state.table.archivedAt,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
@@ -5953,9 +6231,9 @@ typedef $$HistoryTableCreateCompanionBuilder = HistoryCompanion Function({
   required String profileId,
   required String title,
   required String description,
-  required String date,
+  required DateTime date,
   Value<String?> eventType,
-  Value<String?> hasTime,
+  Value<bool?> hasTime,
   Value<String?> provider,
   Value<String?> facility,
   Value<int> rowid,
@@ -5965,9 +6243,9 @@ typedef $$HistoryTableUpdateCompanionBuilder = HistoryCompanion Function({
   Value<String> profileId,
   Value<String> title,
   Value<String> description,
-  Value<String> date,
+  Value<DateTime> date,
   Value<String?> eventType,
-  Value<String?> hasTime,
+  Value<bool?> hasTime,
   Value<String?> provider,
   Value<String?> facility,
   Value<int> rowid,
@@ -5994,9 +6272,9 @@ class $$HistoryTableTableManager extends RootTableManager<
             Value<String> profileId = const Value.absent(),
             Value<String> title = const Value.absent(),
             Value<String> description = const Value.absent(),
-            Value<String> date = const Value.absent(),
+            Value<DateTime> date = const Value.absent(),
             Value<String?> eventType = const Value.absent(),
-            Value<String?> hasTime = const Value.absent(),
+            Value<bool?> hasTime = const Value.absent(),
             Value<String?> provider = const Value.absent(),
             Value<String?> facility = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -6018,9 +6296,9 @@ class $$HistoryTableTableManager extends RootTableManager<
             required String profileId,
             required String title,
             required String description,
-            required String date,
+            required DateTime date,
             Value<String?> eventType = const Value.absent(),
-            Value<String?> hasTime = const Value.absent(),
+            Value<bool?> hasTime = const Value.absent(),
             Value<String?> provider = const Value.absent(),
             Value<String?> facility = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -6048,11 +6326,6 @@ class $$HistoryTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get profileId => $state.composableBuilder(
-      column: $state.table.profileId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
   ColumnFilters<String> get title => $state.composableBuilder(
       column: $state.table.title,
       builder: (column, joinBuilders) =>
@@ -6063,7 +6336,7 @@ class $$HistoryTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get date => $state.composableBuilder(
+  ColumnFilters<DateTime> get date => $state.composableBuilder(
       column: $state.table.date,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
@@ -6073,7 +6346,7 @@ class $$HistoryTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get hasTime => $state.composableBuilder(
+  ColumnFilters<bool> get hasTime => $state.composableBuilder(
       column: $state.table.hasTime,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
@@ -6087,6 +6360,31 @@ class $$HistoryTableFilterComposer
       column: $state.table.facility,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableFilterComposer get profileId {
+    final $$ProfilesTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableFilterComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
+
+  ComposableFilter attachmentsRefs(
+      ComposableFilter Function($$AttachmentsTableFilterComposer f) f) {
+    final $$AttachmentsTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $state.db.attachments,
+        getReferencedColumn: (t) => t.historyId,
+        builder: (joinBuilder, parentComposers) =>
+            $$AttachmentsTableFilterComposer(ComposerState($state.db,
+                $state.db.attachments, joinBuilder, parentComposers)));
+    return f(composer);
+  }
 }
 
 class $$HistoryTableOrderingComposer
@@ -6094,11 +6392,6 @@ class $$HistoryTableOrderingComposer
   $$HistoryTableOrderingComposer(super.$state);
   ColumnOrderings<String> get id => $state.composableBuilder(
       column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get profileId => $state.composableBuilder(
-      column: $state.table.profileId,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
@@ -6112,7 +6405,7 @@ class $$HistoryTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get date => $state.composableBuilder(
+  ColumnOrderings<DateTime> get date => $state.composableBuilder(
       column: $state.table.date,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
@@ -6122,7 +6415,7 @@ class $$HistoryTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get hasTime => $state.composableBuilder(
+  ColumnOrderings<bool> get hasTime => $state.composableBuilder(
       column: $state.table.hasTime,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
@@ -6136,6 +6429,18 @@ class $$HistoryTableOrderingComposer
       column: $state.table.facility,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableOrderingComposer get profileId {
+    final $$ProfilesTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableOrderingComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 typedef $$AttachmentsTableCreateCompanionBuilder = AttachmentsCompanion
@@ -6143,7 +6448,7 @@ typedef $$AttachmentsTableCreateCompanionBuilder = AttachmentsCompanion
   required String id,
   required String historyId,
   required String filename,
-  required String uploadDate,
+  required DateTime uploadDate,
   required int byteLength,
   Value<int> rowid,
 });
@@ -6152,7 +6457,7 @@ typedef $$AttachmentsTableUpdateCompanionBuilder = AttachmentsCompanion
   Value<String> id,
   Value<String> historyId,
   Value<String> filename,
-  Value<String> uploadDate,
+  Value<DateTime> uploadDate,
   Value<int> byteLength,
   Value<int> rowid,
 });
@@ -6177,7 +6482,7 @@ class $$AttachmentsTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<String> historyId = const Value.absent(),
             Value<String> filename = const Value.absent(),
-            Value<String> uploadDate = const Value.absent(),
+            Value<DateTime> uploadDate = const Value.absent(),
             Value<int> byteLength = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -6193,7 +6498,7 @@ class $$AttachmentsTableTableManager extends RootTableManager<
             required String id,
             required String historyId,
             required String filename,
-            required String uploadDate,
+            required DateTime uploadDate,
             required int byteLength,
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -6216,17 +6521,12 @@ class $$AttachmentsTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get historyId => $state.composableBuilder(
-      column: $state.table.historyId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
   ColumnFilters<String> get filename => $state.composableBuilder(
       column: $state.table.filename,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get uploadDate => $state.composableBuilder(
+  ColumnFilters<DateTime> get uploadDate => $state.composableBuilder(
       column: $state.table.uploadDate,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
@@ -6235,6 +6535,18 @@ class $$AttachmentsTableFilterComposer
       column: $state.table.byteLength,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$HistoryTableFilterComposer get historyId {
+    final $$HistoryTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.historyId,
+        referencedTable: $state.db.history,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) => $$HistoryTableFilterComposer(
+            ComposerState(
+                $state.db, $state.db.history, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 class $$AttachmentsTableOrderingComposer
@@ -6245,17 +6557,12 @@ class $$AttachmentsTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get historyId => $state.composableBuilder(
-      column: $state.table.historyId,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
   ColumnOrderings<String> get filename => $state.composableBuilder(
       column: $state.table.filename,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get uploadDate => $state.composableBuilder(
+  ColumnOrderings<DateTime> get uploadDate => $state.composableBuilder(
       column: $state.table.uploadDate,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
@@ -6264,6 +6571,18 @@ class $$AttachmentsTableOrderingComposer
       column: $state.table.byteLength,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$HistoryTableOrderingComposer get historyId {
+    final $$HistoryTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.historyId,
+        referencedTable: $state.db.history,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$HistoryTableOrderingComposer(ComposerState(
+                $state.db, $state.db.history, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 typedef $$AllergyTableCreateCompanionBuilder = AllergyCompanion Function({
@@ -6336,11 +6655,6 @@ class $$AllergyTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get profileId => $state.composableBuilder(
-      column: $state.table.profileId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
   ColumnFilters<String> get name => $state.composableBuilder(
       column: $state.table.name,
       builder: (column, joinBuilders) =>
@@ -6350,6 +6664,18 @@ class $$AllergyTableFilterComposer
       column: $state.table.note,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableFilterComposer get profileId {
+    final $$ProfilesTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableFilterComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 class $$AllergyTableOrderingComposer
@@ -6357,11 +6683,6 @@ class $$AllergyTableOrderingComposer
   $$AllergyTableOrderingComposer(super.$state);
   ColumnOrderings<String> get id => $state.composableBuilder(
       column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get profileId => $state.composableBuilder(
-      column: $state.table.profileId,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
@@ -6374,6 +6695,18 @@ class $$AllergyTableOrderingComposer
       column: $state.table.note,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableOrderingComposer get profileId {
+    final $$ProfilesTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableOrderingComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 typedef $$MedicationsTableCreateCompanionBuilder = MedicationsCompanion
@@ -6383,14 +6716,14 @@ typedef $$MedicationsTableCreateCompanionBuilder = MedicationsCompanion
   required String name,
   required String dosage,
   Value<String?> type,
-  Value<String?> notificationEnabled,
-  Value<String?> alarmEnabled,
+  Value<bool?> notificationEnabled,
+  Value<bool?> alarmEnabled,
   required String timeOfDay,
-  Value<String?> isActive,
+  Value<bool?> isActive,
   Value<String?> daysOfWeek,
   Value<String?> timesOfDay,
-  Value<String?> isAsNeeded,
-  Value<String?> trackInventory,
+  Value<bool?> isAsNeeded,
+  Value<bool?> trackInventory,
   Value<double?> stockQuantity,
   Value<double?> lowStockThreshold,
   Value<int> rowid,
@@ -6402,14 +6735,14 @@ typedef $$MedicationsTableUpdateCompanionBuilder = MedicationsCompanion
   Value<String> name,
   Value<String> dosage,
   Value<String?> type,
-  Value<String?> notificationEnabled,
-  Value<String?> alarmEnabled,
+  Value<bool?> notificationEnabled,
+  Value<bool?> alarmEnabled,
   Value<String> timeOfDay,
-  Value<String?> isActive,
+  Value<bool?> isActive,
   Value<String?> daysOfWeek,
   Value<String?> timesOfDay,
-  Value<String?> isAsNeeded,
-  Value<String?> trackInventory,
+  Value<bool?> isAsNeeded,
+  Value<bool?> trackInventory,
   Value<double?> stockQuantity,
   Value<double?> lowStockThreshold,
   Value<int> rowid,
@@ -6437,14 +6770,14 @@ class $$MedicationsTableTableManager extends RootTableManager<
             Value<String> name = const Value.absent(),
             Value<String> dosage = const Value.absent(),
             Value<String?> type = const Value.absent(),
-            Value<String?> notificationEnabled = const Value.absent(),
-            Value<String?> alarmEnabled = const Value.absent(),
+            Value<bool?> notificationEnabled = const Value.absent(),
+            Value<bool?> alarmEnabled = const Value.absent(),
             Value<String> timeOfDay = const Value.absent(),
-            Value<String?> isActive = const Value.absent(),
+            Value<bool?> isActive = const Value.absent(),
             Value<String?> daysOfWeek = const Value.absent(),
             Value<String?> timesOfDay = const Value.absent(),
-            Value<String?> isAsNeeded = const Value.absent(),
-            Value<String?> trackInventory = const Value.absent(),
+            Value<bool?> isAsNeeded = const Value.absent(),
+            Value<bool?> trackInventory = const Value.absent(),
             Value<double?> stockQuantity = const Value.absent(),
             Value<double?> lowStockThreshold = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -6473,14 +6806,14 @@ class $$MedicationsTableTableManager extends RootTableManager<
             required String name,
             required String dosage,
             Value<String?> type = const Value.absent(),
-            Value<String?> notificationEnabled = const Value.absent(),
-            Value<String?> alarmEnabled = const Value.absent(),
+            Value<bool?> notificationEnabled = const Value.absent(),
+            Value<bool?> alarmEnabled = const Value.absent(),
             required String timeOfDay,
-            Value<String?> isActive = const Value.absent(),
+            Value<bool?> isActive = const Value.absent(),
             Value<String?> daysOfWeek = const Value.absent(),
             Value<String?> timesOfDay = const Value.absent(),
-            Value<String?> isAsNeeded = const Value.absent(),
-            Value<String?> trackInventory = const Value.absent(),
+            Value<bool?> isAsNeeded = const Value.absent(),
+            Value<bool?> trackInventory = const Value.absent(),
             Value<double?> stockQuantity = const Value.absent(),
             Value<double?> lowStockThreshold = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -6514,11 +6847,6 @@ class $$MedicationsTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get profileId => $state.composableBuilder(
-      column: $state.table.profileId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
   ColumnFilters<String> get name => $state.composableBuilder(
       column: $state.table.name,
       builder: (column, joinBuilders) =>
@@ -6534,12 +6862,12 @@ class $$MedicationsTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get notificationEnabled => $state.composableBuilder(
+  ColumnFilters<bool> get notificationEnabled => $state.composableBuilder(
       column: $state.table.notificationEnabled,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get alarmEnabled => $state.composableBuilder(
+  ColumnFilters<bool> get alarmEnabled => $state.composableBuilder(
       column: $state.table.alarmEnabled,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
@@ -6549,7 +6877,7 @@ class $$MedicationsTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get isActive => $state.composableBuilder(
+  ColumnFilters<bool> get isActive => $state.composableBuilder(
       column: $state.table.isActive,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
@@ -6564,12 +6892,12 @@ class $$MedicationsTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get isAsNeeded => $state.composableBuilder(
+  ColumnFilters<bool> get isAsNeeded => $state.composableBuilder(
       column: $state.table.isAsNeeded,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get trackInventory => $state.composableBuilder(
+  ColumnFilters<bool> get trackInventory => $state.composableBuilder(
       column: $state.table.trackInventory,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
@@ -6583,6 +6911,31 @@ class $$MedicationsTableFilterComposer
       column: $state.table.lowStockThreshold,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableFilterComposer get profileId {
+    final $$ProfilesTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableFilterComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
+
+  ComposableFilter medicationLogsRefs(
+      ComposableFilter Function($$MedicationLogsTableFilterComposer f) f) {
+    final $$MedicationLogsTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $state.db.medicationLogs,
+        getReferencedColumn: (t) => t.medicationId,
+        builder: (joinBuilder, parentComposers) =>
+            $$MedicationLogsTableFilterComposer(ComposerState($state.db,
+                $state.db.medicationLogs, joinBuilder, parentComposers)));
+    return f(composer);
+  }
 }
 
 class $$MedicationsTableOrderingComposer
@@ -6590,11 +6943,6 @@ class $$MedicationsTableOrderingComposer
   $$MedicationsTableOrderingComposer(super.$state);
   ColumnOrderings<String> get id => $state.composableBuilder(
       column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get profileId => $state.composableBuilder(
-      column: $state.table.profileId,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
@@ -6613,12 +6961,12 @@ class $$MedicationsTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get notificationEnabled => $state.composableBuilder(
+  ColumnOrderings<bool> get notificationEnabled => $state.composableBuilder(
       column: $state.table.notificationEnabled,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get alarmEnabled => $state.composableBuilder(
+  ColumnOrderings<bool> get alarmEnabled => $state.composableBuilder(
       column: $state.table.alarmEnabled,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
@@ -6628,7 +6976,7 @@ class $$MedicationsTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get isActive => $state.composableBuilder(
+  ColumnOrderings<bool> get isActive => $state.composableBuilder(
       column: $state.table.isActive,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
@@ -6643,12 +6991,12 @@ class $$MedicationsTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get isAsNeeded => $state.composableBuilder(
+  ColumnOrderings<bool> get isAsNeeded => $state.composableBuilder(
       column: $state.table.isAsNeeded,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get trackInventory => $state.composableBuilder(
+  ColumnOrderings<bool> get trackInventory => $state.composableBuilder(
       column: $state.table.trackInventory,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
@@ -6662,14 +7010,26 @@ class $$MedicationsTableOrderingComposer
       column: $state.table.lowStockThreshold,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableOrderingComposer get profileId {
+    final $$ProfilesTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableOrderingComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 typedef $$MedicationLogsTableCreateCompanionBuilder = MedicationLogsCompanion
     Function({
   required String id,
   required String medicationId,
-  required String timestamp,
-  Value<String?> isTaken,
+  required DateTime timestamp,
+  Value<bool?> isTaken,
   Value<String?> dosage,
   Value<int> rowid,
 });
@@ -6677,8 +7037,8 @@ typedef $$MedicationLogsTableUpdateCompanionBuilder = MedicationLogsCompanion
     Function({
   Value<String> id,
   Value<String> medicationId,
-  Value<String> timestamp,
-  Value<String?> isTaken,
+  Value<DateTime> timestamp,
+  Value<bool?> isTaken,
   Value<String?> dosage,
   Value<int> rowid,
 });
@@ -6703,8 +7063,8 @@ class $$MedicationLogsTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> medicationId = const Value.absent(),
-            Value<String> timestamp = const Value.absent(),
-            Value<String?> isTaken = const Value.absent(),
+            Value<DateTime> timestamp = const Value.absent(),
+            Value<bool?> isTaken = const Value.absent(),
             Value<String?> dosage = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -6719,8 +7079,8 @@ class $$MedicationLogsTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             required String id,
             required String medicationId,
-            required String timestamp,
-            Value<String?> isTaken = const Value.absent(),
+            required DateTime timestamp,
+            Value<bool?> isTaken = const Value.absent(),
             Value<String?> dosage = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -6743,17 +7103,12 @@ class $$MedicationLogsTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get medicationId => $state.composableBuilder(
-      column: $state.table.medicationId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get timestamp => $state.composableBuilder(
+  ColumnFilters<DateTime> get timestamp => $state.composableBuilder(
       column: $state.table.timestamp,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get isTaken => $state.composableBuilder(
+  ColumnFilters<bool> get isTaken => $state.composableBuilder(
       column: $state.table.isTaken,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
@@ -6762,6 +7117,18 @@ class $$MedicationLogsTableFilterComposer
       column: $state.table.dosage,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$MedicationsTableFilterComposer get medicationId {
+    final $$MedicationsTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.medicationId,
+        referencedTable: $state.db.medications,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$MedicationsTableFilterComposer(ComposerState($state.db,
+                $state.db.medications, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 class $$MedicationLogsTableOrderingComposer
@@ -6772,17 +7139,12 @@ class $$MedicationLogsTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get medicationId => $state.composableBuilder(
-      column: $state.table.medicationId,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get timestamp => $state.composableBuilder(
+  ColumnOrderings<DateTime> get timestamp => $state.composableBuilder(
       column: $state.table.timestamp,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get isTaken => $state.composableBuilder(
+  ColumnOrderings<bool> get isTaken => $state.composableBuilder(
       column: $state.table.isTaken,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
@@ -6791,6 +7153,18 @@ class $$MedicationLogsTableOrderingComposer
       column: $state.table.dosage,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$MedicationsTableOrderingComposer get medicationId {
+    final $$MedicationsTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.medicationId,
+        referencedTable: $state.db.medications,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$MedicationsTableOrderingComposer(ComposerState($state.db,
+                $state.db.medications, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 typedef $$CheckupsTableCreateCompanionBuilder = CheckupsCompanion Function({
@@ -6799,8 +7173,8 @@ typedef $$CheckupsTableCreateCompanionBuilder = CheckupsCompanion Function({
   required String name,
   required int frequencyInMonths,
   Value<String?> iconName,
-  Value<String?> isCustomInterval,
-  Value<String?> isActive,
+  Value<bool?> isCustomInterval,
+  Value<bool?> isActive,
   Value<int> rowid,
 });
 typedef $$CheckupsTableUpdateCompanionBuilder = CheckupsCompanion Function({
@@ -6809,8 +7183,8 @@ typedef $$CheckupsTableUpdateCompanionBuilder = CheckupsCompanion Function({
   Value<String> name,
   Value<int> frequencyInMonths,
   Value<String?> iconName,
-  Value<String?> isCustomInterval,
-  Value<String?> isActive,
+  Value<bool?> isCustomInterval,
+  Value<bool?> isActive,
   Value<int> rowid,
 });
 
@@ -6836,8 +7210,8 @@ class $$CheckupsTableTableManager extends RootTableManager<
             Value<String> name = const Value.absent(),
             Value<int> frequencyInMonths = const Value.absent(),
             Value<String?> iconName = const Value.absent(),
-            Value<String?> isCustomInterval = const Value.absent(),
-            Value<String?> isActive = const Value.absent(),
+            Value<bool?> isCustomInterval = const Value.absent(),
+            Value<bool?> isActive = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               CheckupsCompanion(
@@ -6856,8 +7230,8 @@ class $$CheckupsTableTableManager extends RootTableManager<
             required String name,
             required int frequencyInMonths,
             Value<String?> iconName = const Value.absent(),
-            Value<String?> isCustomInterval = const Value.absent(),
-            Value<String?> isActive = const Value.absent(),
+            Value<bool?> isCustomInterval = const Value.absent(),
+            Value<bool?> isActive = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               CheckupsCompanion.insert(
@@ -6881,11 +7255,6 @@ class $$CheckupsTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get profileId => $state.composableBuilder(
-      column: $state.table.profileId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
   ColumnFilters<String> get name => $state.composableBuilder(
       column: $state.table.name,
       builder: (column, joinBuilders) =>
@@ -6901,15 +7270,40 @@ class $$CheckupsTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get isCustomInterval => $state.composableBuilder(
+  ColumnFilters<bool> get isCustomInterval => $state.composableBuilder(
       column: $state.table.isCustomInterval,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get isActive => $state.composableBuilder(
+  ColumnFilters<bool> get isActive => $state.composableBuilder(
       column: $state.table.isActive,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableFilterComposer get profileId {
+    final $$ProfilesTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableFilterComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
+
+  ComposableFilter checkupLogsRefs(
+      ComposableFilter Function($$CheckupLogsTableFilterComposer f) f) {
+    final $$CheckupLogsTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $state.db.checkupLogs,
+        getReferencedColumn: (t) => t.checkupId,
+        builder: (joinBuilder, parentComposers) =>
+            $$CheckupLogsTableFilterComposer(ComposerState($state.db,
+                $state.db.checkupLogs, joinBuilder, parentComposers)));
+    return f(composer);
+  }
 }
 
 class $$CheckupsTableOrderingComposer
@@ -6917,11 +7311,6 @@ class $$CheckupsTableOrderingComposer
   $$CheckupsTableOrderingComposer(super.$state);
   ColumnOrderings<String> get id => $state.composableBuilder(
       column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get profileId => $state.composableBuilder(
-      column: $state.table.profileId,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
@@ -6940,22 +7329,34 @@ class $$CheckupsTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get isCustomInterval => $state.composableBuilder(
+  ColumnOrderings<bool> get isCustomInterval => $state.composableBuilder(
       column: $state.table.isCustomInterval,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get isActive => $state.composableBuilder(
+  ColumnOrderings<bool> get isActive => $state.composableBuilder(
       column: $state.table.isActive,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableOrderingComposer get profileId {
+    final $$ProfilesTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableOrderingComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 typedef $$CheckupLogsTableCreateCompanionBuilder = CheckupLogsCompanion
     Function({
   required String id,
   required String checkupId,
-  required String dateCompleted,
+  required DateTime dateCompleted,
   Value<String?> location,
   Value<String?> doctorName,
   Value<String?> notes,
@@ -6965,7 +7366,7 @@ typedef $$CheckupLogsTableUpdateCompanionBuilder = CheckupLogsCompanion
     Function({
   Value<String> id,
   Value<String> checkupId,
-  Value<String> dateCompleted,
+  Value<DateTime> dateCompleted,
   Value<String?> location,
   Value<String?> doctorName,
   Value<String?> notes,
@@ -6991,7 +7392,7 @@ class $$CheckupLogsTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> checkupId = const Value.absent(),
-            Value<String> dateCompleted = const Value.absent(),
+            Value<DateTime> dateCompleted = const Value.absent(),
             Value<String?> location = const Value.absent(),
             Value<String?> doctorName = const Value.absent(),
             Value<String?> notes = const Value.absent(),
@@ -7009,7 +7410,7 @@ class $$CheckupLogsTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             required String id,
             required String checkupId,
-            required String dateCompleted,
+            required DateTime dateCompleted,
             Value<String?> location = const Value.absent(),
             Value<String?> doctorName = const Value.absent(),
             Value<String?> notes = const Value.absent(),
@@ -7035,12 +7436,7 @@ class $$CheckupLogsTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get checkupId => $state.composableBuilder(
-      column: $state.table.checkupId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get dateCompleted => $state.composableBuilder(
+  ColumnFilters<DateTime> get dateCompleted => $state.composableBuilder(
       column: $state.table.dateCompleted,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
@@ -7059,6 +7455,18 @@ class $$CheckupLogsTableFilterComposer
       column: $state.table.notes,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$CheckupsTableFilterComposer get checkupId {
+    final $$CheckupsTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.checkupId,
+        referencedTable: $state.db.checkups,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$CheckupsTableFilterComposer(ComposerState(
+                $state.db, $state.db.checkups, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 class $$CheckupLogsTableOrderingComposer
@@ -7069,12 +7477,7 @@ class $$CheckupLogsTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get checkupId => $state.composableBuilder(
-      column: $state.table.checkupId,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get dateCompleted => $state.composableBuilder(
+  ColumnOrderings<DateTime> get dateCompleted => $state.composableBuilder(
       column: $state.table.dateCompleted,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
@@ -7093,22 +7496,34 @@ class $$CheckupLogsTableOrderingComposer
       column: $state.table.notes,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$CheckupsTableOrderingComposer get checkupId {
+    final $$CheckupsTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.checkupId,
+        referencedTable: $state.db.checkups,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$CheckupsTableOrderingComposer(ComposerState(
+                $state.db, $state.db.checkups, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 typedef $$PeriodCyclesTableCreateCompanionBuilder = PeriodCyclesCompanion
     Function({
   required String id,
   required String profileId,
-  required String startDate,
-  Value<String?> endDate,
+  required DateTime startDate,
+  Value<DateTime?> endDate,
   Value<int> rowid,
 });
 typedef $$PeriodCyclesTableUpdateCompanionBuilder = PeriodCyclesCompanion
     Function({
   Value<String> id,
   Value<String> profileId,
-  Value<String> startDate,
-  Value<String?> endDate,
+  Value<DateTime> startDate,
+  Value<DateTime?> endDate,
   Value<int> rowid,
 });
 
@@ -7131,8 +7546,8 @@ class $$PeriodCyclesTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> profileId = const Value.absent(),
-            Value<String> startDate = const Value.absent(),
-            Value<String?> endDate = const Value.absent(),
+            Value<DateTime> startDate = const Value.absent(),
+            Value<DateTime?> endDate = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               PeriodCyclesCompanion(
@@ -7145,8 +7560,8 @@ class $$PeriodCyclesTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             required String id,
             required String profileId,
-            required String startDate,
-            Value<String?> endDate = const Value.absent(),
+            required DateTime startDate,
+            Value<DateTime?> endDate = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               PeriodCyclesCompanion.insert(
@@ -7167,20 +7582,40 @@ class $$PeriodCyclesTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get profileId => $state.composableBuilder(
-      column: $state.table.profileId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get startDate => $state.composableBuilder(
+  ColumnFilters<DateTime> get startDate => $state.composableBuilder(
       column: $state.table.startDate,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get endDate => $state.composableBuilder(
+  ColumnFilters<DateTime> get endDate => $state.composableBuilder(
       column: $state.table.endDate,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableFilterComposer get profileId {
+    final $$ProfilesTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableFilterComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
+
+  ComposableFilter periodLogsRefs(
+      ComposableFilter Function($$PeriodLogsTableFilterComposer f) f) {
+    final $$PeriodLogsTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $state.db.periodLogs,
+        getReferencedColumn: (t) => t.cycleId,
+        builder: (joinBuilder, parentComposers) =>
+            $$PeriodLogsTableFilterComposer(ComposerState($state.db,
+                $state.db.periodLogs, joinBuilder, parentComposers)));
+    return f(composer);
+  }
 }
 
 class $$PeriodCyclesTableOrderingComposer
@@ -7191,26 +7626,33 @@ class $$PeriodCyclesTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get profileId => $state.composableBuilder(
-      column: $state.table.profileId,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get startDate => $state.composableBuilder(
+  ColumnOrderings<DateTime> get startDate => $state.composableBuilder(
       column: $state.table.startDate,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get endDate => $state.composableBuilder(
+  ColumnOrderings<DateTime> get endDate => $state.composableBuilder(
       column: $state.table.endDate,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableOrderingComposer get profileId {
+    final $$ProfilesTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableOrderingComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 typedef $$PeriodLogsTableCreateCompanionBuilder = PeriodLogsCompanion Function({
   required String id,
   required String cycleId,
-  required String date,
+  required DateTime date,
   Value<String?> flowLevel,
   Value<String?> moods,
   Value<String?> physicalSymptoms,
@@ -7219,7 +7661,7 @@ typedef $$PeriodLogsTableCreateCompanionBuilder = PeriodLogsCompanion Function({
 typedef $$PeriodLogsTableUpdateCompanionBuilder = PeriodLogsCompanion Function({
   Value<String> id,
   Value<String> cycleId,
-  Value<String> date,
+  Value<DateTime> date,
   Value<String?> flowLevel,
   Value<String?> moods,
   Value<String?> physicalSymptoms,
@@ -7245,7 +7687,7 @@ class $$PeriodLogsTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> cycleId = const Value.absent(),
-            Value<String> date = const Value.absent(),
+            Value<DateTime> date = const Value.absent(),
             Value<String?> flowLevel = const Value.absent(),
             Value<String?> moods = const Value.absent(),
             Value<String?> physicalSymptoms = const Value.absent(),
@@ -7263,7 +7705,7 @@ class $$PeriodLogsTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             required String id,
             required String cycleId,
-            required String date,
+            required DateTime date,
             Value<String?> flowLevel = const Value.absent(),
             Value<String?> moods = const Value.absent(),
             Value<String?> physicalSymptoms = const Value.absent(),
@@ -7289,12 +7731,7 @@ class $$PeriodLogsTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get cycleId => $state.composableBuilder(
-      column: $state.table.cycleId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get date => $state.composableBuilder(
+  ColumnFilters<DateTime> get date => $state.composableBuilder(
       column: $state.table.date,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
@@ -7313,6 +7750,18 @@ class $$PeriodLogsTableFilterComposer
       column: $state.table.physicalSymptoms,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$PeriodCyclesTableFilterComposer get cycleId {
+    final $$PeriodCyclesTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.cycleId,
+        referencedTable: $state.db.periodCycles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$PeriodCyclesTableFilterComposer(ComposerState($state.db,
+                $state.db.periodCycles, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 class $$PeriodLogsTableOrderingComposer
@@ -7323,12 +7772,7 @@ class $$PeriodLogsTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get cycleId => $state.composableBuilder(
-      column: $state.table.cycleId,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get date => $state.composableBuilder(
+  ColumnOrderings<DateTime> get date => $state.composableBuilder(
       column: $state.table.date,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
@@ -7347,13 +7791,25 @@ class $$PeriodLogsTableOrderingComposer
       column: $state.table.physicalSymptoms,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$PeriodCyclesTableOrderingComposer get cycleId {
+    final $$PeriodCyclesTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.cycleId,
+        referencedTable: $state.db.periodCycles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$PeriodCyclesTableOrderingComposer(ComposerState($state.db,
+                $state.db.periodCycles, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 typedef $$VitalLogsTableCreateCompanionBuilder = VitalLogsCompanion Function({
   required String id,
   required String profileId,
   required String type,
-  required String date,
+  required DateTime date,
   required double value1,
   Value<double?> value2,
   required String unit,
@@ -7364,7 +7820,7 @@ typedef $$VitalLogsTableUpdateCompanionBuilder = VitalLogsCompanion Function({
   Value<String> id,
   Value<String> profileId,
   Value<String> type,
-  Value<String> date,
+  Value<DateTime> date,
   Value<double> value1,
   Value<double?> value2,
   Value<String> unit,
@@ -7392,7 +7848,7 @@ class $$VitalLogsTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<String> profileId = const Value.absent(),
             Value<String> type = const Value.absent(),
-            Value<String> date = const Value.absent(),
+            Value<DateTime> date = const Value.absent(),
             Value<double> value1 = const Value.absent(),
             Value<double?> value2 = const Value.absent(),
             Value<String> unit = const Value.absent(),
@@ -7414,7 +7870,7 @@ class $$VitalLogsTableTableManager extends RootTableManager<
             required String id,
             required String profileId,
             required String type,
-            required String date,
+            required DateTime date,
             required double value1,
             Value<double?> value2 = const Value.absent(),
             required String unit,
@@ -7443,17 +7899,12 @@ class $$VitalLogsTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get profileId => $state.composableBuilder(
-      column: $state.table.profileId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
   ColumnFilters<String> get type => $state.composableBuilder(
       column: $state.table.type,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get date => $state.composableBuilder(
+  ColumnFilters<DateTime> get date => $state.composableBuilder(
       column: $state.table.date,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
@@ -7477,6 +7928,18 @@ class $$VitalLogsTableFilterComposer
       column: $state.table.note,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableFilterComposer get profileId {
+    final $$ProfilesTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableFilterComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 class $$VitalLogsTableOrderingComposer
@@ -7487,17 +7950,12 @@ class $$VitalLogsTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get profileId => $state.composableBuilder(
-      column: $state.table.profileId,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
   ColumnOrderings<String> get type => $state.composableBuilder(
       column: $state.table.type,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get date => $state.composableBuilder(
+  ColumnOrderings<DateTime> get date => $state.composableBuilder(
       column: $state.table.date,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
@@ -7521,6 +7979,18 @@ class $$VitalLogsTableOrderingComposer
       column: $state.table.note,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableOrderingComposer get profileId {
+    final $$ProfilesTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableOrderingComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 typedef $$SettingsTableCreateCompanionBuilder = SettingsCompanion Function({
@@ -7680,11 +8150,6 @@ class $$EmergencyContactsTableFilterComposer
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get profileId => $state.composableBuilder(
-      column: $state.table.profileId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
   ColumnFilters<String> get name => $state.composableBuilder(
       column: $state.table.name,
       builder: (column, joinBuilders) =>
@@ -7699,6 +8164,18 @@ class $$EmergencyContactsTableFilterComposer
       column: $state.table.phoneNumber,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableFilterComposer get profileId {
+    final $$ProfilesTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableFilterComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 class $$EmergencyContactsTableOrderingComposer
@@ -7706,11 +8183,6 @@ class $$EmergencyContactsTableOrderingComposer
   $$EmergencyContactsTableOrderingComposer(super.$state);
   ColumnOrderings<String> get id => $state.composableBuilder(
       column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get profileId => $state.composableBuilder(
-      column: $state.table.profileId,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
@@ -7728,34 +8200,46 @@ class $$EmergencyContactsTableOrderingComposer
       column: $state.table.phoneNumber,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableOrderingComposer get profileId {
+    final $$ProfilesTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableOrderingComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 typedef $$LockScreenSettingsTableCreateCompanionBuilder
     = LockScreenSettingsCompanion Function({
   required String profileId,
-  Value<String?> showName,
-  Value<String?> showAge,
-  Value<String?> showBloodType,
-  Value<String?> showOrganDonor,
-  Value<String?> showChronicConditions,
-  Value<String?> showAllergies,
-  Value<String?> showMedications,
-  Value<String?> showContacts,
-  Value<String?> isEnabled,
+  Value<bool?> showName,
+  Value<bool?> showAge,
+  Value<bool?> showBloodType,
+  Value<bool?> showOrganDonor,
+  Value<bool?> showChronicConditions,
+  Value<bool?> showAllergies,
+  Value<bool?> showMedications,
+  Value<bool?> showContacts,
+  Value<bool?> isEnabled,
   Value<int> rowid,
 });
 typedef $$LockScreenSettingsTableUpdateCompanionBuilder
     = LockScreenSettingsCompanion Function({
   Value<String> profileId,
-  Value<String?> showName,
-  Value<String?> showAge,
-  Value<String?> showBloodType,
-  Value<String?> showOrganDonor,
-  Value<String?> showChronicConditions,
-  Value<String?> showAllergies,
-  Value<String?> showMedications,
-  Value<String?> showContacts,
-  Value<String?> isEnabled,
+  Value<bool?> showName,
+  Value<bool?> showAge,
+  Value<bool?> showBloodType,
+  Value<bool?> showOrganDonor,
+  Value<bool?> showChronicConditions,
+  Value<bool?> showAllergies,
+  Value<bool?> showMedications,
+  Value<bool?> showContacts,
+  Value<bool?> isEnabled,
   Value<int> rowid,
 });
 
@@ -7778,15 +8262,15 @@ class $$LockScreenSettingsTableTableManager extends RootTableManager<
               ComposerState(db, table)),
           updateCompanionCallback: ({
             Value<String> profileId = const Value.absent(),
-            Value<String?> showName = const Value.absent(),
-            Value<String?> showAge = const Value.absent(),
-            Value<String?> showBloodType = const Value.absent(),
-            Value<String?> showOrganDonor = const Value.absent(),
-            Value<String?> showChronicConditions = const Value.absent(),
-            Value<String?> showAllergies = const Value.absent(),
-            Value<String?> showMedications = const Value.absent(),
-            Value<String?> showContacts = const Value.absent(),
-            Value<String?> isEnabled = const Value.absent(),
+            Value<bool?> showName = const Value.absent(),
+            Value<bool?> showAge = const Value.absent(),
+            Value<bool?> showBloodType = const Value.absent(),
+            Value<bool?> showOrganDonor = const Value.absent(),
+            Value<bool?> showChronicConditions = const Value.absent(),
+            Value<bool?> showAllergies = const Value.absent(),
+            Value<bool?> showMedications = const Value.absent(),
+            Value<bool?> showContacts = const Value.absent(),
+            Value<bool?> isEnabled = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LockScreenSettingsCompanion(
@@ -7804,15 +8288,15 @@ class $$LockScreenSettingsTableTableManager extends RootTableManager<
           ),
           createCompanionCallback: ({
             required String profileId,
-            Value<String?> showName = const Value.absent(),
-            Value<String?> showAge = const Value.absent(),
-            Value<String?> showBloodType = const Value.absent(),
-            Value<String?> showOrganDonor = const Value.absent(),
-            Value<String?> showChronicConditions = const Value.absent(),
-            Value<String?> showAllergies = const Value.absent(),
-            Value<String?> showMedications = const Value.absent(),
-            Value<String?> showContacts = const Value.absent(),
-            Value<String?> isEnabled = const Value.absent(),
+            Value<bool?> showName = const Value.absent(),
+            Value<bool?> showAge = const Value.absent(),
+            Value<bool?> showBloodType = const Value.absent(),
+            Value<bool?> showOrganDonor = const Value.absent(),
+            Value<bool?> showChronicConditions = const Value.absent(),
+            Value<bool?> showAllergies = const Value.absent(),
+            Value<bool?> showMedications = const Value.absent(),
+            Value<bool?> showContacts = const Value.absent(),
+            Value<bool?> isEnabled = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LockScreenSettingsCompanion.insert(
@@ -7834,109 +8318,123 @@ class $$LockScreenSettingsTableTableManager extends RootTableManager<
 class $$LockScreenSettingsTableFilterComposer
     extends FilterComposer<_$AppDatabase, $LockScreenSettingsTable> {
   $$LockScreenSettingsTableFilterComposer(super.$state);
-  ColumnFilters<String> get profileId => $state.composableBuilder(
-      column: $state.table.profileId,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get showName => $state.composableBuilder(
+  ColumnFilters<bool> get showName => $state.composableBuilder(
       column: $state.table.showName,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get showAge => $state.composableBuilder(
+  ColumnFilters<bool> get showAge => $state.composableBuilder(
       column: $state.table.showAge,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get showBloodType => $state.composableBuilder(
+  ColumnFilters<bool> get showBloodType => $state.composableBuilder(
       column: $state.table.showBloodType,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get showOrganDonor => $state.composableBuilder(
+  ColumnFilters<bool> get showOrganDonor => $state.composableBuilder(
       column: $state.table.showOrganDonor,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get showChronicConditions => $state.composableBuilder(
+  ColumnFilters<bool> get showChronicConditions => $state.composableBuilder(
       column: $state.table.showChronicConditions,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get showAllergies => $state.composableBuilder(
+  ColumnFilters<bool> get showAllergies => $state.composableBuilder(
       column: $state.table.showAllergies,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get showMedications => $state.composableBuilder(
+  ColumnFilters<bool> get showMedications => $state.composableBuilder(
       column: $state.table.showMedications,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get showContacts => $state.composableBuilder(
+  ColumnFilters<bool> get showContacts => $state.composableBuilder(
       column: $state.table.showContacts,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
-  ColumnFilters<String> get isEnabled => $state.composableBuilder(
+  ColumnFilters<bool> get isEnabled => $state.composableBuilder(
       column: $state.table.isEnabled,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableFilterComposer get profileId {
+    final $$ProfilesTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableFilterComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 class $$LockScreenSettingsTableOrderingComposer
     extends OrderingComposer<_$AppDatabase, $LockScreenSettingsTable> {
   $$LockScreenSettingsTableOrderingComposer(super.$state);
-  ColumnOrderings<String> get profileId => $state.composableBuilder(
-      column: $state.table.profileId,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get showName => $state.composableBuilder(
+  ColumnOrderings<bool> get showName => $state.composableBuilder(
       column: $state.table.showName,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get showAge => $state.composableBuilder(
+  ColumnOrderings<bool> get showAge => $state.composableBuilder(
       column: $state.table.showAge,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get showBloodType => $state.composableBuilder(
+  ColumnOrderings<bool> get showBloodType => $state.composableBuilder(
       column: $state.table.showBloodType,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get showOrganDonor => $state.composableBuilder(
+  ColumnOrderings<bool> get showOrganDonor => $state.composableBuilder(
       column: $state.table.showOrganDonor,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get showChronicConditions => $state.composableBuilder(
+  ColumnOrderings<bool> get showChronicConditions => $state.composableBuilder(
       column: $state.table.showChronicConditions,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get showAllergies => $state.composableBuilder(
+  ColumnOrderings<bool> get showAllergies => $state.composableBuilder(
       column: $state.table.showAllergies,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get showMedications => $state.composableBuilder(
+  ColumnOrderings<bool> get showMedications => $state.composableBuilder(
       column: $state.table.showMedications,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get showContacts => $state.composableBuilder(
+  ColumnOrderings<bool> get showContacts => $state.composableBuilder(
       column: $state.table.showContacts,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
-  ColumnOrderings<String> get isEnabled => $state.composableBuilder(
+  ColumnOrderings<bool> get isEnabled => $state.composableBuilder(
       column: $state.table.isEnabled,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableOrderingComposer get profileId {
+    final $$ProfilesTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableOrderingComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
 }
 
 class $AppDatabaseManager {

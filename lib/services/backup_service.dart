@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:intl/intl.dart';
+import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/storage_info.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/services/backup_encryption_service.dart';
@@ -228,6 +229,13 @@ class BackupService {
 
     debugPrint(
         'Executing Encrypted Cloud Backup (mode: ${isCustomE2e ? "custom_password" : "account_bound"})...');
+
+    // 0. Flush SQLite WAL to disk to ensure all recent transactions are captured
+    try {
+      await _ref.read(appDatabaseProvider).customStatement('PRAGMA wal_checkpoint(FULL);');
+    } catch (e) {
+      debugPrint('WAL checkpoint error: $e');
+    }
 
     // 1. Collect local database & directories
     final dbPath = await sql.getDatabasesPath();
@@ -535,6 +543,13 @@ class BackupService {
   /// to an encrypted .ochbackup file. If [customPassword] is provided, encrypts
   /// with that password; otherwise uses the hardware-backed master key.
   Future<File> exportLocalBackup({String? customPassword}) async {
+    // 0. Flush SQLite WAL to disk to ensure all recent transactions are captured
+    try {
+      await _ref.read(appDatabaseProvider).customStatement('PRAGMA wal_checkpoint(FULL);');
+    } catch (e) {
+      debugPrint('WAL checkpoint error: $e');
+    }
+
     final dbPath = await sql.getDatabasesPath();
     final dbFile = File(path.join(dbPath, 'opencloudhealth.db'));
     final profileImagesDir = await _fileService.getProfileImagesDirectory();

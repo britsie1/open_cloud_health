@@ -11,7 +11,7 @@ class AttachmentRepository {
       id: row.id,
       historyId: row.historyId,
       filename: row.filename,
-      uploadDate: DateTime.parse(row.uploadDate),
+      uploadDate: row.uploadDate,
       byteLength: row.byteLength,
     );
   }
@@ -22,7 +22,7 @@ class AttachmentRepository {
         id: attachment.id,
         historyId: attachment.historyId,
         filename: attachment.filename,
-        uploadDate: attachment.formattedDate,
+        uploadDate: attachment.uploadDate,
         byteLength: attachment.byteLength,
       ),
     );

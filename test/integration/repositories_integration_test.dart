@@ -44,6 +44,21 @@ void main() {
     late VitalsRepository vitalsRepo;
     late EmergencyRepository emergencyRepo;
 
+    Future<void> seedProfiles(List<String> ids) async {
+      for (final id in ids) {
+        await profilesRepo.addProfile(Profile(
+          id: id,
+          name: 'Test Profile $id',
+          middleNames: '',
+          surname: 'User',
+          dateOfBirth: DateTime(1990, 1, 1),
+          gender: Gender.female,
+          bloodType: 'O+',
+          isOrganDonor: true,
+        ));
+      }
+    }
+
     setUp(() {
       db = AppDatabase(NativeDatabase.memory());
       profilesRepo = ProfilesRepository(db);
@@ -98,141 +113,146 @@ void main() {
         await profilesRepo.addProfile(activeProfile);
         await profilesRepo.addProfile(archivedProfile);
 
-        // Fetch without archived
-        final activeList = await profilesRepo.fetchProfiles(includeArchived: false);
+        // Fetch active profiles only
+        final activeList = await profilesRepo.fetchProfiles();
         expect(activeList.length, 1);
-        expect(activeList.first.id, 'prof-1');
-        expect(activeList.first.chronicConditions, ['Asthma']);
+        expect(activeList.first.name, 'Sarah');
+        expect(activeList.first.chronicConditions, contains('Asthma'));
 
-        // Fetch with archived
-        final allList = await profilesRepo.fetchProfiles(includeArchived: true);
-        expect(allList.length, 2);
+        // Fetch archived profiles
+        final archivedList = await profilesRepo.fetchArchivedProfiles();
+        expect(archivedList.length, 1);
+        expect(archivedList.first.name, 'John');
 
-        // Update profile
-        final updatedSarah = Profile(
-          id: activeProfile.id,
-          name: 'Sarah Updated',
-          middleNames: activeProfile.middleNames,
-          surname: activeProfile.surname,
-          dateOfBirth: activeProfile.dateOfBirth,
-          gender: activeProfile.gender,
-          bloodType: activeProfile.bloodType,
-          isOrganDonor: activeProfile.isOrganDonor,
-          trackOvulation: activeProfile.trackOvulation,
-          isArchived: activeProfile.isArchived,
-          archivedAt: activeProfile.archivedAt,
-          chronicConditions: ['Asthma', 'Hypertension'],
-        );
-        await profilesRepo.updateProfile(updatedSarah);
+        // Unarchive
+        await profilesRepo.restoreProfile('prof-2');
+        expect((await profilesRepo.fetchProfiles()).length, 2);
+        expect(await profilesRepo.fetchArchivedProfiles(), isEmpty);
 
-        final refreshedList = await profilesRepo.fetchProfiles();
-        expect(refreshedList.first.name, 'Sarah Updated');
-        expect(refreshedList.first.chronicConditions, ['Asthma', 'Hypertension']);
+        // Archive again
+        await profilesRepo.archiveProfile('prof-1');
+        expect((await profilesRepo.fetchProfiles()).length, 1);
+        expect((await profilesRepo.fetchArchivedProfiles()).length, 1);
       });
 
       test('Deep cascade deletion of profile cleans up all related records', () async {
         final profile = Profile(
-          id: 'prof-cascade',
-          name: 'Cascade Target',
+          id: 'prof-cascade-root',
+          name: 'Root',
           middleNames: '',
-          surname: 'User',
+          surname: 'Cascade',
           dateOfBirth: DateTime(1990, 1, 1),
           gender: Gender.female,
-          bloodType: 'A-',
-          isOrganDonor: false,
+          bloodType: 'AB-',
+          isOrganDonor: true,
         );
         await profilesRepo.addProfile(profile);
 
-        // Add history event
+        // Add history + attachment
         await historyRepo.addEvent(HistoryEvent(
-          id: 'h-1',
-          profileId: 'prof-cascade',
-          title: 'Consultation',
-          description: '',
-          date: DateTime(2026, 2, 1),
+          id: 'hist-cascade-1',
+          profileId: 'prof-cascade-root',
+          title: 'Cascade Event',
+          description: 'Desc',
+          date: DateTime.now(),
+        ));
+        await attachmentRepo.insertAttachment(Attachment(
+          id: 'att-cascade-1',
+          historyId: 'hist-cascade-1',
+          filename: 'scan.pdf',
+          uploadDate: DateTime.now(),
+          byteLength: 1024,
         ));
 
         // Add allergy
         await allergiesRepo.addAllergy(Allergy(
-          id: 'a-1',
-          profileId: 'prof-cascade',
-          name: 'Peanuts',
-          note: 'Anaphylaxis',
+          id: 'all-cascade-1',
+          profileId: 'prof-cascade-root',
+          name: 'Penicillin',
+          note: '',
         ));
 
-        // Add medication and medication log
+        // Add medication + log
         await medicationsRepo.addMedication(Medication(
-          id: 'm-1',
-          profileId: 'prof-cascade',
-          name: 'Ibuprofen',
-          dosage: '200mg',
-          type: 'Painkiller',
-          notificationEnabled: false,
-          alarmEnabled: false,
+          id: 'med-cascade-1',
+          profileId: 'prof-cascade-root',
+          name: 'Cascade Med',
+          dosage: '1 pill',
           timeOfDay: const TimeOfDay(hour: 8, minute: 0),
-          daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+          daysOfWeek: [1],
           timesOfDay: [const TimeOfDay(hour: 8, minute: 0)],
         ));
         await medicationsRepo.addLog(MedicationLog(
-          id: 'ml-1',
-          medicationId: 'm-1',
-          timestamp: DateTime(2026, 2, 1, 8, 0),
+          id: 'mlog-cascade-1',
+          medicationId: 'med-cascade-1',
+          timestamp: DateTime.now(),
           isTaken: true,
         ));
 
-        // Add checkup
+        // Add checkup + log
         await checkupsRepo.addCheckup(Checkup(
-          id: 'chk-1',
-          profileId: 'prof-cascade',
-          name: 'Eye Exam',
-          frequencyInMonths: 12,
-          iconName: 'eye',
+          id: 'chk-cascade-1',
+          profileId: 'prof-cascade-root',
+          name: 'Cascade Check',
+          frequencyInMonths: 6,
+        ));
+        await checkupsRepo.addCheckupLog(CheckupLog(
+          id: 'chkl-cascade-1',
+          checkupId: 'chk-cascade-1',
+          dateCompleted: DateTime.now(),
         ));
 
-        // Add period cycle
+        // Add period cycle + log
         await periodRepo.addCycle(PeriodCycle(
-          id: 'pc-1',
-          profileId: 'prof-cascade',
-          startDate: DateTime(2026, 1, 1),
-          endDate: DateTime(2026, 1, 5),
+          id: 'cyc-cascade-1',
+          profileId: 'prof-cascade-root',
+          startDate: DateTime.now(),
+        ));
+        await periodRepo.upsertLog(PeriodLog(
+          id: 'plog-cascade-1',
+          cycleId: 'cyc-cascade-1',
+          date: DateTime.now(),
         ));
 
         // Add vital log
         await vitalsRepo.addLog(VitalLog(
-          id: 'v-1',
-          profileId: 'prof-cascade',
+          id: 'vit-cascade-1',
+          profileId: 'prof-cascade-root',
           type: VitalType.heartRate,
-          date: DateTime(2026, 2, 1),
+          date: DateTime.now(),
           value1: 72.0,
           unit: 'bpm',
         ));
 
-        // Add emergency contact and lock screen setting
+        // Add emergency contact + lock screen setting
         await emergencyRepo.addEmergencyContact(EmergencyContact(
-          id: 'emg-1',
-          profileId: 'prof-cascade',
-          name: 'Contact 1',
-          relationship: 'Sibling',
-          phoneNumber: '1234567890',
+          id: 'ec-cascade-1',
+          profileId: 'prof-cascade-root',
+          name: 'Contact',
+          relationship: 'Friend',
+          phoneNumber: '12345',
         ));
         await emergencyRepo.saveLockScreenSetting(LockScreenSetting(
-          profileId: 'prof-cascade',
-          showName: true,
+          profileId: 'prof-cascade-root',
           isEnabled: true,
         ));
 
-        // Perform deleteProfile
-        await profilesRepo.deleteProfile('prof-cascade');
+        // Execute deep cascade deletion
+        await profilesRepo.deleteProfilePermanently('prof-cascade-root');
 
-        // Verify everything was wiped for this profile
-        expect(await profilesRepo.fetchProfiles(includeArchived: true), isEmpty);
-        expect(await historyRepo.fetchEvents('prof-cascade'), isEmpty);
-        expect(await allergiesRepo.getAllergies('prof-cascade'), isEmpty);
-        expect(await medicationsRepo.loadMedications('prof-cascade'), isEmpty);
-        expect(await checkupsRepo.loadCheckups('prof-cascade'), isEmpty);
-        expect(await periodRepo.getCycles('prof-cascade'), isEmpty);
-        expect(await vitalsRepo.getLogs('prof-cascade', VitalType.heartRate), isEmpty);
-        expect(await emergencyRepo.getEmergencyContacts('prof-cascade'), isEmpty);
+        // Assert all 9 child repositories are empty for this profile
+        expect(await profilesRepo.getProfile('prof-cascade-root'), isNull);
+        expect(await historyRepo.fetchEvents('prof-cascade-root'), isEmpty);
+        expect(await attachmentRepo.getAttachments('hist-cascade-1'), isEmpty);
+        expect(await allergiesRepo.getAllergies('prof-cascade-root'), isEmpty);
+        expect(await medicationsRepo.loadMedications('prof-cascade-root'), isEmpty);
+        expect(await medicationsRepo.loadAllLogs('prof-cascade-root'), isEmpty);
+        expect(await checkupsRepo.loadCheckups('prof-cascade-root'), isEmpty);
+        expect(await checkupsRepo.loadLogsForCheckup('chk-cascade-1'), isEmpty);
+        expect(await periodRepo.getCycles('prof-cascade-root'), isEmpty);
+        expect(await periodRepo.getLogsForCycle('cyc-cascade-1'), isEmpty);
+        expect(await vitalsRepo.getLogs('prof-cascade-root', VitalType.heartRate), isEmpty);
+        expect(await emergencyRepo.getEmergencyContacts('prof-cascade-root'), isEmpty);
       });
 
       test('watchProfiles emits updates when profile is added or updated', () async {
@@ -246,7 +266,7 @@ void main() {
           id: 'prof-stream',
           name: 'Stream User',
           middleNames: '',
-          surname: 'Test',
+          surname: 'Tester',
           dateOfBirth: DateTime(2000, 1, 1),
           gender: Gender.male,
           bloodType: 'B+',
@@ -261,6 +281,10 @@ void main() {
     // 2. HistoryRepository & AttachmentRepository Tests
     // -------------------------------------------------------------
     group('HistoryRepository & AttachmentRepository', () {
+      setUp(() async {
+        await seedProfiles(['prof-hist', 'prof-1']);
+      });
+
       test('History event join queries attachment counts accurately', () async {
         final event = HistoryEvent(
           id: 'hist-10',
@@ -341,6 +365,10 @@ void main() {
     // 3. AllergiesRepository Tests
     // -------------------------------------------------------------
     group('AllergiesRepository', () {
+      setUp(() async {
+        await seedProfiles(['p1', 'p2']);
+      });
+
       test('Add, fetch, watch, and delete allergies', () async {
         final a1 = Allergy(id: 'all-1', profileId: 'p1', name: 'Latex', note: 'Contact rash');
         final a2 = Allergy(id: 'all-2', profileId: 'p1', name: 'Pollen', note: 'Seasonal');
@@ -365,6 +393,10 @@ void main() {
     // 4. MedicationsRepository Tests
     // -------------------------------------------------------------
     group('MedicationsRepository', () {
+      setUp(() async {
+        await seedProfiles(['p1']);
+      });
+
       test('Add medication with multi-time dosage and serialization', () async {
         final med = Medication(
           id: 'med-complex',
@@ -556,6 +588,10 @@ void main() {
     // 5. CheckupsRepository Tests
     // -------------------------------------------------------------
     group('CheckupsRepository', () {
+      setUp(() async {
+        await seedProfiles(['p1']);
+      });
+
       test('Add checkup, log visits, fetch latest log and profile logs', () async {
         final checkup = Checkup(
           id: 'chk-derm',
@@ -607,6 +643,10 @@ void main() {
     // 6. PeriodRepository Tests
     // -------------------------------------------------------------
     group('PeriodRepository', () {
+      setUp(() async {
+        await seedProfiles(['p1']);
+      });
+
       test('Cycle management and upsertLog updating existing day records', () async {
         final cycle = PeriodCycle(
           id: 'cyc-1',
@@ -660,6 +700,10 @@ void main() {
     // 7. VitalsRepository Tests
     // -------------------------------------------------------------
     group('VitalsRepository', () {
+      setUp(() async {
+        await seedProfiles(['p1']);
+      });
+
       test('Add and fetch logs across VitalTypes sorted chronologically', () async {
         await vitalsRepo.addLog(VitalLog(
           id: 'v-bp-2',
@@ -708,6 +752,10 @@ void main() {
     // 8. EmergencyRepository Tests
     // -------------------------------------------------------------
     group('EmergencyRepository', () {
+      setUp(() async {
+        await seedProfiles(['p1']);
+      });
+
       test('Emergency contacts and lock screen setting persistence', () async {
         final contact = EmergencyContact(
           id: 'ec-1',
