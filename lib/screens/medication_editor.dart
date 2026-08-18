@@ -507,42 +507,47 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
                               final label = item['label'] as String;
                               final isSelected = _selectedDays.contains(dayNum);
 
-                              return InkWell(
-                                onTap: () => _toggleDay(dayNum),
-                                borderRadius: BorderRadius.circular(24),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isSelected 
-                                        ? theme.colorScheme.primary 
-                                        : theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                                    border: Border.all(
-                                      color: isSelected 
-                                          ? theme.colorScheme.primary 
-                                          : theme.colorScheme.outline.withOpacity(0.5),
-                                      width: 1.5,
-                                    ),
-                                    boxShadow: isSelected 
-                                        ? [
-                                            BoxShadow(
-                                              color: theme.colorScheme.primary.withOpacity(0.3),
-                                              blurRadius: 4,
-                                              offset: const Offset(0, 2),
-                                            )
-                                          ]
-                                        : null,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      label,
-                                      style: TextStyle(
+                              return Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                                  child: InkWell(
+                                    onTap: () => _toggleDay(dayNum),
+                                    borderRadius: BorderRadius.circular(24),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
                                         color: isSelected 
-                                            ? theme.colorScheme.onPrimary 
-                                            : theme.colorScheme.onSurfaceVariant,
-                                        fontWeight: FontWeight.bold,
+                                            ? theme.colorScheme.primary 
+                                            : theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                                        border: Border.all(
+                                          color: isSelected 
+                                              ? theme.colorScheme.primary 
+                                              : theme.colorScheme.outline.withOpacity(0.5),
+                                          width: 1.5,
+                                        ),
+                                        boxShadow: isSelected 
+                                            ? [
+                                                BoxShadow(
+                                                  color: theme.colorScheme.primary.withOpacity(0.3),
+                                                  blurRadius: 4,
+                                                  offset: const Offset(0, 2),
+                                                )
+                                              ]
+                                            : null,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          label,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: isSelected 
+                                                ? theme.colorScheme.onPrimary 
+                                                : theme.colorScheme.onSurfaceVariant,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -552,8 +557,9 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
                           ),
                           const SizedBox(height: 12),
                           // Quick Presets
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
                             children: [
                               _presetButton('Everyday', () => _selectPreset('everyday')),
                               _presetButton('Weekdays', () => _selectPreset('weekdays')),
@@ -565,10 +571,12 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                'Dosage Times',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
+                              Flexible(
+                                child: Text(
+                                  'Dosage Times',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                               TextButton.icon(

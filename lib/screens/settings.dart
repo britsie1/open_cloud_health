@@ -273,7 +273,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _showBackupFrequencyDialog() {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
+      useSafeArea: true,
+      showDragHandle: true,
       isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -288,7 +293,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               padding: EdgeInsets.only(
                 left: 20.0,
                 right: 20.0,
-                top: 20.0,
+                top: 8.0,
                 bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
               ),
               child: Column(
@@ -323,6 +328,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ),
                           ],
                         ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.of(ctx).pop(),
                       ),
                     ],
                   ),
@@ -456,7 +466,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.red),
             SizedBox(width: 8),
-            Text('Reset All Data'),
+            Expanded(
+              child: Text(
+                'Reset All Data',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: const Text(
@@ -565,10 +580,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            'Google Drive Backup',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
+                          Flexible(
+                            child: Text(
+                              'Google Drive Backup',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           if (_isE2eEnabled) ...[
@@ -702,8 +720,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 8),
 
               // Manage Google Storage link & Disconnect option
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
                 children: [
                   TextButton.icon(
                     onPressed: _openManageGoogleStorage,
@@ -891,26 +912,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    _isE2eEnabled
-                        ? Icons.lock_outline
-                        : Icons.folder_zip_outlined,
-                    size: 16,
-                    color: _isE2eEnabled
-                        ? Colors.green.shade700
-                        : Colors.blue.shade700,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _isE2eEnabled
-                        ? 'Encrypted Backup Size'
-                        : 'Medical Data Backup Size',
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                ],
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(
+                      _isE2eEnabled
+                          ? Icons.lock_outline
+                          : Icons.folder_zip_outlined,
+                      size: 16,
+                      color: _isE2eEnabled
+                          ? Colors.green.shade700
+                          : Colors.blue.shade700,
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        _isE2eEnabled
+                            ? 'Encrypted Backup Size'
+                            : 'Medical Data Backup Size',
+                        style: const TextStyle(fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Text(
                 backupSize,
                 style: const TextStyle(
@@ -924,16 +951,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.schedule, size: 16, color: Colors.grey.shade600),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Last Cloud Backup',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                ],
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(Icons.schedule, size: 16, color: Colors.grey.shade600),
+                    const SizedBox(width: 8),
+                    const Flexible(
+                      child: Text(
+                        'Last Cloud Backup',
+                        style: TextStyle(fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Text(
                 _lastBackupDateTime,
                 style: TextStyle(
@@ -1524,7 +1557,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           children: [
             Icon(Icons.privacy_tip_outlined, color: Colors.blue),
             SizedBox(width: 8),
-            Text('Privacy & Disclaimer'),
+            Expanded(
+              child: Text(
+                'Privacy & Disclaimer',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: const SingleChildScrollView(

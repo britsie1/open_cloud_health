@@ -38,8 +38,11 @@ class MedicationAdherenceCard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     Text(
                       'Medication Adherence',
@@ -79,98 +82,111 @@ class MedicationAdherenceCard extends ConsumerWidget {
                   children: [
                     // Circular Dial
                     SizedBox(
-                      width: 80,
-                      height: 80,
+                      width: 72,
+                      height: 72,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
                           SizedBox(
-                            width: 80,
-                            height: 80,
+                            width: 72,
+                            height: 72,
                             child: CircularProgressIndicator(
                               value: data.adherenceRate,
-                              strokeWidth: 8,
+                              strokeWidth: 7,
                               backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
                               color: theme.colorScheme.primary,
                               strokeCap: StrokeCap.round,
                             ),
                           ),
-                          Text(
-                            '$percentage%',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.primary,
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: Text(
+                                '$percentage%',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 24),
+                    const SizedBox(width: 16),
                     // 7-day checklist
                     Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: data.dailyAdherence.map((day) {
-                          final label = _getDayLabel(day.date.weekday);
-                          final isToday = _isSameDay(day.date, DateTime.now());
-                          
-                          Color iconColor;
-                          IconData iconData;
-                          BoxDecoration decoration;
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: data.dailyAdherence.map((day) {
+                            final label = _getDayLabel(day.date.weekday);
+                            final isToday = _isSameDay(day.date, DateTime.now());
+                            
+                            Color iconColor;
+                            IconData iconData;
+                            BoxDecoration decoration;
 
-                          if (day.expected == 0) {
-                            iconColor = theme.colorScheme.outline.withOpacity(0.3);
-                            iconData = Icons.remove;
-                            decoration = BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: theme.colorScheme.outline.withOpacity(0.3),
-                                width: 1,
-                              ),
-                            );
-                          } else if (day.isPerfect) {
-                            iconColor = Colors.green;
-                            iconData = Icons.check;
-                            decoration = BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.green.withOpacity(0.15),
-                            );
-                          } else {
-                            iconColor = theme.colorScheme.error;
-                            iconData = Icons.close;
-                            decoration = BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: theme.colorScheme.error.withOpacity(0.15),
-                            );
-                          }
+                            if (day.expected == 0) {
+                              iconColor = theme.colorScheme.outline.withOpacity(0.3);
+                              iconData = Icons.remove;
+                              decoration = BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: theme.colorScheme.outline.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              );
+                            } else if (day.isPerfect) {
+                              iconColor = Colors.green;
+                              iconData = Icons.check;
+                              decoration = BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.green.withOpacity(0.15),
+                              );
+                            } else {
+                              iconColor = theme.colorScheme.error;
+                              iconData = Icons.close;
+                              decoration = BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: theme.colorScheme.error.withOpacity(0.15),
+                              );
+                            }
 
-                          return Column(
-                            children: [
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: decoration,
-                                child: Center(
-                                  child: Icon(
-                                    iconData,
-                                    size: 16,
-                                    color: iconColor,
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 3.0),
+                              child: Column(
+                                children: [
+                                  Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: decoration,
+                                    child: Center(
+                                      child: Icon(
+                                        iconData,
+                                        size: 16,
+                                        color: iconColor,
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    label,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                                      color: isToday
+                                          ? theme.colorScheme.primary
+                                          : theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                label,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                                  color: isToday
-                                      ? theme.colorScheme.primary
-                                      : theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          );
-                        }).toList(),
+                            );
+                          }).toList(),
+                        ),
                       ),
                     ),
                   ],

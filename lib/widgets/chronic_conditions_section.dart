@@ -121,15 +121,22 @@ class ChronicConditionsSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Chronic Conditions',
-              style: Theme.of(context).textTheme.titleLarge,
+            Expanded(
+              child: Text(
+                'Chronic Conditions',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
             ),
             IconButton(
               onPressed: () {
                 showModalBottomSheet(
                   context: context,
+                  useRootNavigator: true,
+                  useSafeArea: true,
+                  showDragHandle: true,
                   isScrollControlled: true,
+                  isDismissible: true,
+                  enableDrag: true,
                   shape: const RoundedRectangleBorder(
                     borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                   ),

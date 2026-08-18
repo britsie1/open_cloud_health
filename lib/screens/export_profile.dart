@@ -84,7 +84,12 @@ class _ExportProfileScreenState extends ConsumerState<ExportProfileScreen> {
               color: format == 'PDF' ? Colors.red : Colors.teal,
             ),
             const SizedBox(width: 8),
-            Text('Export to $format'),
+            Expanded(
+              child: Text(
+                'Export to $format',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: Text(

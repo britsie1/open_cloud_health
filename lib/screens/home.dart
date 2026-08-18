@@ -196,30 +196,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        context.push(AppRoutes.securitySetup).then((_) {
-                          _checkSecurityStatus();
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange.shade800,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        minimumSize: const Size(0, 48),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text(
-                        'Enable Secure Lock',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      context.push(AppRoutes.securitySetup).then((_) {
+                        _checkSecurityStatus();
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange.shade800,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      minimumSize: const Size(0, 44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                  ],
+                    child: const Text(
+                      'Enable Secure Lock',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -351,28 +350,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    ElevatedButton(
-                      onPressed: () async {
-                        await ref.read(notificationServiceProvider).openNotificationSettings();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.shade800,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        minimumSize: const Size(0, 48),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text(
-                        'Re-enable in Settings',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      await ref.read(notificationServiceProvider).openNotificationSettings();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade800,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      minimumSize: const Size(0, 44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                  ],
+                    child: const Text(
+                      'Re-enable in Settings',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -502,9 +500,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   children: [
                     Icon(Icons.analytics_outlined, color: Colors.black, size: 20),
                     SizedBox(width: 8),
-                    Text(
-                      'Quick Vitals',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    Expanded(
+                      child: Text(
+                        'Quick Vitals',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
@@ -524,15 +525,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
-                  children: [
-                    Icon(Icons.event_available_outlined, color: Colors.black, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Medical Checkups',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                const Expanded(
+                  child: Row(
+                    children: [
+                      Icon(Icons.event_available_outlined, color: Colors.black, size: 20),
+                      SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'Medical Checkups',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 TextButton(
                   onPressed: () {
@@ -644,12 +650,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                                   children: [
                                     Icon(Icons.warning_amber_rounded, size: 16, color: Colors.orange.shade800),
                                     const SizedBox(width: 8),
-                                    Text(
-                                      'You have $overdueCount total checkups overdue',
-                                      style: TextStyle(
-                                        color: Colors.orange.shade900,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
+                                    Expanded(
+                                      child: Text(
+                                        'You have $overdueCount total checkups overdue',
+                                        style: TextStyle(
+                                          color: Colors.orange.shade900,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -722,17 +730,22 @@ class _MedicationSummarySection extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
-                  children: [
-                    Icon(Icons.medication_outlined,
-                        color: Colors.black, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Today\'s Medication',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                const Expanded(
+                  child: Row(
+                    children: [
+                      Icon(Icons.medication_outlined,
+                          color: Colors.black, size: 20),
+                      SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'Today\'s Medication',
+                          style:
+                              TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 TextButton(
                   onPressed: () {
@@ -759,13 +772,17 @@ class _MedicationSummarySection extends ConsumerWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                'Daily Adherence',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey.shade600,
+                              Expanded(
+                                child: Text(
+                                  'Daily Adherence',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               Text(
                                 '$percentage%',
                                 style: theme.textTheme.bodySmall?.copyWith(
@@ -904,16 +921,17 @@ class _MedicationSummaryItem extends ConsumerWidget {
         med.stockQuantity <= med.lowStockThreshold;
 
     return CheckboxListTile(
-      title: Row(
+      title: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 6,
+        runSpacing: 4,
         children: [
-          Expanded(
-            child: Text(
-              med.name,
-              style: TextStyle(
-                decoration: isTaken ? TextDecoration.lineThrough : null,
-                color: isTaken ? Colors.grey : Colors.black,
-                fontWeight: FontWeight.w600,
-              ),
+          Text(
+            med.name,
+            style: TextStyle(
+              decoration: isTaken ? TextDecoration.lineThrough : null,
+              color: isTaken ? Colors.grey : Colors.black,
+              fontWeight: FontWeight.w600,
             ),
           ),
           if (isLowStock)
@@ -1014,15 +1032,16 @@ class _PRNMedicationSummaryItem extends ConsumerWidget {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      title: Row(
+      title: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 6,
+        runSpacing: 4,
         children: [
-          Expanded(
-            child: Text(
-              medication.name,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
+          Text(
+            medication.name,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
             ),
           ),
           if (isLowStock)
@@ -1055,7 +1074,7 @@ class _PRNMedicationSummaryItem extends ConsumerWidget {
             ? '${medication.dosage} • Stock: ${medication.stockQuantityFormatted} left'
             : medication.dosage,
       ),
-      trailing: ElevatedButton.icon(
+      trailing: IconButton.filledTonal(
         onPressed: () {
           showDialog(
             context: context,
@@ -1065,15 +1084,8 @@ class _PRNMedicationSummaryItem extends ConsumerWidget {
             ),
           );
         },
-        icon: const Icon(Icons.add, size: 16),
-        label: const Text('Log', style: TextStyle(fontSize: 13)),
-        style: ElevatedButton.styleFrom(
-          minimumSize: const Size(72, 48),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
+        icon: const Icon(Icons.add),
+        tooltip: 'Log dose',
       ),
     );
   }

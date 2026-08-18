@@ -22,9 +22,11 @@ class AllergyListSection extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Allergies',
-              style: Theme.of(context).textTheme.titleLarge,
+            Expanded(
+              child: Text(
+                'Allergies',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
             ),
             IconButton(
               onPressed: () {

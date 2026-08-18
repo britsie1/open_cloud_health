@@ -387,6 +387,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                         ),
                         Expanded(
                           child: DropdownButtonFormField<Gender>(
+                            isExpanded: true,
                             decoration:
                                 const InputDecoration(labelText: 'Gender'),
                             value: _selectedGender,
@@ -407,15 +408,18 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                             },
                           ),
                         ),
-                        const SizedBox(
-                          width: 16,
-                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
                         const Icon(Icons.bloodtype_outlined),
                         const SizedBox(
                           width: 16,
                         ),
                         Expanded(
                           child: DropdownButtonFormField<String>(
+                            isExpanded: true,
                             decoration:
                                 const InputDecoration(labelText: 'Blood type'),
                             value: _selectedBloodType,

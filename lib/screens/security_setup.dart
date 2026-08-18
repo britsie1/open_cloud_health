@@ -341,7 +341,12 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
           children: [
             Icon(Icons.security, color: Colors.blue),
             SizedBox(width: 8),
-            Text('Set Up Secure Lock'),
+            Expanded(
+              child: Text(
+                'Set Up Secure Lock',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: const Text(
@@ -403,314 +408,351 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
+      useSafeArea: true,
+      showDragHandle: true,
       isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.enhanced_encryption,
-                          color: Colors.green.shade700, size: 24),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'End-to-End Encrypted Backup',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            'Zero-Knowledge Medical Data Shield',
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+      builder: (ctx) => PopScope(
+        canPop: true,
+        child: StatefulBuilder(
+          builder: (context, setModalState) => SafeArea(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.90,
+              ),
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 8,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
                 ),
-                const Divider(height: 24),
-
-                // Benefits Box
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
+                child: SingleChildScrollView(
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.shield_outlined,
-                              size: 18, color: Colors.blue.shade800),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Benefits',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade900,
-                              fontSize: 13,
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              shape: BoxShape.circle,
                             ),
+                            child: Icon(Icons.enhanced_encryption,
+                                color: Colors.green.shade700, size: 24),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'End-to-End Encrypted Backup',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'Zero-Knowledge Medical Data Shield',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            tooltip: 'Close',
+                            onPressed: () => Navigator.of(ctx).pop(),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '• Your medical logs, prescriptions, and attachments are encrypted locally before upload.\n'
-                        '• Neither Google, the developers, nor third parties can read your health records.',
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.blue.shade900),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
+                      const Divider(height: 24),
 
-                // Risks Warning Box
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.amber.shade300),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.warning_amber_rounded,
-                              size: 18, color: Colors.amber.shade900),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Important Risk',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.amber.shade900,
-                              fontSize: 13,
+                      // Benefits Box
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.shield_outlined,
+                                    size: 18, color: Colors.blue.shade800),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Benefits',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue.shade900,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 4),
+                            Text(
+                              '• Your medical logs, prescriptions, and attachments are encrypted locally before upload.\n'
+                              '• Neither Google, the developers, nor third parties can read your health records.',
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.blue.shade900),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '• There is NO password reset mechanism. If you lose your phone and forget both your password and recovery key, your backup CANNOT be recovered.',
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.amber.shade900),
+                      const SizedBox(height: 10),
+
+                      // Risks Warning Box
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.amber.shade300),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.warning_amber_rounded,
+                                    size: 18, color: Colors.amber.shade900),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Important Risk',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.amber.shade900,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '• There is NO password reset mechanism. If you lose your phone and forget both your password and recovery key, your backup CANNOT be recovered.',
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.amber.shade900),
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                // Step 1: Create Password or PIN
-                const Text(
-                  '1. Create Master Password or PIN',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: passwordController,
-                  obscureText: obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: 'Password or PIN (min 4 chars/digits)',
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                    suffixIcon: IconButton(
-                      icon: Icon(obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility),
-                      onPressed: () {
-                        setModalState(() {
-                          obscurePassword = !obscurePassword;
-                        });
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: confirmController,
-                  obscureText: obscurePassword,
-                  decoration: const InputDecoration(
-                    labelText: 'Confirm Password or PIN',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Step 2: 64-Digit Recovery Key
-                const Text(
-                  '2. Emergency 64-Digit Recovery Key',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Save this recovery key in a safe place. You can use it to restore your medical data if you ever forget your password.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: SelectableText(
-                          recoveryKey,
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
+                      // Step 1: Create Password or PIN
+                      const Text(
+                        '1. Create Master Password or PIN',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: passwordController,
+                        obscureText: obscurePassword,
+                        decoration: InputDecoration(
+                          labelText: 'Password or PIN (min 4 chars/digits)',
+                          border: const OutlineInputBorder(),
+                          isDense: true,
+                          suffixIcon: IconButton(
+                            icon: Icon(obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility),
+                            onPressed: () {
+                              setModalState(() {
+                                obscurePassword = !obscurePassword;
+                              });
+                            },
                           ),
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 20),
-                        tooltip: 'Copy Recovery Key',
-                        onPressed: () {
-                          Clipboard.setData(ClipboardData(text: recoveryKey));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Recovery key copied to clipboard!'),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: confirmController,
+                        obscureText: obscurePassword,
+                        decoration: const InputDecoration(
+                          labelText: 'Confirm Password or PIN',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Step 2: 64-Digit Recovery Key
+                      const Text(
+                        '2. Emergency 64-Digit Recovery Key',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Save this recovery key in a safe place. You can use it to restore your medical data if you ever forget your password.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: SelectableText(
+                                recoveryKey,
+                                style: const TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
                             ),
-                          );
+                            IconButton(
+                              icon: const Icon(Icons.copy, size: 20),
+                              tooltip: 'Copy Recovery Key',
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: recoveryKey));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Recovery key copied to clipboard!'),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Checkbox acknowledging risk
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: hasAcceptedRisk,
+                        title: const Text(
+                          'I understand that if I lose my password and recovery key, my medical backup cannot be restored.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        onChanged: (val) {
+                          setModalState(() {
+                            hasAcceptedRisk = val ?? false;
+                          });
                         },
+                      ),
+
+                      if (errorMessage != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          errorMessage!,
+                          style: const TextStyle(color: Colors.red, fontSize: 12),
+                        ),
+                      ],
+
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: const Text('Cancel'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: FilledButton.icon(
+                              icon: const Icon(Icons.lock_outline),
+                              label: const Text('Turn On E2E'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.green.shade700,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              onPressed: !hasAcceptedRisk
+                                  ? null
+                                  : () async {
+                                      final pass = passwordController.text;
+                                      final confirm = confirmController.text;
+
+                                      if (pass.length < 4) {
+                                        setModalState(() {
+                                          errorMessage =
+                                              'Password or PIN must be at least 4 characters/digits long.';
+                                        });
+                                        return;
+                                      }
+
+                                      if (pass != confirm) {
+                                        setModalState(() {
+                                          errorMessage = 'Passwords do not match.';
+                                        });
+                                        return;
+                                      }
+
+                                      final secureStorage =
+                                          ref.read(secureStorageProvider);
+                                      final salt =
+                                          BackupEncryptionService.generateSalt();
+                                      final saltHex = salt
+                                          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+                                          .join();
+                                      final hash = BackupEncryptionService.hashPassword(
+                                          pass, salt);
+
+                                      await secureStorage.setE2eBackupEnabled(true);
+                                      await secureStorage.setE2eSalt(saltHex);
+                                      await secureStorage.setE2ePasswordHash(hash);
+                                      await secureStorage
+                                          .setE2eRecoveryKey(recoveryKey);
+                                      await secureStorage.setE2eCachedPassword(pass);
+
+                                      if (mounted && ctx.mounted) {
+                                        setState(() => _isE2eEnabled = true);
+                                        Navigator.of(ctx).pop();
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                                'End-to-End Encrypted Backup is now ON 🔒'),
+                                            backgroundColor: Colors.green,
+                                          ),
+                                        );
+
+                                        // Auto trigger an encrypted backup if user is connected
+                                        try {
+                                          ref.read(backupServiceProvider).backupToGoogleDrive();
+                                        } catch (e) {
+                                          debugPrint('Auto backup triggered error: $e');
+                                        }
+                                      }
+                                    },
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-
-                // Checkbox acknowledging risk
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: hasAcceptedRisk,
-                  title: const Text(
-                    'I understand that if I lose my password and recovery key, my medical backup cannot be restored.',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  onChanged: (val) {
-                    setModalState(() {
-                      hasAcceptedRisk = val ?? false;
-                    });
-                  },
-                ),
-
-                if (errorMessage != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontSize: 12),
-                  ),
-                ],
-
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    icon: const Icon(Icons.lock_outline),
-                    label: const Text('Turn On End-to-End Encryption'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.green.shade700,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onPressed: !hasAcceptedRisk
-                        ? null
-                        : () async {
-                            final pass = passwordController.text;
-                            final confirm = confirmController.text;
-
-                            if (pass.length < 4) {
-                              setModalState(() {
-                                errorMessage =
-                                    'Password or PIN must be at least 4 characters/digits long.';
-                              });
-                              return;
-                            }
-
-                            if (pass != confirm) {
-                              setModalState(() {
-                                errorMessage = 'Passwords do not match.';
-                              });
-                              return;
-                            }
-
-                            final secureStorage =
-                                ref.read(secureStorageProvider);
-                            final salt =
-                                BackupEncryptionService.generateSalt();
-                            final saltHex = salt
-                                .map((b) => b.toRadixString(16).padLeft(2, '0'))
-                                .join();
-                            final hash = BackupEncryptionService.hashPassword(
-                                pass, salt);
-
-                            await secureStorage.setE2eBackupEnabled(true);
-                            await secureStorage.setE2eSalt(saltHex);
-                            await secureStorage.setE2ePasswordHash(hash);
-                            await secureStorage
-                                .setE2eRecoveryKey(recoveryKey);
-                            await secureStorage.setE2eCachedPassword(pass);
-
-                            if (mounted && ctx.mounted) {
-                              setState(() => _isE2eEnabled = true);
-                              Navigator.of(ctx).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                      'End-to-End Encrypted Backup is now ON 🔒'),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-
-                              // Auto trigger an encrypted backup if user is connected
-                              try {
-                                ref.read(backupServiceProvider).backupToGoogleDrive();
-                              } catch (e) {
-                                debugPrint('Auto backup triggered error: $e');
-                              }
-                            }
-                          },
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -721,82 +763,103 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
   void _showManageE2eDialog() {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      isDismissible: true,
+      enableDrag: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    shape: BoxShape.circle,
+      builder: (ctx) => PopScope(
+        canPop: true,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.verified_user,
+                        color: Colors.green.shade700, size: 24),
                   ),
-                  child: Icon(Icons.verified_user,
-                      color: Colors.green.shade700, size: 24),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'End-to-End Encryption is Active',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        'Protected with password & 64-digit key',
-                        style: TextStyle(fontSize: 12, color: Colors.green),
-                      ),
-                    ],
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'End-to-End Encryption Active',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'Protected with password & 64-digit key',
+                          style: TextStyle(fontSize: 12, color: Colors.green),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-            ListTile(
-              leading: const Icon(Icons.key_outlined, color: Colors.blue),
-              title: const Text('View 64-Digit Recovery Key'),
-              subtitle: const Text('Copy or backup your emergency hex key'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () async {
-                Navigator.of(ctx).pop();
-                _showRecoveryKeyViewDialog();
-              },
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.lock_reset, color: Colors.indigo),
-              title: const Text('Change Backup Password'),
-              subtitle: const Text('Update your encryption password'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                _showChangePasswordDialog();
-              },
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.lock_open, color: Colors.red),
-              title: const Text(
-                'Switch Back to Standard Backup',
-                style: TextStyle(color: Colors.red),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
               ),
-              subtitle: const Text('Disable E2E password encryption'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                _showDisableE2eDialog();
-              },
-            ),
-          ],
+              const Divider(height: 24),
+              ListTile(
+                leading: const Icon(Icons.key_outlined, color: Colors.blue),
+                title: const Text('View 64-Digit Recovery Key'),
+                subtitle: const Text('Copy or backup your emergency hex key'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  _showRecoveryKeyViewDialog();
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.lock_reset, color: Colors.indigo),
+                title: const Text('Change Backup Password'),
+                subtitle: const Text('Update your encryption password'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _showChangePasswordDialog();
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.lock_open, color: Colors.red),
+                title: const Text(
+                  'Switch Back to Standard Backup',
+                  style: TextStyle(color: Colors.red),
+                ),
+                subtitle: const Text('Disable E2E password encryption'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _showDisableE2eDialog();
+                },
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Close'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -815,7 +878,12 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
           children: [
             Icon(Icons.key, color: Colors.blue),
             SizedBox(width: 8),
-            Text('64-Digit Recovery Key'),
+            Expanded(
+              child: Text(
+                '64-Digit Recovery Key',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: Column(
@@ -1014,7 +1082,12 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
             children: [
               Icon(Icons.warning_amber_rounded, color: Colors.red),
               SizedBox(width: 8),
-              Text('Switch Back to Standard Backup'),
+              Expanded(
+                child: Text(
+                  'Switch Back to Standard Backup',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
           content: SingleChildScrollView(

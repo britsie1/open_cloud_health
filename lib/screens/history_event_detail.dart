@@ -273,6 +273,7 @@ class _HistoryEventDetailScreenState
                         // Event Type Dropdown
                         DropdownButtonFormField<history.EventType>(
                           value: _selectedEventType,
+                          isExpanded: true,
                           decoration: InputDecoration(
                             labelText: 'Event Type',
                             border: OutlineInputBorder(
@@ -350,75 +351,67 @@ class _HistoryEventDetailScreenState
                         ),
                         const SizedBox(height: 8),
                         // Date & Time pickers
-                        Row(
-                          children: [
-                            Expanded(
-                              child: InkWell(
-                                onTap: () async {
-                                  final pickedDate = await showDatePicker(
-                                    context: context,
-                                    initialDate: _selectedDate,
-                                    firstDate: DateTime(1900),
-                                    lastDate: DateTime.now().add(const Duration(days: 365)),
-                                  );
-                                  if (pickedDate != null) {
-                                    setState(() {
-                                      _selectedDate = pickedDate;
-                                    });
-                                  }
-                                },
+                        InkWell(
+                          onTap: () async {
+                            final pickedDate = await showDatePicker(
+                              context: context,
+                              initialDate: _selectedDate,
+                              firstDate: DateTime(1900),
+                              lastDate: DateTime.now().add(const Duration(days: 365)),
+                            );
+                            if (pickedDate != null) {
+                              setState(() {
+                                _selectedDate = pickedDate;
+                              });
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: InputDecorator(
+                            decoration: InputDecoration(
+                              labelText: 'Date',
+                              prefixIcon: const Icon(Icons.calendar_today),
+                              border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                child: InputDecorator(
-                                  decoration: InputDecoration(
-                                    labelText: 'Date',
-                                    prefixIcon: const Icon(Icons.calendar_today),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    DateFormat('yyyy-MM-dd').format(_selectedDate),
-                                    style: const TextStyle(fontSize: 16),
-                                  ),
-                                ),
                               ),
                             ),
-                            if (_hasTime) ...[
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: InkWell(
-                                  onTap: () async {
-                                    final pickedTime = await showTimePicker(
-                                      context: context,
-                                      initialTime: _selectedTime ?? TimeOfDay.now(),
-                                    );
-                                    if (pickedTime != null) {
-                                      setState(() {
-                                        _selectedTime = pickedTime;
-                                      });
-                                    }
-                                  },
+                            child: Text(
+                              DateFormat('yyyy-MM-dd').format(_selectedDate),
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ),
+                        if (_hasTime) ...[
+                          const SizedBox(height: 12),
+                          InkWell(
+                            onTap: () async {
+                              final pickedTime = await showTimePicker(
+                                context: context,
+                                initialTime: _selectedTime ?? TimeOfDay.now(),
+                              );
+                              if (pickedTime != null) {
+                                setState(() {
+                                  _selectedTime = pickedTime;
+                                });
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: InputDecorator(
+                              decoration: InputDecoration(
+                                labelText: 'Time',
+                                prefixIcon: const Icon(Icons.access_time),
+                                border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  child: InputDecorator(
-                                    decoration: InputDecoration(
-                                      labelText: 'Time',
-                                      prefixIcon: const Icon(Icons.access_time),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      _selectedTime != null
-                                          ? _selectedTime!.format(context)
-                                          : 'Select Time',
-                                      style: const TextStyle(fontSize: 16),
-                                    ),
-                                  ),
                                 ),
                               ),
-                            ],
-                          ],
-                        ),
+                              child: Text(
+                                _selectedTime != null
+                                    ? _selectedTime!.format(context)
+                                    : 'Select Time',
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -534,12 +527,14 @@ class _HistoryEventDetailScreenState
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'Attachments',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(context).primaryColor,
-                                  ),
+                            Expanded(
+                              child: Text(
+                                'Attachments',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(context).primaryColor,
+                                    ),
+                              ),
                             ),
                             IconButton.filledTonal(
                               onPressed: _attachFiles,

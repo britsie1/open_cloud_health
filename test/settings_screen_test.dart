@@ -213,7 +213,48 @@ void main() {
     expect(find.text('ENCRYPTED'), findsOneWidget);
   });
 
-  testWidgets('SecuritySetupScreen displays CUSTOM KEY badge when custom password E2E is active',
+  testWidgets('SecuritySetupScreen opens and dismisses Backup Encryption at Rest setup sheet',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    when(() => mockSecureStorage.isE2eBackupEnabled())
+        .thenAnswer((_) async => false);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          backupServiceProvider.overrideWithValue(mockBackupService),
+          appDatabaseProvider.overrideWithValue(mockAppDatabase),
+          secureStorageProvider.overrideWithValue(mockSecureStorage),
+        ],
+        child: const MaterialApp(
+          home: SecuritySetupScreen(),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Tap Backup Encryption at Rest
+    await tester.tap(find.text('Backup Encryption at Rest'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('End-to-End Encrypted Backup'), findsOneWidget);
+    expect(find.text('Zero-Knowledge Medical Data Shield'), findsOneWidget);
+    expect(find.text('Cancel'), findsOneWidget);
+    expect(find.byIcon(Icons.close), findsOneWidget);
+
+    // Tap Cancel to dismiss
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('End-to-End Encrypted Backup'), findsNothing);
+    expect(find.text('App Lock & Security'), findsOneWidget);
+  });
+
+  testWidgets('SecuritySetupScreen opens and dismisses Manage E2E Encryption sheet with Close button',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 2000);
     tester.view.devicePixelRatio = 1.0;
@@ -235,12 +276,21 @@ void main() {
       ),
     );
 
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
     await tester.pumpAndSettle();
 
-    expect(find.text('Backup Encryption at Rest'), findsOneWidget);
-    expect(find.text('Custom Password • Zero-knowledge protection'), findsOneWidget);
-    expect(find.text('CUSTOM KEY'), findsOneWidget);
+    // Tap Backup Encryption at Rest (active E2E)
+    await tester.tap(find.text('Backup Encryption at Rest'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('End-to-End Encryption Active'), findsOneWidget);
+    expect(find.text('View 64-Digit Recovery Key'), findsOneWidget);
+    expect(find.text('Close'), findsOneWidget);
+
+    // Tap Close button to dismiss
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('End-to-End Encryption Active'), findsNothing);
+    expect(find.text('App Lock & Security'), findsOneWidget);
   });
 }
