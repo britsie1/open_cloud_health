@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/checkup.dart';
 import 'package:open_cloud_health/models/checkup_log.dart';
 import 'package:open_cloud_health/models/profile.dart';
-import 'package:open_cloud_health/providers/profiles_provider.dart';
+import 'package:open_cloud_health/repositories/profiles_repository.dart';
 import 'package:open_cloud_health/repositories/checkups_repository.dart';
 import 'package:open_cloud_health/utils/result.dart';
 import 'package:open_cloud_health/utils/standard_checkups.dart';
@@ -34,21 +34,17 @@ class CheckupsNotifier extends FamilyAsyncNotifier<List<CheckupWithStatus>, Stri
 
   @override
   Future<List<CheckupWithStatus>> build(String arg) async {
-    // 1. Get the profile
-    final profiles = ref.watch(profilesProvider).value;
-    if (profiles == null) return [];
-    
-    final profile = profiles.firstWhere((p) => p.id == arg, orElse: () => throw Exception('Profile not found'));
+    Profile? profile;
+    try {
+      profile = await ref.read(profilesRepositoryProvider).getProfile(arg);
+    } catch (_) {}
 
-    final sub = ref.watch(checkupsRepositoryProvider).watchCheckups(arg).listen((_) async {
-      state = await AsyncValue.guard(() => _loadCheckupsWithStatus());
-    });
-    ref.onDispose(sub.cancel);
+    // Sync standard checkups if missing
+    if (profile != null) {
+      await _syncStandardCheckups(profile);
+    }
 
-    // 2. Sync standard checkups if missing
-    await _syncStandardCheckups(profile);
-
-    // 3. Load all checkups and their statuses
+    // Load all checkups and their statuses
     return _loadCheckupsWithStatus();
   }
 

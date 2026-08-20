@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/period_cycle.dart';
 import 'package:open_cloud_health/models/period_log.dart';
+import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/repositories/period_repository.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
 import 'package:open_cloud_health/utils/result.dart';
-import 'package:open_cloud_health/providers/profiles_provider.dart';
 
 class PeriodState {
   final PeriodCycle? currentCycle;
@@ -38,12 +38,6 @@ class PeriodNotifier extends FamilyAsyncNotifier<PeriodState, String> {
 
   @override
   Future<PeriodState> build(String arg) async {
-    ref.watch(profilesProvider);
-    final sub = ref.watch(periodRepositoryProvider).watchCycles(arg).listen((_) async {
-      state = await AsyncValue.guard(() => _loadState());
-    });
-    ref.onDispose(sub.cancel);
-
     return _loadState();
   }
 
@@ -93,13 +87,16 @@ class PeriodNotifier extends FamilyAsyncNotifier<PeriodState, String> {
       currentDayOfCycle = today.difference(start).inDays + 1; // Day 1 is the start date
     }
 
-    final profiles = await ref.read(profilesRepositoryProvider).fetchProfiles();
-    final profile = profiles.firstWhere((p) => p.id == arg);
+    Profile? profile;
+    try {
+      profile = await ref.read(profilesRepositoryProvider).getProfile(arg);
+    } catch (_) {}
+    final trackOvulation = profile?.trackOvulation ?? false;
 
     int? fertileWindowStartDay;
     int? fertileWindowEndDay;
 
-    if (profile.trackOvulation) {
+    if (trackOvulation) {
       int estimatedOvulationDay = averageCycleLength - 14;
       fertileWindowStartDay = estimatedOvulationDay - 5;
       fertileWindowEndDay = estimatedOvulationDay;
@@ -114,7 +111,7 @@ class PeriodNotifier extends FamilyAsyncNotifier<PeriodState, String> {
       currentCycleLogs: currentCycleLogs,
       averageCycleLength: averageCycleLength,
       currentDayOfCycle: currentDayOfCycle,
-      trackOvulation: profile.trackOvulation,
+      trackOvulation: trackOvulation,
       fertileWindowStartDay: fertileWindowStartDay,
       fertileWindowEndDay: fertileWindowEndDay,
     );

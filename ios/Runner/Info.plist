@@ -52,7 +52,7 @@
 		<key>NSFaceIDUsageDescription</key>
 		<string>Open Cloud Health requires Face ID access to secure and unlock your local health records.</string>
 		<key>NSCameraUsageDescription</key>
-		<string>Open Cloud Health requires camera access to take profile photos.</string>
+		<string>Open Cloud Health requires camera access to take profile photos and scan profile share QR codes.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>Open Cloud Health requires photo library access to let you upload profile pictures and add medical attachments.</string>
 		<key>NSMicrophoneUsageDescription</key>

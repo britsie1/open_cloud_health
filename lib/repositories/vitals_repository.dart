@@ -2,10 +2,12 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/vital_log.dart';
+import 'package:open_cloud_health/repositories/shared_profiles_repository.dart';
 
 class VitalsRepository {
   final AppDatabase _db;
-  VitalsRepository(this._db);
+  final SharedProfilesRepository? _sharedRepo;
+  VitalsRepository(this._db, [this._sharedRepo]);
 
   VitalLog _mapEntry(VitalLogEntry row) {
     return VitalLog(
@@ -21,8 +23,23 @@ class VitalsRepository {
   }
 
   Future<List<VitalLog>> getLogs(String profileId, VitalType type) async {
+    if (_sharedRepo != null && await _sharedRepo.isSharedProfile(profileId)) {
+      return _sharedRepo.getVitals(profileId, type: type);
+    }
     final query = _db.select(_db.vitalLogs)
       ..where((tbl) => tbl.profileId.equals(profileId) & tbl.type.equals(type.name))
+      ..orderBy([(tbl) => OrderingTerm.asc(tbl.date)]);
+
+    final data = await query.get();
+    return data.map(_mapEntry).toList();
+  }
+
+  Future<List<VitalLog>> fetchAllVitals(String profileId) async {
+    if (_sharedRepo != null && await _sharedRepo.isSharedProfile(profileId)) {
+      return _sharedRepo.getVitals(profileId);
+    }
+    final query = _db.select(_db.vitalLogs)
+      ..where((tbl) => tbl.profileId.equals(profileId))
       ..orderBy([(tbl) => OrderingTerm.asc(tbl.date)]);
 
     final data = await query.get();
@@ -59,5 +76,6 @@ class VitalsRepository {
 
 final vitalsRepositoryProvider = Provider<VitalsRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
-  return VitalsRepository(db);
+  final sharedRepo = ref.watch(sharedProfilesRepositoryProvider);
+  return VitalsRepository(db, sharedRepo);
 });

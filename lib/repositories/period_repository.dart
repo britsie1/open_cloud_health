@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/period_cycle.dart';
 import 'package:open_cloud_health/models/period_log.dart';
+import 'package:open_cloud_health/repositories/shared_profiles_repository.dart';
 
 class PeriodRepository {
   final AppDatabase _db;
-  PeriodRepository(this._db);
+  final SharedProfilesRepository? _sharedRepo;
+  PeriodRepository(this._db, [this._sharedRepo]);
 
   PeriodCycle _mapCycle(PeriodCycleEntry row) {
     return PeriodCycle(
@@ -39,6 +41,9 @@ class PeriodRepository {
   }
 
   Future<List<PeriodCycle>> getCycles(String profileId) async {
+    if (_sharedRepo != null && await _sharedRepo.isSharedProfile(profileId)) {
+      return _sharedRepo.getPeriodCycles(profileId);
+    }
     final query = _db.select(_db.periodCycles)
       ..where((tbl) => tbl.profileId.equals(profileId))
       ..orderBy([(tbl) => OrderingTerm.desc(tbl.startDate)]);
@@ -46,6 +51,8 @@ class PeriodRepository {
     final data = await query.get();
     return data.map(_mapCycle).toList();
   }
+
+  Future<List<PeriodCycle>> fetchPeriodCycles(String profileId) => getCycles(profileId);
 
   Stream<List<PeriodCycle>> watchCycles(String profileId) {
     final query = _db.select(_db.periodCycles)
@@ -85,6 +92,10 @@ class PeriodRepository {
   }
 
   Future<List<PeriodLog>> getLogsForCycle(String cycleId) async {
+    if (_sharedRepo != null) {
+      final sharedLogs = await _sharedRepo.getPeriodLogs(cycleId);
+      if (sharedLogs.isNotEmpty) return sharedLogs;
+    }
     final query = _db.select(_db.periodLogs)
       ..where((tbl) => tbl.cycleId.equals(cycleId))
       ..orderBy([(tbl) => OrderingTerm.asc(tbl.date)]);
@@ -92,6 +103,8 @@ class PeriodRepository {
     final data = await query.get();
     return data.map(_mapLog).toList();
   }
+
+  Future<List<PeriodLog>> fetchPeriodLogs(String cycleId) => getLogsForCycle(cycleId);
 
   Stream<List<PeriodLog>> watchLogsForCycle(String cycleId) {
     final query = _db.select(_db.periodLogs)
@@ -129,5 +142,6 @@ class PeriodRepository {
 
 final periodRepositoryProvider = Provider<PeriodRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
-  return PeriodRepository(db);
+  final sharedRepo = ref.watch(sharedProfilesRepositoryProvider);
+  return PeriodRepository(db, sharedRepo);
 });

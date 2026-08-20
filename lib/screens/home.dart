@@ -21,6 +21,7 @@ import 'package:open_cloud_health/widgets/log_tracked_dose_dialog.dart';
 import 'package:open_cloud_health/providers/emergency_provider.dart';
 import 'package:open_cloud_health/repositories/emergency_repository.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
+import 'package:open_cloud_health/services/profile_sharing_service.dart';
 import 'package:open_cloud_health/models/lock_screen_setting.dart';
 
 class TodayMedicationTask {
@@ -48,6 +49,130 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   bool _isSecurityChecked = false;
   bool _isEmergencyChannelDisabledWarning = false;
   String? _lastCheckedProfileId;
+  bool _isSyncing = false;
+
+  Future<void> _handleSync(Profile profile) async {
+    if (_isSyncing) return;
+    setState(() {
+      _isSyncing = true;
+    });
+
+    final result = await ref.read(profilesProvider.notifier).syncSharedProfile(profile.id);
+
+    if (mounted) {
+      setState(() {
+        _isSyncing = false;
+      });
+
+      if (result.status == SyncStatus.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile synced with latest records from owner.'),
+            backgroundColor: Colors.teal,
+          ),
+        );
+      } else if (result.status == SyncStatus.revoked) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Sharing Revoked'),
+            content: const Text(
+              'The owner has revoked sharing or deleted this profile. Would you like to remove it from your device?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Keep Local Copy'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
+                onPressed: () async {
+                  Navigator.of(ctx).pop();
+                  await ref.read(profilesProvider.notifier).removeSharedProfile(profile.id);
+                  if (mounted) {
+                    context.go(AppRoutes.profiles);
+                  }
+                },
+                child: const Text('Remove'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.message), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Widget _buildReadOnlySharedBanner(BuildContext context, Profile profile) {
+    if (!profile.isShared) return const SizedBox.shrink();
+
+    final lastSyncedStr = profile.lastSyncedAt != null
+        ? DateFormat('MMM d, h:mm a').format(profile.lastSyncedAt!.toLocal())
+        : 'Recently';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.teal.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.teal.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.teal.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.cloud_outlined, color: Colors.teal, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Text(
+                      'Read-Only Profile',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.teal),
+                    ),
+                    SizedBox(width: 6),
+                    Icon(Icons.lock_outline, size: 14, color: Colors.teal),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Shared by ${profile.sharedBy ?? "Owner"} • Synced $lastSyncedStr',
+                  style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: _isSyncing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.teal),
+                  )
+                : const Icon(Icons.sync, color: Colors.teal),
+            tooltip: 'Sync now',
+            onPressed: _isSyncing ? null : () => _handleSync(profile),
+          ),
+        ],
+      ),
+    );
+  }
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -419,15 +544,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home'),
-        actions: const [AccountAppBarActions()],
+        actions: [
+          if (activeProfile.isShared)
+            IconButton(
+              icon: _isSyncing
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.teal),
+                    )
+                  : const Icon(Icons.sync, color: Colors.teal),
+              tooltip: 'Sync Shared Profile',
+              onPressed: _isSyncing ? null : () => _handleSync(activeProfile),
+            ),
+          if (!activeProfile.isShared) ...[
+            IconButton(
+              icon: const Icon(Icons.qr_code_2),
+              tooltip: 'Share Profile (QR Code)',
+              onPressed: () => context.push(AppRoutes.shareProfile, extra: activeProfile),
+            ),
+            IconButton(
+              icon: const Icon(Icons.download),
+              tooltip: 'Export Profile Data',
+              onPressed: () => context.push(AppRoutes.exportProfile, extra: activeProfile),
+            ),
+          ],
+          const AccountAppBarActions(),
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildEmergencyWarningBanner(context),
-            _buildSecurityBanner(context),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          if (activeProfile.isShared) {
+            await _handleSync(activeProfile);
+          } else {
+            await ref.read(profilesProvider.notifier).loadProfiles();
+          }
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildReadOnlySharedBanner(context, activeProfile),
+              _buildEmergencyWarningBanner(context),
+              _buildSecurityBanner(context),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -575,16 +736,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                       label: 'Log ${nextUp.checkup.name} checkup',
                       button: true,
                       child: GestureDetector(
-                        onTap: () {
-                          showDialog(
-                            context: context,
-                            builder: (ctx) => LogCheckupDialog(
-                              profileId: activeProfile.id,
-                              checkupId: nextUp.checkup.id,
-                              checkupName: nextUp.checkup.name,
-                            ),
-                          );
-                        },
+                        onTap: activeProfile.isReadOnly
+                            ? null
+                            : () {
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => LogCheckupDialog(
+                                    profileId: activeProfile.id,
+                                    checkupId: nextUp.checkup.id,
+                                    checkupName: nextUp.checkup.name,
+                                  ),
+                                );
+                              },
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(20),
@@ -677,8 +840,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _MedicationSummarySection extends ConsumerWidget {
@@ -720,6 +884,9 @@ class _MedicationSummarySection extends ConsumerWidget {
             .toList();
 
         if (tasks.isEmpty && prnMedications.isEmpty) return const SizedBox.shrink();
+
+        final profile = ref.watch(profilesProvider).value?.where((p) => p.id == profileId).firstOrNull;
+        final isReadOnly = profile?.isReadOnly ?? false;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -845,6 +1012,7 @@ class _MedicationSummarySection extends ConsumerWidget {
                           task: task,
                           isTaken: isTaken,
                           profileId: profileId,
+                          isReadOnly: isReadOnly,
                         );
                       }).toList(),
                     ),
@@ -875,14 +1043,15 @@ class _MedicationSummarySection extends ConsumerWidget {
                       color: Colors.black.withOpacity(0.05),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
-                        ),
-                      ],
                     ),
+                  ],
+                ),
                 child: Column(
                   children: prnMedications.map((med) {
                     return _PRNMedicationSummaryItem(
                       medication: med,
                       profileId: profileId,
+                      isReadOnly: isReadOnly,
                     );
                   }).toList(),
                 ),
@@ -901,11 +1070,13 @@ class _MedicationSummaryItem extends ConsumerWidget {
     required this.task,
     required this.isTaken,
     required this.profileId,
+    this.isReadOnly = false,
   });
 
   final TodayMedicationTask task;
   final bool isTaken;
   final String profileId;
+  final bool isReadOnly;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -966,51 +1137,53 @@ class _MedicationSummaryItem extends ConsumerWidget {
       ),
       value: isTaken,
       activeColor: Colors.blue,
-      onChanged: (val) async {
-        final now = DateTime.now();
-        final targetTimestamp = DateTime(now.year, now.month, now.day, taskTime.hour, taskTime.minute);
+      onChanged: isReadOnly
+          ? null
+          : (val) async {
+              final now = DateTime.now();
+              final targetTimestamp = DateTime(now.year, now.month, now.day, taskTime.hour, taskTime.minute);
 
-        if (val == true) {
-          if (med.dosage.trim().isEmpty) {
-            showDialog(
-              context: context,
-              builder: (ctx) => LogTrackedDoseDialog(
-                profileId: profileId,
-                medication: med,
-                initialTimestamp: targetTimestamp,
-              ),
-            );
-          } else {
-            final result = await ref
-                .read(medicationLogsProvider(profileId).notifier)
-                .addLog(
-                  MedicationLog(
-                    medicationId: med.id,
-                    timestamp: targetTimestamp,
-                    dosage: med.dosage,
-                  ),
-                );
-            if (result is Failure && context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Failed to update log: ${result.exception}')),
-              );
-            }
-          }
-        } else {
-          final result = await ref
-              .read(medicationLogsProvider(profileId).notifier)
-              .removeLog(
-                med.id,
-                targetTimestamp,
-                time: taskTime,
-              );
-          if (result is Failure && context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to update log: ${result.exception}')),
-            );
-          }
-        }
-      },
+              if (val == true) {
+                if (med.dosage.trim().isEmpty) {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => LogTrackedDoseDialog(
+                      profileId: profileId,
+                      medication: med,
+                      initialTimestamp: targetTimestamp,
+                    ),
+                  );
+                } else {
+                  final result = await ref
+                      .read(medicationLogsProvider(profileId).notifier)
+                      .addLog(
+                        MedicationLog(
+                          medicationId: med.id,
+                          timestamp: targetTimestamp,
+                          dosage: med.dosage,
+                        ),
+                      );
+                  if (result is Failure && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to update log: ${result.exception}')),
+                    );
+                  }
+                }
+              } else {
+                final result = await ref
+                    .read(medicationLogsProvider(profileId).notifier)
+                    .removeLog(
+                      med.id,
+                      targetTimestamp,
+                      time: taskTime,
+                    );
+                if (result is Failure && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to update log: ${result.exception}')),
+                  );
+                }
+              }
+            },
     );
   }
 }
@@ -1019,10 +1192,12 @@ class _PRNMedicationSummaryItem extends ConsumerWidget {
   const _PRNMedicationSummaryItem({
     required this.medication,
     required this.profileId,
+    this.isReadOnly = false,
   });
 
   final Medication medication;
   final String profileId;
+  final bool isReadOnly;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1074,19 +1249,21 @@ class _PRNMedicationSummaryItem extends ConsumerWidget {
             ? '${medication.dosage} • Stock: ${medication.stockQuantityFormatted} left'
             : medication.dosage,
       ),
-      trailing: IconButton.filledTonal(
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (ctx) => LogTrackedDoseDialog(
-              profileId: profileId,
-              medication: medication,
+      trailing: isReadOnly
+          ? null
+          : IconButton.filledTonal(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => LogTrackedDoseDialog(
+                    profileId: profileId,
+                    medication: medication,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add),
+              tooltip: 'Log dose',
             ),
-          );
-        },
-        icon: const Icon(Icons.add),
-        tooltip: 'Log dose',
-      ),
     );
   }
 }

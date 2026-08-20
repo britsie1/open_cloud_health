@@ -14,8 +14,12 @@ class FileService {
     if (baseDirectory != null) {
       return baseDirectory!.path;
     }
-    final directory = await getApplicationDocumentsDirectory();
-    return directory.path;
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      return directory.path;
+    } catch (_) {
+      return Directory.systemTemp.path;
+    }
   }
 
   Future<Directory> getProfileImagesDirectory() async {

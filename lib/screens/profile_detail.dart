@@ -250,15 +250,18 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
       imageToShow = FileImage(_pickImageFile!);
     }
 
+    final isReadOnly = _activeProfile?.isReadOnly ?? widget.profile?.isReadOnly ?? false;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
-            widget.profile != null ? 'Profile Information' : 'Create Profile'),
+            isReadOnly ? 'Shared Profile Information' : (widget.profile != null ? 'Profile Information' : 'Create Profile')),
         actions: [
-          IconButton(
-            onPressed: _saveProfile,
-            icon: const Icon(Icons.check),
-          ),
+          if (!isReadOnly)
+            IconButton(
+              onPressed: _saveProfile,
+              icon: const Icon(Icons.check),
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -266,12 +269,15 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
           children: [
             ProfileImagePicker(
               imageToShow: imageToShow,
-              onPickImage: (pickedImage) {
-                setState(() {
-                  _pickImageFile = pickedImage;
-                  _isNewImagePicked = true;
-                });
-              },
+              isReadOnly: isReadOnly,
+              onPickImage: isReadOnly
+                  ? null
+                  : (pickedImage) {
+                      setState(() {
+                        _pickImageFile = pickedImage;
+                        _isNewImagePicked = true;
+                      });
+                    },
             ),
             Padding(
               padding: const EdgeInsets.all(15),
@@ -279,6 +285,28 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                 key: _form,
                 child: Column(
                   children: [
+                    if (isReadOnly)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.teal.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.lock_outline, color: Colors.teal, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'This is a read-only shared profile. Demographic and clinical details are managed by the owner.',
+                                style: TextStyle(color: Colors.teal.shade900, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -298,6 +326,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                             children: [
                               TextFormField(
                                 initialValue: _enteredName,
+                                readOnly: isReadOnly,
                                 decoration: const InputDecoration(
                                     labelText: 'First Name'),
                                 validator: (value) {
@@ -312,6 +341,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                               ),
                               TextFormField(
                                 initialValue: _enteredMiddleNames,
+                                readOnly: isReadOnly,
                                 decoration: const InputDecoration(
                                     labelText: 'Middle Names'),
                                 onSaved: (newValue) {
@@ -320,6 +350,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                               ),
                               TextFormField(
                                 initialValue: _enteredSurname,
+                                readOnly: isReadOnly,
                                 decoration:
                                     const InputDecoration(labelText: 'Surname'),
                                 validator: (value) {
@@ -349,21 +380,23 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                                 labelText: 'Date of Birth'),
                             readOnly: true,
                             controller: _selectedDateController,
-                            onTap: () {
-                              DatePicker.showDatePicker(
-                                context,
-                                maxDateTime: DateTime.now(),
-                                dateFormat: 'yyyy-MMMM-dd',
-                                initialDateTime:
-                                    _selectedDateController.text.isEmpty
-                                        ? DateTime(DateTime.now().year - 18)
-                                        : DateTime.parse(
-                                            _selectedDateController.text),
-                                onConfirm: (dateTime, selectedIndex) {
-                                  _onDateOfBirthChanged(dateTime);
-                                },
-                              );
-                            },
+                            onTap: isReadOnly
+                                ? null
+                                : () {
+                                    DatePicker.showDatePicker(
+                                      context,
+                                      maxDateTime: DateTime.now(),
+                                      dateFormat: 'yyyy-MMMM-dd',
+                                      initialDateTime:
+                                          _selectedDateController.text.isEmpty
+                                              ? DateTime(DateTime.now().year - 18)
+                                              : DateTime.parse(
+                                                  _selectedDateController.text),
+                                      onConfirm: (dateTime, selectedIndex) {
+                                        _onDateOfBirthChanged(dateTime);
+                                      },
+                                    );
+                                  },
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
                                 return 'Please select your date of birth';
@@ -399,7 +432,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                                 ),
                               );
                             }).toList(),
-                            onChanged: _onGenderChanged,
+                            onChanged: isReadOnly ? null : _onGenderChanged,
                             validator: (value) {
                               if (value == null) {
                                 return 'Please select your medical gender.';
@@ -439,13 +472,15 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                                 child: Text(bloodType),
                               );
                             }).toList(),
-                            onChanged: (value) {
-                              setState(
-                                () {
-                                  _selectedBloodType = value!;
-                                },
-                              );
-                            },
+                            onChanged: isReadOnly
+                                ? null
+                                : (value) {
+                                    setState(
+                                      () {
+                                        _selectedBloodType = value!;
+                                      },
+                                    );
+                                  },
                           ),
                         ),
                       ],
@@ -463,11 +498,13 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                           child: SwitchListTile(
                             title: const Text('Organ Donor'),
                             value: _isOrganDonor,
-                            onChanged: (value) {
-                              setState(() {
-                                _isOrganDonor = value;
-                              });
-                            },
+                            onChanged: isReadOnly
+                                ? null
+                                : (value) {
+                                    setState(() {
+                                      _isOrganDonor = value;
+                                    });
+                                  },
                           ),
                         ),
                       ],
@@ -483,11 +520,13 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                             child: SwitchListTile(
                               title: const Text('Track Fertility'),
                               value: _trackOvulation,
-                              onChanged: (value) {
-                                setState(() {
-                                  _trackOvulation = value;
-                                });
-                              },
+                              onChanged: isReadOnly
+                                  ? null
+                                  : (value) {
+                                      setState(() {
+                                        _trackOvulation = value;
+                                      });
+                                    },
                             ),
                           ),
                         ],
@@ -499,33 +538,36 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                         profileId: _activeProfile!.id,
                         chronicConditions: _selectedChronicConditions,
                         gender: _selectedGender ?? Gender.male,
-                        onChanged: (newConditions) {
-                          setState(() {
-                            _selectedChronicConditions = newConditions;
-                          });
-                        },
+                        onChanged: isReadOnly
+                            ? (newConditions) {}
+                            : (newConditions) {
+                                setState(() {
+                                  _selectedChronicConditions = newConditions;
+                                });
+                              },
                       ),
                     ],
                     const SizedBox(height: 32),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        onPressed: _saveProfile,
-                        icon: const Icon(Icons.check),
-                        label: const Text(
-                          'Save Profile',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                    if (!isReadOnly)
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          onPressed: _saveProfile,
+                          icon: const Icon(Icons.check),
+                          label: const Text(
+                            'Save Profile',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),

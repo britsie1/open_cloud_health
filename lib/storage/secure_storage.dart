@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:open_cloud_health/models/backup_frequency.dart';
+import 'package:open_cloud_health/models/profile_share_config.dart';
 
 class SecureStorage {
   final storage = const FlutterSecureStorage();
@@ -17,6 +18,9 @@ class SecureStorage {
   static const _backupFrequencyKey = 'backup_frequency';
   static const _backupWifiOnlyKey = 'backup_wifi_only';
   static const _lastAutoBackupTimeKey = 'last_auto_backup_time';
+  static const _shareSyncFrequencyKey = 'share_sync_frequency';
+  static const _shareSyncWifiOnlyKey = 'share_sync_wifi_only';
+  static const _activeSharePrefix = 'active_share_config_';
 
   //Save Credentials
   Future saveCredentials(AccessToken token, String refreshToken) async {
@@ -186,6 +190,57 @@ class SecureStorage {
 
   Future<void> clearLocalMasterKey() async {
     await storage.delete(key: _localMasterKey);
+  }
+
+  // Profile Share Sync Frequency & Settings
+  Future<ShareSyncFrequency> getShareSyncFrequency() async {
+    final value = await storage.read(key: _shareSyncFrequencyKey);
+    return ShareSyncFrequency.fromString(value);
+  }
+
+  Future<void> setShareSyncFrequency(ShareSyncFrequency frequency) async {
+    await storage.write(key: _shareSyncFrequencyKey, value: frequency.name);
+  }
+
+  Future<bool> getShareSyncWifiOnly() async {
+    final value = await storage.read(key: _shareSyncWifiOnlyKey);
+    return value != 'false'; // Defaults to true
+  }
+
+  Future<void> setShareSyncWifiOnly(bool wifiOnly) async {
+    await storage.write(key: _shareSyncWifiOnlyKey, value: wifiOnly.toString());
+  }
+
+  // Active Share Configurations (per profile)
+  Future<void> saveActiveShareConfig(ActiveShareConfig config) async {
+    await storage.write(
+      key: '$_activeSharePrefix${config.profileId}',
+      value: config.encodeToJsonString(),
+    );
+  }
+
+  Future<ActiveShareConfig?> getActiveShareConfig(String profileId) async {
+    final value = await storage.read(key: '$_activeSharePrefix$profileId');
+    if (value == null) return null;
+    return ActiveShareConfig.decodeFromJsonString(value);
+  }
+
+  Future<List<ActiveShareConfig>> getAllActiveShareConfigs() async {
+    final allKeys = await storage.readAll();
+    final configs = <ActiveShareConfig>[];
+    for (final entry in allKeys.entries) {
+      if (entry.key.startsWith(_activeSharePrefix)) {
+        final config = ActiveShareConfig.decodeFromJsonString(entry.value);
+        if (config != null) {
+          configs.add(config);
+        }
+      }
+    }
+    return configs;
+  }
+
+  Future<void> deleteActiveShareConfig(String profileId) async {
+    await storage.delete(key: '$_activeSharePrefix$profileId');
   }
 }
 

@@ -20,6 +20,13 @@ class Profile {
       this.isArchived = false,
       this.archivedAt,
       this.chronicConditions = const [],
+      this.isShared = false,
+      this.isReadOnly = false,
+      this.sharedBy,
+      this.lastSyncedAt,
+      this.shareFileId,
+      this.shareEncryptionKey,
+      this.shareDownloadUrl,
       String? id})
       : id = id ?? uuid.v4();
 
@@ -35,6 +42,13 @@ class Profile {
   final bool isArchived;
   final DateTime? archivedAt;
   final List<String> chronicConditions;
+  final bool isShared;
+  final bool isReadOnly;
+  final String? sharedBy;
+  final DateTime? lastSyncedAt;
+  final String? shareFileId;
+  final String? shareEncryptionKey;
+  final String? shareDownloadUrl;
 
   String get formattedDate {
     return formatter.format(dateOfBirth);

@@ -2,10 +2,12 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/history_event.dart';
+import 'package:open_cloud_health/repositories/shared_profiles_repository.dart';
 
 class HistoryRepository {
   final AppDatabase _db;
-  HistoryRepository(this._db);
+  final SharedProfilesRepository? _sharedRepo;
+  HistoryRepository(this._db, [this._sharedRepo]);
 
   HistoryEvent _mapRow(TypedResult row, Expression<int> countExp) {
     final h = row.readTable(_db.history);
@@ -30,6 +32,9 @@ class HistoryRepository {
   }
 
   Future<List<HistoryEvent>> fetchEvents(String profileId) async {
+    if (_sharedRepo != null && await _sharedRepo.isSharedProfile(profileId)) {
+      return _sharedRepo.getHistoryEvents(profileId);
+    }
     final countExp = _db.attachments.id.count();
     final query = _db.select(_db.history).join([
       leftOuterJoin(_db.attachments, _db.attachments.historyId.equalsExp(_db.history.id)),
@@ -41,6 +46,8 @@ class HistoryRepository {
     final rows = await query.get();
     return rows.map((r) => _mapRow(r, countExp)).toList();
   }
+
+  Future<List<HistoryEvent>> fetchHistory(String profileId) => fetchEvents(profileId);
 
   Stream<List<HistoryEvent>> watchEvents(String profileId) {
     final countExp = _db.attachments.id.count();
@@ -96,5 +103,6 @@ class HistoryRepository {
 
 final historyRepositoryProvider = Provider<HistoryRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
-  return HistoryRepository(db);
+  final sharedRepo = ref.watch(sharedProfilesRepositoryProvider);
+  return HistoryRepository(db, sharedRepo);
 });

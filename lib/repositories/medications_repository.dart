@@ -5,10 +5,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
+import 'package:open_cloud_health/repositories/shared_profiles_repository.dart';
 
 class MedicationsRepository {
   final AppDatabase _db;
-  MedicationsRepository(this._db);
+  final SharedProfilesRepository? _sharedRepo;
+  MedicationsRepository(this._db, [this._sharedRepo]);
+
+  Future<List<MedicationLog>> fetchMedicationLogs(String medicationId) async {
+    final query = _db.select(_db.medicationLogs)
+      ..where((tbl) => tbl.medicationId.equals(medicationId))
+      ..orderBy([(tbl) => OrderingTerm.desc(tbl.timestamp)]);
+    final rows = await query.get();
+    return rows.map(_mapMedicationLog).toList();
+  }
 
   Medication _mapMedication(MedicationEntry row) {
     final daysOfWeekStr = row.daysOfWeek;
@@ -69,11 +79,16 @@ class MedicationsRepository {
   }
 
   Future<List<Medication>> loadMedications(String profileId) async {
+    if (_sharedRepo != null && await _sharedRepo.isSharedProfile(profileId)) {
+      return _sharedRepo.getMedications(profileId);
+    }
     final query = _db.select(_db.medications)
       ..where((tbl) => tbl.profileId.equals(profileId));
     final data = await query.get();
     return data.map(_mapMedication).toList();
   }
+
+  Future<List<Medication>> fetchMedications(String profileId) => loadMedications(profileId);
 
   Stream<List<Medication>> watchMedications(String profileId) {
     final query = _db.select(_db.medications)
@@ -167,6 +182,16 @@ class MedicationsRepository {
   }
 
   Future<List<MedicationLog>> loadAllLogs(String profileId, {int limit = 20, int offset = 0}) async {
+    if (_sharedRepo != null && await _sharedRepo.isSharedProfile(profileId)) {
+      final meds = await _sharedRepo.getMedications(profileId);
+      final allLogs = <MedicationLog>[];
+      for (final m in meds) {
+        final logs = await _sharedRepo.getMedicationLogs(profileId, m.id);
+        allLogs.addAll(logs);
+      }
+      allLogs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return allLogs.skip(offset).take(limit).toList();
+    }
     final query = _db.select(_db.medicationLogs).join([
       innerJoin(_db.medications, _db.medications.id.equalsExp(_db.medicationLogs.medicationId)),
     ])
@@ -262,5 +287,6 @@ class MedicationsRepository {
 
 final medicationsRepositoryProvider = Provider<MedicationsRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
-  return MedicationsRepository(db);
+  final sharedRepo = ref.watch(sharedProfilesRepositoryProvider);
+  return MedicationsRepository(db, sharedRepo);
 });

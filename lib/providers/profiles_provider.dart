@@ -2,26 +2,37 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/models/profile.dart';
+import 'package:open_cloud_health/models/profile_share_models.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
+import 'package:open_cloud_health/repositories/shared_profiles_repository.dart';
 import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
+import 'package:open_cloud_health/services/profile_sharing_service.dart';
 import 'package:open_cloud_health/utils/result.dart';
+
+export 'package:open_cloud_health/providers/active_shares_provider.dart';
 
 class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
   ProfilesRepository get _repository => ref.read(profilesRepositoryProvider);
+  SharedProfilesRepository get _sharedRepo => ref.read(sharedProfilesRepositoryProvider);
   FileService get _fileService => ref.read(fileServiceProvider);
+  ProfileSharingService get _sharingService => ref.read(profileSharingServiceProvider);
 
   @override
   Future<List<Profile>> build() async {
-    final subscription = ref.watch(profilesRepositoryProvider).watchProfiles().listen((profiles) {
-      state = AsyncValue.data(profiles);
+    final subscription = ref.watch(profilesRepositoryProvider).watchProfiles().listen((_) async {
+      state = await AsyncValue.guard(() => _fetchProfiles());
     });
     ref.onDispose(subscription.cancel);
     return _fetchProfiles();
   }
 
   Future<String> getProfileImagePath(String id) async {
-    return _fileService.getProfileImagePath(id);
+    final localPath = await _fileService.getProfileImagePath(id);
+    if (localPath.isNotEmpty && File(localPath).existsSync()) {
+      return localPath;
+    }
+    return _sharedRepo.getSharedProfileImagePath(id);
   }
 
   Future<Result<String, Exception>> saveProfile({
@@ -85,9 +96,11 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
 
   Future<List<Profile>> _fetchProfiles() async {
     try {
-      return await _repository.fetchProfiles(includeArchived: false);
+      final localProfiles = await _repository.fetchProfiles(includeArchived: false);
+      final sharedProfiles = await _sharedRepo.getSharedProfiles();
+      return [...localProfiles, ...sharedProfiles];
     } catch (error) {
-      debugPrint('Error: $error');
+      debugPrint('Error fetching profiles: $error');
       rethrow;
     }
   }
@@ -95,6 +108,25 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
   Future<void> loadProfiles() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => _fetchProfiles());
+  }
+
+  Future<Profile> importSharedProfile(ShareLinkPayload payload) async {
+    final profile = await _sharingService.importSharedProfile(payload);
+    await loadProfiles();
+    return profile;
+  }
+
+  Future<SyncResult> syncSharedProfile(String profileId) async {
+    final result = await _sharingService.syncSharedProfile(profileId);
+    if (result.status == SyncStatus.success) {
+      await loadProfiles();
+    }
+    return result;
+  }
+
+  Future<void> removeSharedProfile(String profileId) async {
+    await _sharedRepo.removeSharedProfile(profileId);
+    await loadProfiles();
   }
 
   Profile getProfile(String id) {
@@ -280,3 +312,4 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
 
 final profilesProvider =
     AsyncNotifierProvider<ProfilesNotifier, List<Profile>>(ProfilesNotifier.new);
+

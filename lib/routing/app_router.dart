@@ -23,6 +23,8 @@ import 'package:open_cloud_health/screens/medication_editor.dart';
 import 'package:open_cloud_health/screens/welcome.dart';
 import 'package:open_cloud_health/screens/security_setup.dart';
 import 'package:open_cloud_health/screens/emergency_settings.dart';
+import 'package:open_cloud_health/screens/share_profile_screen.dart';
+import 'package:open_cloud_health/screens/qr_scanner_screen.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/widgets/scaffold_with_nav_bar.dart';
 import 'package:open_cloud_health/widgets/shell_route_redirector.dart';
@@ -206,6 +208,17 @@ final appRouter = GoRouter(
         final profileId = state.pathParameters['profileId']!;
         return EmergencySettingsScreen(profileId: profileId);
       },
+    ),
+    GoRoute(
+      path: AppRoutes.shareProfile,
+      builder: (context, state) {
+        final profile = state.extra as Profile;
+        return ShareProfileScreen(profile: profile);
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.qrScanner,
+      builder: (context, state) => const QrScannerScreen(),
     ),
   ],
 );

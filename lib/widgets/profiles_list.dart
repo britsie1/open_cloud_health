@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/services/backup_service.dart';
+import 'package:open_cloud_health/services/profile_sharing_service.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/utils/result.dart';
@@ -82,6 +83,7 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
     }
 
     final profiles = widget.profiles;
+    final activeShareConfigs = ref.watch(activeShareConfigsProvider).valueOrNull ?? {};
 
     void selectProfile(Profile profile) async {
       await ref.read(secureStorageProvider).saveLastProfileId(profile.id);
@@ -111,38 +113,205 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
                 avatarImage = FileImage(File(imagePath));
               }
 
+              final isShared = profile.isShared;
+              final isActivelyShared = activeShareConfigs.containsKey(profile.id);
+
+              Widget subtitleWidget;
+              if (isShared) {
+                subtitleWidget = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Age: ${profile.age} years • ${profile.gender.name}',
+                      style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                            color: Theme.of(context).colorScheme.onBackground.withOpacity(0.6),
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.teal.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.cloud_outlined, size: 12, color: Colors.teal),
+                              SizedBox(width: 4),
+                              Text(
+                                'Shared (Read-Only)',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.teal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (profile.sharedBy != null) ...[
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'by ${profile.sharedBy}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Theme.of(context).colorScheme.onBackground.withOpacity(0.5),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                );
+              } else if (isActivelyShared) {
+                subtitleWidget = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Age: ${profile.age} years • ${profile.gender.name}',
+                      style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                            color: Theme.of(context).colorScheme.onBackground.withOpacity(0.6),
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.share, size: 11, color: Theme.of(context).colorScheme.primary),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Sharing Active',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Container(
+                            width: 5,
+                            height: 5,
+                            decoration: const BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              } else {
+                subtitleWidget = Text(
+                  'Age: ${profile.age} years • ${profile.gender.name}',
+                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                        color: Theme.of(context).colorScheme.onBackground.withOpacity(0.6),
+                      ),
+                );
+              }
+
               return ListTile(
-                contentPadding: const EdgeInsets.all(5),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 leading: CircleAvatar(
-                  radius: 30,
+                  radius: 28,
                   backgroundImage: avatarImage,
                 ),
                 title: Text(
                   '${profile.name} ${profile.surname}',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium!
-                      .copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onBackground,
-                          fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                        color: Theme.of(context).colorScheme.onBackground,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
-                subtitle: Text(
-                  'Age: ${profile.age} years • ${profile.gender.name}',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium!
-                      .copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onBackground
-                              .withOpacity(0.6)),
-                ),
+                subtitle: subtitleWidget,
                 trailing: PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert),
-                  onSelected: (action) {
-                    if (action == 'export') {
+                  onSelected: (action) async {
+                    if (action == 'sync') {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Checking for updates from owner...')),
+                      );
+                      final result = await ref.read(profilesProvider.notifier).syncSharedProfile(profile.id);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      if (result.status == SyncStatus.success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Profile synced successfully!'), backgroundColor: Colors.teal),
+                        );
+                      } else if (result.status == SyncStatus.revoked) {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Access Revoked'),
+                            content: const Text(
+                              'The owner has revoked sharing or deleted this profile. Would you like to remove it from your device?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(),
+                                child: const Text('Keep Local Copy'),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Theme.of(context).colorScheme.error,
+                                  foregroundColor: Theme.of(context).colorScheme.onError,
+                                ),
+                                onPressed: () async {
+                                  Navigator.of(ctx).pop();
+                                  await ref.read(profilesProvider.notifier).removeSharedProfile(profile.id);
+                                },
+                                child: const Text('Remove'),
+                              ),
+                            ],
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(result.message), backgroundColor: Colors.red),
+                        );
+                      }
+                    } else if (action == 'share') {
+                      context.push(AppRoutes.shareProfile, extra: profile);
+                    } else if (action == 'remove_shared') {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Remove Shared Profile'),
+                          content: Text(
+                            'Are you sure you want to remove "${profile.name}" from this device? You can re-import it anytime using the share QR code.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: const Text('Cancel'),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).colorScheme.error,
+                                foregroundColor: Theme.of(context).colorScheme.onError,
+                              ),
+                              onPressed: () async {
+                                Navigator.of(ctx).pop();
+                                await ref.read(profilesProvider.notifier).removeSharedProfile(profile.id);
+                              },
+                              child: const Text('Remove'),
+                            ),
+                          ],
+                        ),
+                      );
+                    } else if (action == 'export') {
                       context.push(AppRoutes.exportProfile, extra: profile);
                     } else if (action == 'edit') {
                       context.push(AppRoutes.profileDetail, extra: profile);
@@ -194,29 +363,57 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
                       );
                     }
                   },
-                  itemBuilder: (ctx) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: ListTile(
-                        leading: Icon(Icons.edit_outlined),
-                        title: Text('Edit'),
+                  itemBuilder: (ctx) {
+                    if (isShared) {
+                      return [
+                        const PopupMenuItem(
+                          value: 'sync',
+                          child: ListTile(
+                            leading: Icon(Icons.sync, color: Colors.teal),
+                            title: Text('Sync / Refresh'),
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'remove_shared',
+                          child: ListTile(
+                            leading: Icon(Icons.delete_outline, color: Colors.red),
+                            title: Text('Remove from Device', style: TextStyle(color: Colors.red)),
+                          ),
+                        ),
+                      ];
+                    }
+
+                    return [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: ListTile(
+                          leading: Icon(Icons.edit_outlined),
+                          title: Text('Edit'),
+                        ),
                       ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'export',
-                      child: ListTile(
-                        leading: Icon(Icons.download),
-                        title: Text('Export'),
+                      const PopupMenuItem(
+                        value: 'share',
+                        child: ListTile(
+                          leading: Icon(Icons.qr_code_scanner, color: Colors.teal),
+                          title: Text('Share (QR/Link)'),
+                        ),
                       ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: ListTile(
-                        leading: Icon(Icons.delete_outline, color: Colors.red),
-                        title: Text('Delete', style: TextStyle(color: Colors.red)),
+                      const PopupMenuItem(
+                        value: 'export',
+                        child: ListTile(
+                          leading: Icon(Icons.download),
+                          title: Text('Export'),
+                        ),
                       ),
-                    ),
-                  ],
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: ListTile(
+                          leading: Icon(Icons.delete_outline, color: Colors.red),
+                          title: Text('Delete', style: TextStyle(color: Colors.red)),
+                        ),
+                      ),
+                    ];
+                  },
                 ),
                 onTap: () {
                   selectProfile(profile);
@@ -236,17 +433,27 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
                     context.push(AppRoutes.profileDetail);
                   },
                   icon: const Icon(Icons.add),
-                  label: const Text('Create Profile'),
+                  label: const Text('Create'),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    context.push(AppRoutes.qrScanner);
+                  },
+                  icon: const Icon(Icons.qr_code_scanner, color: Colors.teal),
+                  label: const Text('Scan QR'),
+                ),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
                     context.push(AppRoutes.importProfile);
                   },
                   icon: const Icon(Icons.download),
-                  label: const Text('Import Profile'),
+                  label: const Text('Import'),
                 ),
               ),
             ],
@@ -263,7 +470,7 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'You don\'t have any profiles yet.\nLet\'s start by creating or importing a new profile.',
+                'You don\'t have any profiles yet.\nLet\'s start by creating, scanning, or importing a profile.',
                 style: Theme.of(context).textTheme.bodyLarge,
                 textAlign: TextAlign.center,
               ),
@@ -276,6 +483,18 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
                 },
                 icon: const Icon(Icons.add),
                 label: const Text('Create a Profile'),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                ),
+                onPressed: () {
+                  context.push(AppRoutes.qrScanner);
+                },
+                icon: const Icon(Icons.qr_code_scanner),
+                label: const Text('Scan Share QR Code'),
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(

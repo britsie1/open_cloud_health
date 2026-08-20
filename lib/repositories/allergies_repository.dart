@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/allergy.dart';
+import 'package:open_cloud_health/repositories/shared_profiles_repository.dart';
 
 class AllergiesRepository {
   final AppDatabase _db;
-  AllergiesRepository(this._db);
+  final SharedProfilesRepository? _sharedRepo;
+  AllergiesRepository(this._db, [this._sharedRepo]);
 
   Allergy _mapEntry(AllergyEntry row) {
     return Allergy(
@@ -16,14 +18,23 @@ class AllergiesRepository {
   }
 
   Future<List<Allergy>> getAllergies(String profileId) async {
+    if (_sharedRepo != null && await _sharedRepo.isSharedProfile(profileId)) {
+      return _sharedRepo.getAllergies(profileId);
+    }
     final query = _db.select(_db.allergy)..where((tbl) => tbl.profileId.equals(profileId));
     final data = await query.get();
     return data.map(_mapEntry).toList();
   }
 
-  Stream<List<Allergy>> watchAllergies(String profileId) {
+  Future<List<Allergy>> fetchAllergies(String profileId) => getAllergies(profileId);
+
+  Stream<List<Allergy>> watchAllergies(String profileId) async* {
+    if (_sharedRepo != null && await _sharedRepo.isSharedProfile(profileId)) {
+      yield await _sharedRepo.getAllergies(profileId);
+      return;
+    }
     final query = _db.select(_db.allergy)..where((tbl) => tbl.profileId.equals(profileId));
-    return query.watch().map((data) => data.map(_mapEntry).toList());
+    yield* query.watch().map((data) => data.map(_mapEntry).toList());
   }
 
   Future<void> addAllergy(Allergy allergy) async {
@@ -44,5 +55,6 @@ class AllergiesRepository {
 
 final allergiesRepositoryProvider = Provider<AllergiesRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
-  return AllergiesRepository(db);
+  final sharedRepo = ref.watch(sharedProfilesRepositoryProvider);
+  return AllergiesRepository(db, sharedRepo);
 });

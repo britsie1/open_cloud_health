@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/checkup.dart';
 import 'package:open_cloud_health/models/checkup_log.dart';
+import 'package:open_cloud_health/repositories/shared_profiles_repository.dart';
 
 class CheckupsRepository {
   final AppDatabase _db;
-  CheckupsRepository(this._db);
+  final SharedProfilesRepository? _sharedRepo;
+  CheckupsRepository(this._db, [this._sharedRepo]);
 
   Checkup _mapCheckup(CheckupEntry row) {
     return Checkup(
@@ -32,11 +34,16 @@ class CheckupsRepository {
   }
 
   Future<List<Checkup>> loadCheckups(String profileId) async {
+    if (_sharedRepo != null && await _sharedRepo.isSharedProfile(profileId)) {
+      return _sharedRepo.getCheckups(profileId);
+    }
     final query = _db.select(_db.checkups)
       ..where((tbl) => tbl.profileId.equals(profileId));
     final data = await query.get();
     return data.map(_mapCheckup).toList();
   }
+
+  Future<List<Checkup>> fetchCheckups(String profileId) => loadCheckups(profileId);
 
   Stream<List<Checkup>> watchCheckups(String profileId) {
     final query = _db.select(_db.checkups)
@@ -129,6 +136,10 @@ class CheckupsRepository {
   }
 
   Future<List<CheckupLog>> loadLogsForCheckup(String checkupId) async {
+    if (_sharedRepo != null) {
+      final sharedLogs = await _sharedRepo.getCheckupLogs(checkupId);
+      if (sharedLogs.isNotEmpty) return sharedLogs;
+    }
     final query = _db.select(_db.checkupLogs)
       ..where((tbl) => tbl.checkupId.equals(checkupId))
       ..orderBy([(tbl) => OrderingTerm.desc(tbl.dateCompleted)]);
@@ -136,6 +147,8 @@ class CheckupsRepository {
     final rows = await query.get();
     return rows.map(_mapLog).toList();
   }
+
+  Future<List<CheckupLog>> fetchCheckupLogs(String checkupId) => loadLogsForCheckup(checkupId);
 
   Stream<List<CheckupLog>> watchLogsForCheckup(String checkupId) {
     final query = _db.select(_db.checkupLogs)
@@ -152,5 +165,6 @@ class CheckupsRepository {
 
 final checkupsRepositoryProvider = Provider<CheckupsRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
-  return CheckupsRepository(db);
+  final sharedRepo = ref.watch(sharedProfilesRepositoryProvider);
+  return CheckupsRepository(db, sharedRepo);
 });

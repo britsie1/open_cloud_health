@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -108,6 +109,8 @@ void main() {
         .thenAnswer((_) async => {});
     when(() => mockNotificationService.onMedicationMarkedTaken)
         .thenReturn(StreamController<String>.broadcast());
+    when(() => mockFileService.localPath)
+        .thenAnswer((_) async => Directory.systemTemp.path);
     when(() => mockPeriodRepository.getCycles(any()))
         .thenAnswer((_) async => []);
     when(() => mockCheckupsRepository.loadCheckups(any()))

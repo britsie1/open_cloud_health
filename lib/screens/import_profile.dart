@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:open_cloud_health/utils/constants.dart';
 
 class ImportProfileScreen extends StatelessWidget {
   const ImportProfileScreen({super.key});
@@ -40,7 +42,7 @@ class ImportProfileScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Import profile demographics, history, and medical trackers from a previous backup.',
+                'Import profile demographics, history, and medical trackers from a previous backup or shared QR code.',
                 style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                       color: Theme.of(context)
                           .colorScheme
@@ -48,7 +50,72 @@ class ImportProfileScreen extends StatelessWidget {
                           .withOpacity(0.6),
                     ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+
+              // Scan Share QR Code Card (Prominent & Active!)
+              Card(
+                elevation: 3,
+                color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                  ),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => context.push(AppRoutes.qrScanner),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.qr_code_scanner,
+                            size: 32,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Scan Share QR Code (E2EE)',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium!
+                                    .copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Scan a QR code to import a read-only shared profile from family or caregiver.',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall!
+                                    .copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onBackground
+                                          .withOpacity(0.7),
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right, color: Colors.grey),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               
               // Google Drive Card
               Card(

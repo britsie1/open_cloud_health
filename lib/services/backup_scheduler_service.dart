@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/services/backup_service.dart';
+import 'package:open_cloud_health/services/profile_sharing_service.dart';
 
 class BackupSchedulerService {
   final Ref _ref;
@@ -25,17 +26,31 @@ class BackupSchedulerService {
     });
   }
 
-  /// Evaluates and runs scheduled backup if due.
+  /// Evaluates and runs scheduled backup and share syncs if due.
   Future<bool> checkAndRunDueBackup({bool enforceIdleHours = true}) async {
+    bool backupSuccess = false;
     try {
       final backupService = _ref.read(backupServiceProvider);
-      return await backupService.performScheduledBackupIfDue(
+      backupSuccess = await backupService.performScheduledBackupIfDue(
         enforceIdleHours: enforceIdleHours,
       );
     } catch (e) {
-      debugPrint('BackupSchedulerService check error: $e');
-      return false;
+      debugPrint('BackupSchedulerService backup check error: $e');
     }
+
+    try {
+      final sharingService = _ref.read(profileSharingServiceProvider);
+      final syncedCount = await sharingService.performScheduledShareSyncsIfDue(
+        enforceIdleHours: enforceIdleHours,
+      );
+      if (syncedCount > 0) {
+        debugPrint('BackupSchedulerService synced $syncedCount shared profile(s).');
+      }
+    } catch (e) {
+      debugPrint('BackupSchedulerService share sync check error: $e');
+    }
+
+    return backupSuccess;
   }
 
   void dispose() {

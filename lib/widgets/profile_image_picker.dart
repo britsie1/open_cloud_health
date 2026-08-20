@@ -6,12 +6,14 @@ import 'package:permission_handler/permission_handler.dart';
 class ProfileImagePicker extends StatefulWidget {
   const ProfileImagePicker({
     super.key,
-    required this.onPickImage,
+    this.onPickImage,
     required this.imageToShow,
+    this.isReadOnly = false,
   });
 
-  final void Function(File pickedImage) onPickImage;
+  final void Function(File pickedImage)? onPickImage;
   final ImageProvider imageToShow;
+  final bool isReadOnly;
 
   @override
   State<ProfileImagePicker> createState() => _ProfileImagePickerState();
@@ -50,7 +52,7 @@ class _ProfileImagePickerState extends State<ProfileImagePicker> {
       return;
     }
 
-    widget.onPickImage(File(pickedImage.path));
+    widget.onPickImage?.call(File(pickedImage.path));
   }
 
   @override
@@ -79,36 +81,37 @@ class _ProfileImagePickerState extends State<ProfileImagePicker> {
                     ),
                   ),
                 ),
-                PopupMenuButton<String>(
-                  position: PopupMenuPosition.under,
-                  icon: const Icon(
-                    Icons.edit,
-                    color: Colors.white,
+                if (!widget.isReadOnly)
+                  PopupMenuButton<String>(
+                    position: PopupMenuPosition.under,
+                    icon: const Icon(
+                      Icons.edit,
+                      color: Colors.white,
+                    ),
+                    itemBuilder: (ctx) => const [
+                      PopupMenuItem(
+                        value: 'camera',
+                        child: ListTile(
+                          leading: Icon(Icons.camera_alt_outlined),
+                          title: Text('Camera'),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'gallery',
+                        child: ListTile(
+                          leading: Icon(Icons.image_search_rounded),
+                          title: Text('Gallery'),
+                        ),
+                      ),
+                    ],
+                    onSelected: (value) {
+                      if (value == 'camera') {
+                        _pickImage(ImageSource.camera);
+                      } else if (value == 'gallery') {
+                        _pickImage(ImageSource.gallery);
+                      }
+                    },
                   ),
-                  itemBuilder: (ctx) => const [
-                    PopupMenuItem(
-                      value: 'camera',
-                      child: ListTile(
-                        leading: Icon(Icons.camera_alt_outlined),
-                        title: Text('Camera'),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'gallery',
-                      child: ListTile(
-                        leading: Icon(Icons.image_search_rounded),
-                        title: Text('Gallery'),
-                      ),
-                    ),
-                  ],
-                  onSelected: (value) {
-                    if (value == 'camera') {
-                      _pickImage(ImageSource.camera);
-                    } else if (value == 'gallery') {
-                      _pickImage(ImageSource.gallery);
-                    }
-                  },
-                ),
               ],
             ),
           ),

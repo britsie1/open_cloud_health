@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -124,6 +125,7 @@ Future<OverflowTestContext> setupOverflowTestContext() async {
   when(() => notificationService.cancelMedicationNotifications(any())).thenAnswer((_) async {});
 
   when(() => fileService.getProfileImagePath(any())).thenAnswer((_) async => '');
+  when(() => fileService.localPath).thenAnswer((_) async => Directory.systemTemp.path);
 
   final sampleProfile = Profile(
     id: 'patient-matrix-1',
