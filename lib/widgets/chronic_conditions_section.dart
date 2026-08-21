@@ -121,6 +121,8 @@ class ChronicConditionsSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            const Icon(Icons.monitor_heart_outlined),
+            const SizedBox(width: 16),
             Expanded(
               child: Text(
                 'Chronic Conditions',

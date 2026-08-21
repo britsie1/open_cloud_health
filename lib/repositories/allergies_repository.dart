@@ -51,6 +51,22 @@ class AllergiesRepository {
   Future<void> deleteAllergy(String id) async {
     await (_db.delete(_db.allergy)..where((tbl) => tbl.id.equals(id))).go();
   }
+
+  Future<void> setAllergies(String profileId, List<Allergy> allergies) async {
+    await _db.transaction(() async {
+      await (_db.delete(_db.allergy)..where((tbl) => tbl.profileId.equals(profileId))).go();
+      for (final allergy in allergies) {
+        await _db.into(_db.allergy).insert(
+          AllergyEntry(
+            id: allergy.id,
+            profileId: profileId,
+            name: allergy.name,
+            note: allergy.note,
+          ),
+        );
+      }
+    });
+  }
 }
 
 final allergiesRepositoryProvider = Provider<AllergiesRepository>((ref) {

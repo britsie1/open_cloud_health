@@ -252,6 +252,73 @@ void main() {
       expect(container.read(profilesProvider).value!.first.name, 'John Updated');
     });
 
+    test('saveProfile should create profile and persist staged allergies without error', () async {
+      when(() => mockProfilesRepository.fetchProfiles(includeArchived: any(named: 'includeArchived')))
+          .thenAnswer((_) async => []);
+      when(() => mockProfilesRepository.addProfile(any()))
+          .thenAnswer((_) async => {});
+      when(() => mockAllergiesRepository.setAllergies(any(), any()))
+          .thenAnswer((_) async => {});
+
+      await container.read(profilesProvider.future);
+
+      final allergies = [
+        Allergy(profileId: 'temp-id', name: 'Penicillin', note: 'Hives'),
+        Allergy(profileId: 'temp-id', name: 'Peanuts', note: 'Severe anaphylaxis'),
+      ];
+
+      final result = await container.read(profilesProvider.notifier).saveProfile(
+            name: 'Alice',
+            middleNames: '',
+            surname: 'Smith',
+            dateOfBirth: DateTime(1998, 4, 12),
+            gender: Gender.female,
+            bloodType: 'B+',
+            isOrganDonor: true,
+            allergies: allergies,
+            isUpdate: false,
+          );
+
+      expect(result, isA<Success<String, Exception>>());
+      final createdProfileId = (result as Success<String, Exception>).value;
+      expect(createdProfileId, isNotEmpty);
+      verify(() => mockProfilesRepository.addProfile(any())).called(1);
+      verify(() => mockAllergiesRepository.setAllergies(createdProfileId, allergies)).called(1);
+      verify(() => mockNotificationService.syncEmergencyNotification(createdProfileId)).called(1);
+    });
+
+    test('saveProfile should update existing profile and update allergies', () async {
+      when(() => mockProfilesRepository.fetchProfiles(includeArchived: any(named: 'includeArchived')))
+          .thenAnswer((_) async => tProfiles);
+      when(() => mockProfilesRepository.updateProfile(any()))
+          .thenAnswer((_) async => {});
+      when(() => mockAllergiesRepository.setAllergies(any(), any()))
+          .thenAnswer((_) async => {});
+
+      await container.read(profilesProvider.future);
+
+      final updatedAllergies = [
+        Allergy(profileId: '1', name: 'Latex', note: 'Contact rash'),
+      ];
+
+      final result = await container.read(profilesProvider.notifier).saveProfile(
+            id: '1',
+            name: 'John',
+            middleNames: '',
+            surname: 'Doe',
+            dateOfBirth: DateTime(1990),
+            gender: Gender.male,
+            bloodType: 'O+',
+            isOrganDonor: true,
+            allergies: updatedAllergies,
+            isUpdate: true,
+          );
+
+      expect(result, isA<Success<String, Exception>>());
+      verify(() => mockProfilesRepository.updateProfile(any())).called(1);
+      verify(() => mockAllergiesRepository.setAllergies('1', updatedAllergies)).called(1);
+    });
+
     test('archiveProfile should archive profile and refresh state', () async {
       when(() => mockProfilesRepository.fetchProfiles(includeArchived: any(named: 'includeArchived')))
           .thenAnswer((_) async => tProfiles);
@@ -772,6 +839,31 @@ void main() {
       expect(result, isA<Success<void, Exception>>());
       expect(container.read(allergiesProvider('p1')).value!.length, 0);
       verify(() => mockAllergiesRepository.deleteAllergy('a1')).called(1);
+      verify(() => mockNotificationService.syncEmergencyNotification('p1')).called(1);
+    });
+
+    test('setAllergies should call repository setAllergies, update state and sync notification', () async {
+      when(() => mockAllergiesRepository.getAllergies('p1'))
+          .thenAnswer((_) async => []);
+      when(() => mockAllergiesRepository.setAllergies(any(), any()))
+          .thenAnswer((_) async => {});
+
+      await container.read(allergiesProvider('p1').future);
+
+      final newAllergies = [
+        Allergy(id: 'a1', profileId: 'p1', name: 'Penicillin', note: 'Hives'),
+        Allergy(id: 'a2', profileId: 'p1', name: 'Peanuts', note: 'Anaphylaxis'),
+      ];
+      when(() => mockAllergiesRepository.getAllergies('p1'))
+          .thenAnswer((_) async => newAllergies);
+
+      final result = await container
+          .read(allergiesProvider('p1').notifier)
+          .setAllergies(newAllergies);
+
+      expect(result, isA<Success<void, Exception>>());
+      expect(container.read(allergiesProvider('p1')).value!.length, 2);
+      verify(() => mockAllergiesRepository.setAllergies('p1', newAllergies)).called(1);
       verify(() => mockNotificationService.syncEmergencyNotification('p1')).called(1);
     });
   });

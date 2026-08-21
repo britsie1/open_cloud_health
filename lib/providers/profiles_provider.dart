@@ -1,8 +1,11 @@
 import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_cloud_health/models/allergy.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/models/profile_share_models.dart';
+import 'package:open_cloud_health/providers/allergies_provider.dart';
+import 'package:open_cloud_health/repositories/allergies_repository.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
 import 'package:open_cloud_health/repositories/shared_profiles_repository.dart';
 import 'package:open_cloud_health/services/file_service.dart';
@@ -46,6 +49,7 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
     required bool isOrganDonor,
     bool trackOvulation = true,
     List<String> chronicConditions = const [],
+    List<Allergy>? allergies,
     File? imageFile,
     bool isUpdate = false,
   }) async {
@@ -76,6 +80,11 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
       } else {
         await _repository.updateProfile(profile);
         profileId = id!;
+      }
+
+      if (allergies != null) {
+        await ref.read(allergiesRepositoryProvider).setAllergies(profileId, allergies);
+        ref.invalidate(allergiesProvider(profileId));
       }
 
       if (imageFile != null) {

@@ -38,6 +38,17 @@ class AllergiesNotifier extends FamilyAsyncNotifier<List<Allergy>, String> {
     }
   }
 
+  Future<Result<void, Exception>> setAllergies(List<Allergy> allergies) async {
+    try {
+      await _repository.setAllergies(arg, allergies);
+      await refreshAllergies();
+      await ref.read(notificationServiceProvider).syncEmergencyNotification(arg);
+      return const Success(null);
+    } catch (e) {
+      return Failure(e is Exception ? e : Exception(e.toString()));
+    }
+  }
+
   Future<void> refreshAllergies() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => _repository.getAllergies(arg));

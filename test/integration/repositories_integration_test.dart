@@ -387,6 +387,22 @@ void main() {
         expect(p1AfterDelete.length, 1);
         expect(p1AfterDelete.first.name, 'Pollen');
       });
+
+      test('setAllergies updates entire list of allergies in single transaction', () async {
+        await allergiesRepo.addAllergy(Allergy(id: 'all-old', profileId: 'p1', name: 'Dust', note: ''));
+
+        final newAllergies = [
+          Allergy(id: 'all-new-1', profileId: 'p1', name: 'Penicillin', note: 'Anaphylaxis'),
+          Allergy(id: 'all-new-2', profileId: 'p1', name: 'Peanuts', note: 'Hives'),
+        ];
+
+        await allergiesRepo.setAllergies('p1', newAllergies);
+
+        final result = await allergiesRepo.getAllergies('p1');
+        expect(result.length, 2);
+        expect(result.map((a) => a.name), containsAll(['Penicillin', 'Peanuts']));
+        expect(result.any((a) => a.name == 'Dust'), isFalse);
+      });
     });
 
     // -------------------------------------------------------------

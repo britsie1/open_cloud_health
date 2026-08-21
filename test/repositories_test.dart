@@ -152,6 +152,23 @@ void main() {
       expect(result.length, 1);
       expect(result.first.name, 'Peanuts');
     });
+
+    test('setAllergies should replace existing allergies atomically', () async {
+      final repository = AllergiesRepository(db);
+      await repository.addAllergy(Allergy(id: 'old-1', profileId: 'p1', name: 'Dust', note: 'Mild'));
+
+      final newAllergies = [
+        Allergy(id: 'new-1', profileId: 'p1', name: 'Penicillin', note: 'Hives'),
+        Allergy(id: 'new-2', profileId: 'p1', name: 'Latex', note: 'Rash'),
+      ];
+
+      await repository.setAllergies('p1', newAllergies);
+
+      final result = await repository.getAllergies('p1');
+      expect(result.length, 2);
+      expect(result.map((a) => a.name), containsAll(['Penicillin', 'Latex']));
+      expect(result.any((a) => a.name == 'Dust'), isFalse);
+    });
   });
 
   group('EmergencyRepository Tests', () {

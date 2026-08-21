@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:open_cloud_health/database/app_database.dart';
+import 'package:open_cloud_health/models/allergy.dart';
 import 'package:open_cloud_health/models/checkup.dart';
 import 'package:open_cloud_health/models/checkup_log.dart';
 import 'package:open_cloud_health/models/emergency_contact.dart';
@@ -13,6 +14,7 @@ import 'package:open_cloud_health/models/period_cycle.dart';
 import 'package:open_cloud_health/models/period_log.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/models/vital_log.dart';
+import 'package:open_cloud_health/repositories/allergies_repository.dart';
 import 'package:open_cloud_health/repositories/checkups_repository.dart';
 import 'package:open_cloud_health/repositories/emergency_repository.dart';
 import 'package:open_cloud_health/repositories/history_repository.dart';
@@ -31,6 +33,7 @@ void main() {
   group('End-to-End Application Workflow Integration Tests with Drift DB', () {
     late AppDatabase db;
     late ProfilesRepository profilesRepo;
+    late AllergiesRepository allergiesRepo;
     late HistoryRepository historyRepo;
     late MedicationsRepository medsRepo;
     late CheckupsRepository checkupsRepo;
@@ -41,6 +44,7 @@ void main() {
     setUp(() {
       db = AppDatabase(NativeDatabase.memory());
       profilesRepo = ProfilesRepository(db);
+      allergiesRepo = AllergiesRepository(db);
       historyRepo = HistoryRepository(db);
       medsRepo = MedicationsRepository(db);
       checkupsRepo = CheckupsRepository(db);
@@ -68,10 +72,19 @@ void main() {
       );
 
       await profilesRepo.addProfile(patient);
+      await allergiesRepo.setAllergies(patient.id, [
+        Allergy(profileId: patient.id, name: 'Penicillin', note: 'Anaphylaxis'),
+        Allergy(profileId: patient.id, name: 'Peanuts', note: 'Hives'),
+      ]);
+
       final activeProfiles = await profilesRepo.fetchProfiles(includeArchived: false);
       expect(activeProfiles.length, 1);
       expect(activeProfiles.first.id, patient.id);
       expect(activeProfiles.first.chronicConditions, contains('Hypertension'));
+
+      final patientAllergies = await allergiesRepo.getAllergies(patient.id);
+      expect(patientAllergies.length, 2);
+      expect(patientAllergies.map((a) => a.name), containsAll(['Penicillin', 'Peanuts']));
 
       // 2. Set as Primary Profile in DB
       await emergencyRepo.setPrimaryProfileId(patient.id);
@@ -245,6 +258,9 @@ void main() {
 
       final remainingCycles = await periodRepo.getCycles(patient.id);
       expect(remainingCycles, isEmpty);
+
+      final remainingAllergies = await allergiesRepo.getAllergies(patient.id);
+      expect(remainingAllergies, isEmpty);
     });
   });
 }

@@ -34,4 +34,5 @@ class AppRoutes {
   static const String emergencySettings = '/emergency-settings';
   static const String shareProfile = '/share-profile';
   static const String qrScanner = '/qr-scanner';
+  static const String pdfPreview = '/pdf-preview';
 }

@@ -25,6 +25,8 @@ import 'package:open_cloud_health/screens/security_setup.dart';
 import 'package:open_cloud_health/screens/emergency_settings.dart';
 import 'package:open_cloud_health/screens/share_profile_screen.dart';
 import 'package:open_cloud_health/screens/qr_scanner_screen.dart';
+import 'package:open_cloud_health/models/pdf_export_options.dart';
+import 'package:open_cloud_health/screens/pdf_preview_screen.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/widgets/scaffold_with_nav_bar.dart';
 import 'package:open_cloud_health/widgets/shell_route_redirector.dart';
@@ -219,6 +221,20 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.qrScanner,
       builder: (context, state) => const QrScannerScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.pdfPreview,
+      builder: (context, state) {
+        if (state.extra is Map<String, dynamic>) {
+          final map = state.extra as Map<String, dynamic>;
+          final profile = map['profile'] as Profile;
+          final options = map['options'] as MedicalPdfExportOptions? ?? const MedicalPdfExportOptions();
+          return PdfPreviewScreen(profile: profile, options: options);
+        } else {
+          final profile = state.extra as Profile;
+          return PdfPreviewScreen(profile: profile);
+        }
+      },
     ),
   ],
 );

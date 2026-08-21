@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_cupertino_datetime_picker/flutter_cupertino_datetime_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:open_cloud_health/models/allergy.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
+import 'package:open_cloud_health/repositories/allergies_repository.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/utils/result.dart';
@@ -39,6 +41,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
   Profile? _activeProfile;
   bool _isEditing = false;
   List<String> _selectedChronicConditions = [];
+  List<Allergy> _selectedAllergies = [];
 
   @override
   void dispose() {
@@ -158,6 +161,17 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
       _selectedChronicConditions = List.from(_activeProfile!.chronicConditions);
       _checkFertilityToggleConstraint();
 
+      _selectedAllergies = [];
+      ref
+          .read(allergiesRepositoryProvider)
+          .getAllergies(_activeProfile!.id)
+          .then((allergies) {
+        if (!mounted) return;
+        setState(() {
+          _selectedAllergies = allergies;
+        });
+      });
+
       ref
           .read(profilesProvider.notifier)
           .getProfileImagePath(_activeProfile!.id)
@@ -173,6 +187,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
     } else {
       _trackOvulation = true;
       _selectedChronicConditions = [];
+      _selectedAllergies = [];
       _checkFertilityToggleConstraint();
     }
   }
@@ -195,6 +210,7 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
           isOrganDonor: _isOrganDonor,
           trackOvulation: _trackOvulation,
           chronicConditions: _selectedChronicConditions,
+          allergies: _selectedAllergies,
           imageFile: _isNewImagePicked ? _pickImageFile : null,
           isUpdate: _isEditing,
         );
@@ -532,7 +548,18 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                         ],
                       ),
                     if (_activeProfile != null) ...[
-                      AllergyListSection(profileId: _activeProfile!.id),
+                      AllergyListSection(
+                        profileId: _activeProfile!.id,
+                        allergies: _selectedAllergies,
+                        isReadOnly: isReadOnly,
+                        onChanged: isReadOnly
+                            ? (newAllergies) {}
+                            : (newAllergies) {
+                                setState(() {
+                                  _selectedAllergies = newAllergies;
+                                });
+                              },
+                      ),
                       const SizedBox(height: 16),
                       ChronicConditionsSection(
                         profileId: _activeProfile!.id,
