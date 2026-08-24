@@ -16,7 +16,7 @@ import path_provider_foundation
 import printing
 import share_plus
 import sqflite
-import sqlite3_flutter_libs
+import sqlcipher_flutter_libs
 import url_launcher_macos
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {

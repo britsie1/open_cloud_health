@@ -152,20 +152,30 @@ class SecureStorage {
   }
 
   static const _localMasterKey = 'local_hardware_master_key';
+  static String? _inMemoryLocalMasterKey;
 
   /// Retrieves the hardware-backed 256-bit AES master key, or auto-generates
   /// a cryptographically secure random 32-byte key if it doesn't exist yet.
   Future<String> getOrCreateLocalMasterKey() async {
-    final existing = await storage.read(key: _localMasterKey);
-    if (existing != null && existing.isNotEmpty) {
-      return existing;
+    try {
+      final existing = await storage.read(key: _localMasterKey);
+      if (existing != null && existing.isNotEmpty) {
+        return existing;
+      }
+    } catch (_) {
+      if (_inMemoryLocalMasterKey != null && _inMemoryLocalMasterKey!.isNotEmpty) {
+        return _inMemoryLocalMasterKey!;
+      }
     }
 
     final random = Random.secure();
     final bytes = List<int>.generate(32, (i) => random.nextInt(256));
     final keyHex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    _inMemoryLocalMasterKey = keyHex;
 
-    await storage.write(key: _localMasterKey, value: keyHex);
+    try {
+      await storage.write(key: _localMasterKey, value: keyHex);
+    } catch (_) {}
     return keyHex;
   }
 
@@ -181,15 +191,75 @@ class SecureStorage {
   }
 
   Future<String?> getLocalMasterKey() async {
-    return await storage.read(key: _localMasterKey);
+    try {
+      return await storage.read(key: _localMasterKey);
+    } catch (_) {
+      return _inMemoryLocalMasterKey;
+    }
   }
 
   Future<void> setLocalMasterKey(String key) async {
-    await storage.write(key: _localMasterKey, value: key);
+    _inMemoryLocalMasterKey = key;
+    try {
+      await storage.write(key: _localMasterKey, value: key);
+    } catch (_) {}
   }
 
   Future<void> clearLocalMasterKey() async {
-    await storage.delete(key: _localMasterKey);
+    _inMemoryLocalMasterKey = null;
+    try {
+      await storage.delete(key: _localMasterKey);
+    } catch (_) {}
+  }
+
+  static const _dbEncryptionKey = 'local_db_encryption_key';
+  static String? _inMemoryDbKey;
+
+  /// Retrieves the hardware-backed database encryption key, or auto-generates
+  /// a cryptographically secure random 32-byte (256-bit) hex key if it doesn't exist yet.
+  Future<String> getOrCreateDatabaseKey() async {
+    try {
+      final existing = await storage.read(key: _dbEncryptionKey);
+      if (existing != null && existing.isNotEmpty) {
+        return existing;
+      }
+    } catch (_) {
+      if (_inMemoryDbKey != null && _inMemoryDbKey!.isNotEmpty) {
+        return _inMemoryDbKey!;
+      }
+    }
+
+    final random = Random.secure();
+    final bytes = List<int>.generate(32, (i) => random.nextInt(256));
+    final keyHex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    _inMemoryDbKey = keyHex;
+
+    try {
+      await storage.write(key: _dbEncryptionKey, value: keyHex);
+    } catch (_) {}
+    return keyHex;
+  }
+
+  Future<String?> getDatabaseKey() async {
+    try {
+      return await storage.read(key: _dbEncryptionKey);
+    } catch (_) {
+      return _inMemoryDbKey;
+    }
+  }
+
+  Future<void> setDatabaseKey(String key) async {
+    _inMemoryDbKey = key;
+    try {
+      await storage.write(key: _dbEncryptionKey, value: key);
+    } catch (_) {}
+  }
+
+  Future<void> clearDatabaseKey() async {
+    _inMemoryDbKey = null;
+    try {
+      await storage.delete(key: _dbEncryptionKey);
+    } catch (_) {}
   }
 
   // Profile Share Sync Frequency & Settings

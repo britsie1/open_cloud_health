@@ -12,7 +12,7 @@ Open Cloud Health is a cross-platform, local-first personal health tracking appl
 
 ## 🎨 Core Philosophy
 
-*   **Privacy First:** All health data (profiles, history, medications, allergies, and vitals) is stored locally on the device using an SQLite database (`sqflite`). No data is sent to third-party servers.
+*   **Privacy First:** All health data (profiles, history, medications, allergies, and vitals) is stored locally on the device using an encrypted SQLite database (`SQLCipher with Drift`). No data is sent to third-party servers.
 *   **Biometric Security:** The app is gated by native biometric authentication (`local_auth`) upon launch, ensuring data remains secure even if the device is unlocked.
 *   **User-Owned Cloud Sync:** Instead of using a central server, the app backs up the SQLite database and profile images directly to a hidden "App Data" folder in the user's personal Google Drive. This utilizes Google's `driveAppdataScope`, adhering to non-sensitive API policies for seamless, secure device migration without exposing files in the main Google Drive UI.
 

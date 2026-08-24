@@ -274,10 +274,54 @@ class EmergencyActivity : Activity() {
             }
 
         } catch (e: Exception) {
-            showError("Failed to load emergency data: ${e.localizedMessage}")
+            val loadedFromCache = loadFromEmergencyCache()
+            if (!loadedFromCache) {
+                showError("Failed to load emergency data: ${e.localizedMessage}")
+            }
         } finally {
             db?.close()
         }
+    }
+
+    private fun loadFromEmergencyCache(): Boolean {
+        try {
+            val dpContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                createDeviceProtectedStorageContext()
+            } else {
+                this
+            }
+            val prefs = dpContext.getSharedPreferences("emergency_cache", Context.MODE_PRIVATE)
+            val isEnabled = prefs.getBoolean("isEnabled", false)
+            val title = prefs.getString("title", null)
+            val body = prefs.getString("body", null)
+            if (isEnabled && !title.isNullOrEmpty() && !body.isNullOrEmpty()) {
+                findViewById<View>(R.id.errorContainer).visibility = View.GONE
+                findViewById<View>(R.id.scrollContainer).visibility = View.VISIBLE
+
+                val profilesListContainer = findViewById<LinearLayout>(R.id.profilesListContainer)
+                profilesListContainer.removeAllViews()
+
+                val profileView = layoutInflater.inflate(R.layout.item_profile_emergency, profilesListContainer, false)
+                val cleanTitle = title.replace("🚨 Emergency Medical ID: ", "").replace("🚨 ", "").trim()
+                profileView.findViewById<TextView>(R.id.nameText).text = cleanTitle
+                profileView.findViewById<TextView>(R.id.dobText).run {
+                    visibility = View.VISIBLE
+                    text = body
+                }
+                profileView.findViewById<LinearLayout>(R.id.tagsLayout).visibility = View.GONE
+                profileView.findViewById<View>(R.id.conditionsCard).visibility = View.GONE
+                profileView.findViewById<View>(R.id.allergiesCard).visibility = View.GONE
+                profileView.findViewById<View>(R.id.medicationsCard).visibility = View.GONE
+                profileView.findViewById<View>(R.id.contactsCard).visibility = View.GONE
+                profileView.findViewById<View>(R.id.profileDivider).visibility = View.GONE
+
+                profilesListContainer.addView(profileView)
+                return true
+            }
+        } catch (ex: Exception) {
+            Log.e("EmergencyActivity", "Error loading emergency cache: ${ex.localizedMessage}")
+        }
+        return false
     }
 
     private data class LockScreenConfig(

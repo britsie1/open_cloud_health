@@ -37,7 +37,8 @@ dependencies:
   cupertino_icons: ^1.0.2
   sqflite: ^2.3.0
   drift: ^2.19.1
-  sqlite3_flutter_libs: ^0.5.42
+  sqlite3: ^2.4.3
+  sqlcipher_flutter_libs: ^0.6.8
   path: ^1.8.3
   flutter_cupertino_datetime_picker: ^3.0.0
   flutter_riverpod: ^2.4.9

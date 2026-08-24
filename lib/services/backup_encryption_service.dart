@@ -154,11 +154,12 @@ class BackupEncryptionService {
     return payloadBytes;
   }
 
-  /// Bundles local database file, profile images, and attachments into a ZIP archive.
+  /// Bundles local database file, profile images, attachments, and optional db key into a ZIP archive.
   static List<int> createZipArchive({
     required File dbFile,
     Directory? profileImagesDir,
     Directory? attachmentsDir,
+    String? databaseEncryptionKey,
   }) {
     final archive = Archive();
 
@@ -192,19 +193,27 @@ class BackupEncryptionService {
       }
     }
 
+    // 4. Add Database Encryption Key
+    if (databaseEncryptionKey != null && databaseEncryptionKey.isNotEmpty) {
+      final keyBytes = utf8.encode(databaseEncryptionKey);
+      archive.addFile(ArchiveFile('db_key.txt', keyBytes.length, keyBytes));
+    }
+
     final encoder = ZipEncoder();
     final zipData = encoder.encode(archive);
     return zipData ?? [];
   }
 
   /// Unpacks a ZIP archive into local database and files directories.
-  static void unpackZipArchive({
+  /// Returns the restored database encryption key if present in archive.
+  static String? unpackZipArchive({
     required List<int> zipBytes,
     required String dbDirectoryPath,
     required String localBasePath,
   }) {
     final decoder = ZipDecoder();
     final archive = decoder.decodeBytes(zipBytes);
+    String? restoredDbKey;
 
     for (var file in archive) {
       final filename = file.name;
@@ -216,6 +225,8 @@ class BackupEncryptionService {
             targetDbFile.parent.createSync(recursive: true);
           }
           targetDbFile.writeAsBytesSync(data, flush: true);
+        } else if (filename == 'db_key.txt') {
+          restoredDbKey = utf8.decode(data).trim();
         } else {
           final targetFile = File(path.join(localBasePath, filename));
           if (!targetFile.parent.existsSync()) {
@@ -225,6 +236,7 @@ class BackupEncryptionService {
         }
       }
     }
+    return restoredDbKey;
   }
 
   /// Creates an encrypted .ochbackup file containing all database records, profile photos, and medical attachments.
@@ -234,11 +246,13 @@ class BackupEncryptionService {
     Directory? profileImagesDir,
     Directory? attachmentsDir,
     required String encryptionPasswordOrKey,
+    String? databaseEncryptionKey,
   }) async {
     final zipBytes = createZipArchive(
       dbFile: dbFile,
       profileImagesDir: profileImagesDir,
       attachmentsDir: attachmentsDir,
+      databaseEncryptionKey: databaseEncryptionKey,
     );
 
     final encryptedBytes = encryptBundle(zipBytes, encryptionPasswordOrKey);
@@ -252,7 +266,8 @@ class BackupEncryptionService {
   }
 
   /// Imports and restores an encrypted .ochbackup file.
-  static Future<void> importLocalBackupFromFile({
+  /// Returns the restored database encryption key if present.
+  static Future<String?> importLocalBackupFromFile({
     required File backupFile,
     required String dbDirectoryPath,
     required String localBasePath,
@@ -261,7 +276,7 @@ class BackupEncryptionService {
     final encryptedBytes = await backupFile.readAsBytes();
     final zipBytes = decryptBundle(encryptedBytes, encryptionPasswordOrKey);
 
-    unpackZipArchive(
+    return unpackZipArchive(
       zipBytes: zipBytes,
       dbDirectoryPath: dbDirectoryPath,
       localBasePath: localBasePath,

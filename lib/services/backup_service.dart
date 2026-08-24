@@ -243,11 +243,13 @@ class BackupService {
     final profileImagesDir = await _fileService.getProfileImagesDirectory();
     final attachmentsDir = await _fileService.getAttachmentsDirectory();
 
-    // 2. Create in-memory ZIP containing database, photos, and attachments
+    // 2. Create in-memory ZIP containing database, photos, attachments, and db key
+    final dbKey = await _secureStorage.getDatabaseKey() ?? await _secureStorage.getOrCreateDatabaseKey();
     final zipBytes = BackupEncryptionService.createZipArchive(
       dbFile: dbFile,
       profileImagesDir: profileImagesDir,
       attachmentsDir: attachmentsDir,
+      databaseEncryptionKey: dbKey,
     );
 
     // 3. Encrypt ZIP bundle with AES-256
@@ -513,11 +515,14 @@ class BackupService {
       // Unpack into db and document directories
       final dbPath = await sql.getDatabasesPath();
       final localBaseDir = await _fileService.localPath;
-      BackupEncryptionService.unpackZipArchive(
+      final restoredDbKey = BackupEncryptionService.unpackZipArchive(
         zipBytes: zipBytes,
         dbDirectoryPath: dbPath,
         localBasePath: localBaseDir,
       );
+      if (restoredDbKey != null && restoredDbKey.isNotEmpty) {
+        await _secureStorage.setDatabaseKey(restoredDbKey);
+      }
     } else {
       debugPrint('Found standard legacy unencrypted backup. Restoring files...');
       final localBaseDir = await _fileService.localPath;
@@ -556,6 +561,7 @@ class BackupService {
     final attachmentsDir = await _fileService.getAttachmentsDirectory();
 
     final localMasterKey = await _secureStorage.getOrCreateLocalMasterKey();
+    final dbKey = await _secureStorage.getDatabaseKey() ?? await _secureStorage.getOrCreateDatabaseKey();
     final effectiveKey =
         (customPassword != null && customPassword.isNotEmpty)
             ? customPassword
@@ -572,6 +578,7 @@ class BackupService {
       profileImagesDir: profileImagesDir,
       attachmentsDir: attachmentsDir,
       encryptionPasswordOrKey: effectiveKey,
+      databaseEncryptionKey: dbKey,
     );
 
     return exportedFile;
@@ -590,12 +597,15 @@ class BackupService {
             ? customPassword
             : localMasterKey;
 
-    await BackupEncryptionService.importLocalBackupFromFile(
+    final restoredDbKey = await BackupEncryptionService.importLocalBackupFromFile(
       backupFile: backupFile,
       dbDirectoryPath: dbPath,
       localBasePath: localBaseDir,
       encryptionPasswordOrKey: effectiveKey,
     );
+    if (restoredDbKey != null && restoredDbKey.isNotEmpty) {
+      await _secureStorage.setDatabaseKey(restoredDbKey);
+    }
 
     // Reload profiles and active state
     await _ref.read(profilesProvider.notifier).loadProfiles();

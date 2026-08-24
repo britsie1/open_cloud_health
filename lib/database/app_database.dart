@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_cloud_health/database/tables.dart';
+import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart' as sql;
 
@@ -119,14 +120,30 @@ class AppDatabase extends _$AppDatabase {
     if (file.existsSync()) {
       await file.delete();
     }
+    final walFile = File(path.join(dbPath, 'opencloudhealth.db-wal'));
+    if (walFile.existsSync()) {
+      await walFile.delete();
+    }
+    final shmFile = File(path.join(dbPath, 'opencloudhealth.db-shm'));
+    if (shmFile.existsSync()) {
+      await shmFile.delete();
+    }
   }
 }
 
-LazyDatabase _openConnection() {
+LazyDatabase _openConnection([String? explicitDbKey]) {
   return LazyDatabase(() async {
     final dbFolder = await sql.getDatabasesPath();
     final file = File(path.join(dbFolder, 'opencloudhealth.db'));
-    return NativeDatabase.createInBackground(file);
+    final key = explicitDbKey ?? await SecureStorage().getOrCreateDatabaseKey();
+
+    return NativeDatabase.createInBackground(
+      file,
+      setup: (rawDb) {
+        rawDb.execute("PRAGMA key = '$key';");
+        rawDb.execute('PRAGMA foreign_keys = ON;');
+      },
+    );
   });
 }
 
@@ -135,3 +152,5 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
   ref.onDispose(() => db.close());
   return db;
 });
+
+

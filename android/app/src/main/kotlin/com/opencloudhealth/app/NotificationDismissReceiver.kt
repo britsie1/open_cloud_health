@@ -14,23 +14,15 @@ class NotificationDismissReceiver : BroadcastReceiver() {
         val body = intent.getStringExtra("body") ?: ""
         
         if (title.isNotEmpty() && body.isNotEmpty()) {
-            val dbFile = context.getDatabasePath("opencloudhealth.db")
-            if (dbFile.exists()) {
-                var db: SQLiteDatabase? = null
-                try {
-                    db = SQLiteDatabase.openDatabase(dbFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
-                    val settingsCursor = db.rawQuery("SELECT 1 FROM lock_screen_settings WHERE isEnabled = 1 LIMIT 1", null)
-                    val isStillEnabled = settingsCursor.moveToFirst()
-                    settingsCursor.close()
-                    
-                    if (isStillEnabled) {
-                        NotificationHelper.showNotification(context, title, body)
-                    }
-                } catch (e: Exception) {
-                    Log.e("NotificationDismiss", "Error checking settings: ${e.localizedMessage}")
-                } finally {
-                    db?.close()
-                }
+            val dpContext = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                context.createDeviceProtectedStorageContext()
+            } else {
+                context
+            }
+            val prefs = dpContext.getSharedPreferences("emergency_cache", Context.MODE_PRIVATE)
+            val isEnabledInCache = prefs.getBoolean("isEnabled", true)
+            if (isEnabledInCache) {
+                NotificationHelper.showNotification(context, title, body)
             }
         }
     }
