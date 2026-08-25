@@ -10,6 +10,7 @@ class PeriodState {
   final PeriodCycle? currentCycle;
   final List<PeriodCycle> pastCycles;
   final List<PeriodLog> currentCycleLogs;
+  final List<PeriodLog> allLogs;
   final int averageCycleLength;
   final int currentDayOfCycle;
   final bool trackOvulation;
@@ -20,6 +21,7 @@ class PeriodState {
     required this.currentCycle,
     required this.pastCycles,
     required this.currentCycleLogs,
+    this.allLogs = const [],
     required this.averageCycleLength,
     required this.currentDayOfCycle,
     required this.trackOvulation,
@@ -28,7 +30,7 @@ class PeriodState {
   });
 
   DateTime? get expectedNextPeriodDate {
-    if (currentCycle == null) return null;
+    if (currentCycle == null || averageCycleLength <= 0) return null;
     return currentCycle!.startDate.add(Duration(days: averageCycleLength));
   }
 }
@@ -41,12 +43,47 @@ class PeriodNotifier extends FamilyAsyncNotifier<PeriodState, String> {
     return _loadState();
   }
 
+  Future<void> _reconcileCycleEndDates(List<PeriodCycle> cycles) async {
+    if (cycles.isEmpty) return;
+
+    // Sort chronologically ascending
+    final sorted = List<PeriodCycle>.from(cycles)
+      ..sort((a, b) => a.startDate.compareTo(b.startDate));
+
+    for (int i = 0; i < sorted.length; i++) {
+      final current = sorted[i];
+      DateTime? expectedEndDate;
+      if (i < sorted.length - 1) {
+        final nextStart = sorted[i + 1].startDate;
+        expectedEndDate = DateTime(nextStart.year, nextStart.month, nextStart.day)
+            .subtract(const Duration(days: 1));
+      } else {
+        expectedEndDate = null;
+      }
+
+      final currentEnd = current.endDate != null
+          ? DateTime(current.endDate!.year, current.endDate!.month, current.endDate!.day)
+          : null;
+
+      if (currentEnd != expectedEndDate) {
+        final updated = PeriodCycle(
+          id: current.id,
+          profileId: current.profileId,
+          startDate: current.startDate,
+          endDate: expectedEndDate,
+        );
+        await _repository.updateCycle(updated);
+      }
+    }
+  }
+
   Future<PeriodState> _loadState() async {
     final allCycles = await _repository.getCycles(arg);
     
     PeriodCycle? currentCycle;
     List<PeriodCycle> pastCycles = [];
     List<PeriodLog> currentCycleLogs = [];
+    List<PeriodLog> allLogs = [];
     int averageCycleLength = 28; // Default
 
     if (allCycles.isNotEmpty) {
@@ -55,27 +92,29 @@ class PeriodNotifier extends FamilyAsyncNotifier<PeriodState, String> {
       pastCycles = allCycles.sublist(1);
     }
 
-    final completedCycles = allCycles.where((c) => c.cycleLength != null).toList();
-    int? shortestCycle;
-    int? longestCycle;
+    for (var cycle in allCycles) {
+      final logs = await _repository.getLogsForCycle(cycle.id);
+      allLogs.addAll(logs);
+    }
+    allLogs.sort((a, b) => b.date.compareTo(a.date));
+
+    if (currentCycle != null) {
+      currentCycleLogs = allLogs.where((l) => l.cycleId == currentCycle!.id).toList();
+    }
+
+    final completedCycles = allCycles
+        .where((c) => c.cycleLength != null && c.cycleLength! > 0)
+        .toList();
 
     if (completedCycles.isNotEmpty) {
       int totalDays = 0;
       for (var c in completedCycles) {
-        int length = c.cycleLength!;
-        totalDays += length;
-        if (shortestCycle == null || length < shortestCycle) {
-          shortestCycle = length;
-        }
-        if (longestCycle == null || length > longestCycle) {
-          longestCycle = length;
-        }
+        totalDays += c.cycleLength!;
       }
-      averageCycleLength = (totalDays / completedCycles.length).round();
-    }
-
-    if (currentCycle != null) {
-      currentCycleLogs = await _repository.getLogsForCycle(currentCycle.id);
+      final calculatedAvg = (totalDays / completedCycles.length).round();
+      if (calculatedAvg > 0) {
+        averageCycleLength = calculatedAvg;
+      }
     }
 
     // Calculations
@@ -109,6 +148,7 @@ class PeriodNotifier extends FamilyAsyncNotifier<PeriodState, String> {
       currentCycle: currentCycle,
       pastCycles: pastCycles,
       currentCycleLogs: currentCycleLogs,
+      allLogs: allLogs,
       averageCycleLength: averageCycleLength,
       currentDayOfCycle: currentDayOfCycle,
       trackOvulation: trackOvulation,
@@ -119,28 +159,36 @@ class PeriodNotifier extends FamilyAsyncNotifier<PeriodState, String> {
 
   Future<Result<void, Exception>> startNewCycle(DateTime startDate) async {
     try {
-      final stateValue = state.value;
       final cleanStartDate = DateTime(startDate.year, startDate.month, startDate.day);
+      final allCycles = await _repository.getCycles(arg);
 
-      if (stateValue?.currentCycle != null) {
-        // End the previous cycle
-        final oldCycle = stateValue!.currentCycle!;
-        final endDate = cleanStartDate.subtract(const Duration(days: 1));
-        await _repository.updateCycle(
-          PeriodCycle(id: oldCycle.id, profileId: oldCycle.profileId, startDate: oldCycle.startDate, endDate: endDate)
-        );
+      // Check if a cycle already starts on this exact date
+      PeriodCycle? existingCycle = allCycles.cast<PeriodCycle?>().firstWhere(
+        (c) => c != null &&
+            c.startDate.year == cleanStartDate.year &&
+            c.startDate.month == cleanStartDate.month &&
+            c.startDate.day == cleanStartDate.day,
+        orElse: () => null,
+      );
+
+      final PeriodCycle cycleToUse;
+      if (existingCycle == null) {
+        cycleToUse = PeriodCycle(profileId: arg, startDate: cleanStartDate);
+        await _repository.addCycle(cycleToUse);
+        allCycles.add(cycleToUse);
+      } else {
+        cycleToUse = existingCycle;
       }
 
-      // Start new cycle
-      final newCycle = PeriodCycle(profileId: arg, startDate: cleanStartDate);
-      await _repository.addCycle(newCycle);
+      // Reconcile all cycle end dates chronologically
+      await _reconcileCycleEndDates(allCycles);
 
       // Log 3 default period days
       for (int i = 0; i < 3; i++) {
         final logDate = cleanStartDate.add(Duration(days: i));
         
         final log = PeriodLog(
-          cycleId: newCycle.id,
+          cycleId: cycleToUse.id,
           date: logDate,
           flowLevel: FlowLevel.medium,
         );
@@ -158,11 +206,12 @@ class PeriodNotifier extends FamilyAsyncNotifier<PeriodState, String> {
 
   Future<Result<void, Exception>> logSymptom(PeriodLog log) async {
     try {
-      final stateValue = state.value;
+      final cleanDate = DateTime(log.date.year, log.date.month, log.date.day);
+      final allCycles = await _repository.getCycles(arg);
       PeriodLog finalLog = log;
 
-      if (stateValue?.currentCycle == null) {
-        await startNewCycle(log.date);
+      if (allCycles.isEmpty) {
+        await startNewCycle(cleanDate);
         final newCycles = await _repository.getCycles(arg);
         if (newCycles.isNotEmpty) {
           finalLog = PeriodLog(
@@ -174,25 +223,75 @@ class PeriodNotifier extends FamilyAsyncNotifier<PeriodState, String> {
             physicalSymptoms: log.physicalSymptoms,
           );
         }
-      } else if (log.flowLevel != null) {
-        final currentCycle = stateValue!.currentCycle!;
-        final daysElapsed = log.date.difference(currentCycle.startDate).inDays;
-        final threshold = (stateValue.averageCycleLength > 0 ? stateValue.averageCycleLength : 28) - 5;
-        final minThreshold = threshold < 15 ? 15 : threshold;
+      } else {
+        final sortedAsc = List<PeriodCycle>.from(allCycles)
+          ..sort((a, b) => a.startDate.compareTo(b.startDate));
         
-        if (daysElapsed >= minThreshold) {
-           await startNewCycle(log.date);
-           final newCycles = await _repository.getCycles(arg);
-           if (newCycles.isNotEmpty) {
-             finalLog = PeriodLog(
-               id: log.id,
-               cycleId: newCycles.first.id,
-               date: log.date,
-               flowLevel: log.flowLevel,
-               moods: log.moods,
-               physicalSymptoms: log.physicalSymptoms,
-             );
-           }
+        final latestCycle = sortedAsc.last;
+        final earliestCycle = sortedAsc.first;
+        final stateValue = state.value;
+        final avgLen = (stateValue?.averageCycleLength != null && stateValue!.averageCycleLength > 0)
+            ? stateValue.averageCycleLength
+            : 28;
+        final threshold = avgLen - 5;
+        final minThreshold = threshold < 15 ? 15 : threshold;
+
+        if (log.flowLevel != null && cleanDate.difference(latestCycle.startDate).inDays >= minThreshold) {
+          // Starting a new cycle ahead of current
+          await startNewCycle(cleanDate);
+          final updatedCycles = await _repository.getCycles(arg);
+          final matchingCycle = updatedCycles.firstWhere(
+            (c) => c.startDate.year == cleanDate.year &&
+                c.startDate.month == cleanDate.month &&
+                c.startDate.day == cleanDate.day,
+            orElse: () => updatedCycles.first,
+          );
+          finalLog = PeriodLog(
+            id: log.id,
+            cycleId: matchingCycle.id,
+            date: log.date,
+            flowLevel: log.flowLevel,
+            moods: log.moods,
+            physicalSymptoms: log.physicalSymptoms,
+          );
+        } else if (log.flowLevel != null && cleanDate.isBefore(earliestCycle.startDate)) {
+          // Starting a new historical cycle before the earliest recorded
+          await startNewCycle(cleanDate);
+          final updatedCycles = await _repository.getCycles(arg);
+          final matchingCycle = updatedCycles.firstWhere(
+            (c) => c.startDate.year == cleanDate.year &&
+                c.startDate.month == cleanDate.month &&
+                c.startDate.day == cleanDate.day,
+            orElse: () => updatedCycles.first,
+          );
+          finalLog = PeriodLog(
+            id: log.id,
+            cycleId: matchingCycle.id,
+            date: log.date,
+            flowLevel: log.flowLevel,
+            moods: log.moods,
+            physicalSymptoms: log.physicalSymptoms,
+          );
+        } else {
+          // Belongs to an existing cycle range
+          PeriodCycle matchingCycle = latestCycle;
+          for (final c in sortedAsc) {
+            if (!cleanDate.isBefore(c.startDate)) {
+              if (c.endDate == null || !cleanDate.isAfter(c.endDate!)) {
+                matchingCycle = c;
+                break;
+              }
+              matchingCycle = c;
+            }
+          }
+          finalLog = PeriodLog(
+            id: log.id,
+            cycleId: matchingCycle.id,
+            date: log.date,
+            flowLevel: log.flowLevel,
+            moods: log.moods,
+            physicalSymptoms: log.physicalSymptoms,
+          );
         }
       }
 

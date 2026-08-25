@@ -110,14 +110,21 @@ class HistoryNotifier extends FamilyAsyncNotifier<List<HistoryEvent>, String> {
         final logs = await periodRepo.getLogsForCycle(cycle.id);
         if (logs.isEmpty) continue;
 
-        // Sort logs by date ascending
-        logs.sort((a, b) => a.date.compareTo(b.date));
+        final flowLogs = logs.where((l) => l.flowLevel != null).toList();
+        final symptomOnlyLogs = logs
+            .where((l) =>
+                l.flowLevel == null &&
+                (l.moods.isNotEmpty || l.physicalSymptoms.isNotEmpty))
+            .toList();
 
-        // Group consecutive days where the gap is <= 1 day
+        // Sort flow logs by date ascending
+        flowLogs.sort((a, b) => a.date.compareTo(b.date));
+
+        // Group consecutive flow days where the gap is <= 1 day
         final List<List<PeriodLog>> groups = [];
         List<PeriodLog> currentGroup = [];
 
-        for (final log in logs) {
+        for (final log in flowLogs) {
           if (currentGroup.isEmpty) {
             currentGroup.add(log);
           } else {
@@ -207,6 +214,38 @@ class HistoryNotifier extends FamilyAsyncNotifier<List<HistoryEvent>, String> {
               description: description,
               date: startLog.date,
               eventType: EventType.period,
+              hasTime: false,
+            )
+          );
+        }
+
+        // Add HistoryEvents for standalone symptom-only days
+        for (final log in symptomOnlyLogs) {
+          final dateText = DateFormat('MMMM d, yyyy').format(log.date);
+          final moodsSet = log.moods.toSet();
+          final moodText = moodsSet.isNotEmpty 
+              ? 'Moods: ${moodsSet.map((m) => m.name).join(', ')}' 
+              : null;
+
+          final symptomsSet = log.physicalSymptoms.toSet();
+          final symptomText = symptomsSet.isNotEmpty 
+              ? 'Symptoms: ${symptomsSet.map((s) => s.name).join(', ')}' 
+              : null;
+
+          final descriptionParts = [
+            dateText,
+            if (symptomText != null) symptomText,
+            if (moodText != null) moodText,
+          ];
+
+          historyEvents.add(
+            HistoryEvent(
+              id: log.id,
+              profileId: profileId,
+              title: 'Cycle Symptoms',
+              description: descriptionParts.join('\n'),
+              date: log.date,
+              eventType: EventType.other,
               hasTime: false,
             )
           );

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:healthicons_flutter/healthicons_flutter.dart';
+import 'package:open_cloud_health/models/period_cycle.dart';
 import 'package:open_cloud_health/models/period_log.dart';
 import 'package:open_cloud_health/providers/period_provider.dart';
 import 'package:open_cloud_health/widgets/symptom_button.dart';
@@ -15,12 +16,33 @@ class _PeriodGroup {
   _PeriodGroup(this.startDate, this.endDate, this.logs);
 }
 
+class _LogDisplayItem {
+  final bool isPeriod;
+  final DateTime startDate;
+  final DateTime endDate;
+  final List<PeriodLog> logs;
+
+  _LogDisplayItem.period({
+    required this.startDate,
+    required this.endDate,
+    required this.logs,
+  }) : isPeriod = true;
+
+  _LogDisplayItem.symptom({
+    required PeriodLog log,
+  })  : isPeriod = false,
+        startDate = log.date,
+        endDate = log.date,
+        logs = [log];
+}
+
 class PeriodTrackerScreen extends ConsumerStatefulWidget {
   const PeriodTrackerScreen({super.key, required this.profileId});
   final String profileId;
 
   @override
-  ConsumerState<PeriodTrackerScreen> createState() => _PeriodTrackerScreenState();
+  ConsumerState<PeriodTrackerScreen> createState() =>
+      _PeriodTrackerScreenState();
 }
 
 class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
@@ -34,26 +56,81 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
   }
 
   bool isFertileDay(DateTime day, PeriodState state) {
-    if (!state.trackOvulation || state.currentCycle == null) return false;
-    if (state.fertileWindowStartDay == null || state.fertileWindowEndDay == null) return false;
+    if (!state.trackOvulation) return false;
 
-    final cycleStart = state.currentCycle!.startDate;
-    final startOfFertile = cycleStart.add(Duration(days: state.fertileWindowStartDay! - 1));
-    final endOfFertile = cycleStart.add(Duration(days: state.fertileWindowEndDay! - 1));
+    final allCycles = [
+      if (state.currentCycle != null) state.currentCycle!,
+      ...state.pastCycles,
+    ];
 
-    final checkDay = DateTime(day.year, day.month, day.day);
-    final fStart = DateTime(startOfFertile.year, startOfFertile.month, startOfFertile.day);
-    final fEnd = DateTime(endOfFertile.year, endOfFertile.month, endOfFertile.day);
+    for (final cycle in allCycles) {
+      final cycleLength = (cycle.cycleLength != null && cycle.cycleLength! > 0)
+          ? cycle.cycleLength!
+          : (state.averageCycleLength > 0 ? state.averageCycleLength : 28);
 
-    return checkDay.compareTo(fStart) >= 0 && checkDay.compareTo(fEnd) <= 0;
+      final estimatedOvulationDay = cycleLength - 14;
+      final fertileStartDay = (estimatedOvulationDay - 5).clamp(1, cycleLength);
+      final fertileEndDay = estimatedOvulationDay.clamp(1, cycleLength);
+
+      final cycleStart = DateTime(
+          cycle.startDate.year, cycle.startDate.month, cycle.startDate.day);
+      final fStart = cycleStart.add(Duration(days: fertileStartDay - 1));
+      final fEnd = cycleStart.add(Duration(days: fertileEndDay - 1));
+
+      final checkDay = DateTime(day.year, day.month, day.day);
+      if (checkDay.compareTo(fStart) >= 0 && checkDay.compareTo(fEnd) <= 0) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   bool isLoggedDay(DateTime day, PeriodState state) {
-    final log = state.currentCycleLogs.cast<PeriodLog?>().firstWhere(
-      (log) => log?.date.year == day.year && log?.date.month == day.month && log?.date.day == day.day,
-      orElse: () => null,
-    );
+    final log = state.allLogs.cast<PeriodLog?>().firstWhere(
+          (log) => log != null && isSameDay(log.date, day),
+          orElse: () => null,
+        );
     return log != null && log.flowLevel != null;
+  }
+
+  bool hasSymptomsOnly(DateTime day, PeriodState state) {
+    final log = state.allLogs.cast<PeriodLog?>().firstWhere(
+          (log) => log != null && isSameDay(log.date, day),
+          orElse: () => null,
+        );
+    return log != null &&
+        log.flowLevel == null &&
+        (log.moods.isNotEmpty || log.physicalSymptoms.isNotEmpty);
+  }
+
+  PeriodCycle? _findCycleForDate(DateTime date, PeriodState state) {
+    final allCycles = [
+      if (state.currentCycle != null) state.currentCycle!,
+      ...state.pastCycles,
+    ]..sort((a, b) => a.startDate.compareTo(b.startDate));
+
+    if (allCycles.isEmpty) return null;
+
+    final cleanDate = DateTime(date.year, date.month, date.day);
+    PeriodCycle? matching;
+    for (final c in allCycles) {
+      final start =
+          DateTime(c.startDate.year, c.startDate.month, c.startDate.day);
+      if (!cleanDate.isBefore(start)) {
+        if (c.endDate == null) {
+          matching = c;
+          break;
+        }
+        final end = DateTime(c.endDate!.year, c.endDate!.month, c.endDate!.day);
+        if (!cleanDate.isAfter(end)) {
+          matching = c;
+          break;
+        }
+        matching = c;
+      }
+    }
+    return matching ?? allCycles.first;
   }
 
   @override
@@ -78,39 +155,41 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
             final primaryColor = Theme.of(context).colorScheme.primary;
             final loggedColor = Colors.pink[200]!;
             final fertileColor = Colors.teal[100]!;
+            final predictedColor = Colors.purple[200]!;
 
             return TabBarView(
               children: [
                 SafeArea(
-                  child: Column(
-                    children: [
-                      _buildCalendar(state, primaryColor, loggedColor, fertileColor),
-                      const SizedBox(height: 16),
-                      _legend(state, primaryColor, loggedColor, fertileColor),
-                      const Divider(),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              children: [
-                                if (state.currentCycle == null)
-                                  const Padding(
-                                    padding: EdgeInsets.only(bottom: 16.0),
-                                    child: Text(
-                                      'Select a day and log your flow to start your first cycle.',
-                                      style: TextStyle(fontStyle: FontStyle.italic),
-                                    ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        _buildCalendar(state, primaryColor, loggedColor,
+                            fertileColor, predictedColor),
+                        const SizedBox(height: 16),
+                        _legend(state, primaryColor, loggedColor, fertileColor,
+                            predictedColor),
+                        const Divider(),
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              if (state.currentCycle == null)
+                                const Padding(
+                                  padding: EdgeInsets.only(bottom: 16.0),
+                                  child: Text(
+                                    'Select a day and log your flow to start your first cycle.',
+                                    style: TextStyle(
+                                        fontStyle: FontStyle.italic),
                                   ),
-                                _buildContextualMessage(state),
-                                const SizedBox(height: 16),
-                                _buildDayDetails(state),
-                              ],
-                            ),
+                                ),
+                              _buildContextualMessage(state),
+                              const SizedBox(height: 16),
+                              _buildDayDetails(state),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 _buildLogTab(),
@@ -133,50 +212,80 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
           return const Center(child: Text('No logs found.'));
         }
 
-        final List<_PeriodGroup> groups = [];
-        _PeriodGroup? currentGroup;
+        final List<_LogDisplayItem> items = [];
+        final flowLogs = logs.where((l) => l.flowLevel != null).toList();
+        final symptomLogs = logs
+            .where((l) =>
+                l.flowLevel == null &&
+                (l.moods.isNotEmpty || l.physicalSymptoms.isNotEmpty))
+            .toList();
 
-        for (var log in logs) {
-          if (log.flowLevel != null) {
-            if (currentGroup == null) {
-              currentGroup = _PeriodGroup(log.date, log.date, [log]);
+        _PeriodGroup? currentGroup;
+        for (var log in flowLogs) {
+          if (currentGroup == null) {
+            currentGroup = _PeriodGroup(log.date, log.date, [log]);
+          } else {
+            final diff = currentGroup.startDate.difference(log.date).inDays;
+            if (diff == 1 || diff == 0) {
+              currentGroup.startDate = log.date;
+              currentGroup.logs.add(log);
             } else {
-              final diff = currentGroup.startDate.difference(log.date).inDays;
-              if (diff == 1 || diff == 0) {
-                currentGroup.startDate = log.date;
-                currentGroup.logs.add(log);
-              } else {
-                groups.add(currentGroup);
-                currentGroup = _PeriodGroup(log.date, log.date, [log]);
-              }
+              items.add(_LogDisplayItem.period(
+                startDate: currentGroup.startDate,
+                endDate: currentGroup.endDate,
+                logs: currentGroup.logs,
+              ));
+              currentGroup = _PeriodGroup(log.date, log.date, [log]);
             }
           }
         }
-        if (currentGroup != null) groups.add(currentGroup);
+        if (currentGroup != null) {
+          items.add(_LogDisplayItem.period(
+            startDate: currentGroup.startDate,
+            endDate: currentGroup.endDate,
+            logs: currentGroup.logs,
+          ));
+        }
 
-        if (groups.isEmpty) {
-          return const Center(child: Text('No period flows logged.'));
+        for (var log in symptomLogs) {
+          items.add(_LogDisplayItem.symptom(log: log));
+        }
+
+        items.sort((a, b) => b.startDate.compareTo(a.startDate));
+
+        if (items.isEmpty) {
+          return const Center(child: Text('No period or symptom logs found.'));
         }
 
         return ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: groups.length,
+          itemCount: items.length,
           itemBuilder: (context, index) {
-            final group = groups[index];
-            final dateRangeStr = group.startDate == group.endDate
-                ? DateFormat.yMMMd().format(group.startDate)
-                : '${DateFormat.yMMMd().format(group.startDate)} - ${DateFormat.yMMMd().format(group.endDate)}';
+            final item = items[index];
+            final title = item.isPeriod ? 'Period' : 'Symptoms Logged';
+            final dateRangeStr = item.startDate == item.endDate
+                ? DateFormat.yMMMd().format(item.startDate)
+                : '${DateFormat.yMMMd().format(item.startDate)} - ${DateFormat.yMMMd().format(item.endDate)}';
 
             final icons = <Widget>[];
-            for (var log in group.logs) {
+            for (var log in item.logs) {
               if (log.flowLevel != null) {
-                icons.add(const Icon(Icons.water_drop, color: Colors.redAccent, size: 20));
+                icons.add(const Icon(Icons.water_drop,
+                    color: Colors.redAccent, size: 20));
               }
               for (var s in log.physicalSymptoms) {
-                icons.add(SizedBox(width: 20, height: 20, child: _getPhysicalIcon(s)(Theme.of(context).colorScheme.outline)));
+                icons.add(SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: _getPhysicalIcon(s)(
+                        Theme.of(context).colorScheme.outline)));
               }
               for (var m in log.moods) {
-                icons.add(SizedBox(width: 20, height: 20, child: _getMoodIcon(m)(Theme.of(context).colorScheme.outline)));
+                icons.add(SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: _getMoodIcon(m)(
+                        Theme.of(context).colorScheme.outline)));
               }
             }
 
@@ -186,8 +295,8 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
                 borderRadius: const BorderRadius.all(Radius.circular(10)),
                 onTap: () {
                   setState(() {
-                    _selectedDay = group.startDate;
-                    _focusedDay = group.startDate;
+                    _selectedDay = item.startDate;
+                    _focusedDay = item.startDate;
                   });
                   DefaultTabController.of(context).animateTo(0);
                 },
@@ -197,7 +306,7 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Period',
+                        title,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 4),
@@ -219,78 +328,188 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
     );
   }
 
-  Widget _buildCalendar(PeriodState state, Color primaryColor, Color loggedColor, Color fertileColor) {
-    return TableCalendar(
-      firstDay: DateTime.utc(2020, 1, 1),
-      lastDay: DateTime.utc(2030, 12, 31),
-      focusedDay: _focusedDay,
-      headerStyle: const HeaderStyle(formatButtonVisible: false),
-      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-      onDaySelected: (selectedDay, focusedDay) {
-        setState(() {
-          _selectedDay = selectedDay;
-          _focusedDay = focusedDay;
-        });
-      },
-      calendarStyle: CalendarStyle(
-        todayDecoration: const BoxDecoration(),
-        selectedDecoration: const BoxDecoration(),
-        selectedTextStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-        defaultTextStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-      ),
-      calendarBuilders: CalendarBuilders(
-        defaultBuilder: (context, day, focusedDay) => _calendarDayBuilder(context, day, state, primaryColor, loggedColor, fertileColor, isSelected: false, isToday: false),
-        todayBuilder: (context, day, focusedDay) => _calendarDayBuilder(context, day, state, primaryColor, loggedColor, fertileColor, isSelected: false, isToday: true),
-        selectedBuilder: (context, day, focusedDay) => _calendarDayBuilder(context, day, state, primaryColor, loggedColor, fertileColor, isSelected: true, isToday: isSameDay(day, DateTime.now())),
-        outsideBuilder: (context, day, focusedDay) => _calendarDayBuilder(context, day, state, primaryColor, loggedColor, fertileColor, isSelected: false, isToday: false, isOutside: true),
+  Widget _buildCalendar(PeriodState state, Color primaryColor,
+      Color loggedColor, Color fertileColor, Color predictedColor) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildCalendarHeader(context),
+        TableCalendar(
+          firstDay: DateTime.utc(2020, 1, 1),
+          lastDay: DateTime.utc(2030, 12, 31),
+          focusedDay: _focusedDay,
+          headerVisible: false,
+          selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+          onPageChanged: (focusedDay) {
+            setState(() {
+              _focusedDay = focusedDay;
+            });
+          },
+          onDaySelected: (selectedDay, focusedDay) {
+            setState(() {
+              _selectedDay = selectedDay;
+              _focusedDay = focusedDay;
+            });
+          },
+          calendarStyle: CalendarStyle(
+            todayDecoration: const BoxDecoration(),
+            selectedDecoration: const BoxDecoration(),
+            selectedTextStyle:
+                TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            defaultTextStyle:
+                TextStyle(color: Theme.of(context).colorScheme.onSurface),
+          ),
+          calendarBuilders: CalendarBuilders(
+            defaultBuilder: (context, day, focusedDay) => _calendarDayBuilder(
+                context,
+                day,
+                state,
+                primaryColor,
+                loggedColor,
+                fertileColor,
+                predictedColor,
+                isSelected: false,
+                isToday: false),
+            todayBuilder: (context, day, focusedDay) => _calendarDayBuilder(
+                context,
+                day,
+                state,
+                primaryColor,
+                loggedColor,
+                fertileColor,
+                predictedColor,
+                isSelected: false,
+                isToday: true),
+            selectedBuilder: (context, day, focusedDay) => _calendarDayBuilder(
+                context,
+                day,
+                state,
+                primaryColor,
+                loggedColor,
+                fertileColor,
+                predictedColor,
+                isSelected: true,
+                isToday: isSameDay(day, DateTime.now())),
+            outsideBuilder: (context, day, focusedDay) => _calendarDayBuilder(
+                context,
+                day,
+                state,
+                primaryColor,
+                loggedColor,
+                fertileColor,
+                predictedColor,
+                isSelected: false,
+                isToday: false,
+                isOutside: true),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCalendarHeader(BuildContext context) {
+    final monthFormat = DateFormat.yMMMM();
+    final monthText = monthFormat.format(_focusedDay);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            tooltip: 'Previous month',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            onPressed: () {
+              setState(() {
+                _focusedDay = DateTime(
+                    _focusedDay.year, _focusedDay.month - 1, _focusedDay.day);
+              });
+            },
+          ),
+          Expanded(
+            child: Semantics(
+              header: true,
+              label: monthText,
+              child: Text(
+                monthText,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            tooltip: 'Next month',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            onPressed: () {
+              setState(() {
+                _focusedDay = DateTime(
+                    _focusedDay.year, _focusedDay.month + 1, _focusedDay.day);
+              });
+            },
+          ),
+        ],
       ),
     );
   }
 
-  Widget _calendarDayBuilder(BuildContext context, DateTime day, PeriodState state, Color primaryColor, Color loggedColor, Color fertileColor, {required bool isSelected, required bool isToday, bool isOutside = false}) {
+  Widget _calendarDayBuilder(
+      BuildContext context,
+      DateTime day,
+      PeriodState state,
+      Color primaryColor,
+      Color loggedColor,
+      Color fertileColor,
+      Color predictedColor,
+      {required bool isSelected,
+      required bool isToday,
+      bool isOutside = false}) {
     final isFertile = isFertileDay(day, state);
     final isLogged = isLoggedDay(day, state);
-    final isPredicted = state.expectedNextPeriodDate != null && isSameDay(day, state.expectedNextPeriodDate);
+    final hasSymptoms = hasSymptomsOnly(day, state);
+    final isPredicted = state.expectedNextPeriodDate != null &&
+        isSameDay(day, state.expectedNextPeriodDate);
 
-    final isPrevFertile = isFertileDay(day.subtract(const Duration(days: 1)), state);
+    final isPrevFertile =
+        isFertileDay(day.subtract(const Duration(days: 1)), state);
     final isNextFertile = isFertileDay(day.add(const Duration(days: 1)), state);
-    
-    final isPrevLogged = isLoggedDay(day.subtract(const Duration(days: 1)), state);
+
+    final isPrevLogged =
+        isLoggedDay(day.subtract(const Duration(days: 1)), state);
     final isNextLogged = isLoggedDay(day.add(const Duration(days: 1)), state);
 
     BoxDecoration? decoration;
-    
+
     if (isLogged) {
-       decoration = BoxDecoration(
-         color: loggedColor,
-         borderRadius: BorderRadius.horizontal(
-           left: isPrevLogged ? Radius.zero : const Radius.circular(50),
-           right: isNextLogged ? Radius.zero : const Radius.circular(50),
-         )
-       );
+      decoration = BoxDecoration(
+          color: loggedColor,
+          borderRadius: BorderRadius.horizontal(
+            left: isPrevLogged ? Radius.zero : const Radius.circular(50),
+            right: isNextLogged ? Radius.zero : const Radius.circular(50),
+          ));
     } else if (isFertile) {
-       decoration = BoxDecoration(
-         color: fertileColor,
-         borderRadius: BorderRadius.horizontal(
-           left: isPrevFertile ? Radius.zero : const Radius.circular(50),
-           right: isNextFertile ? Radius.zero : const Radius.circular(50),
-         )
-       );
+      decoration = BoxDecoration(
+          color: fertileColor,
+          borderRadius: BorderRadius.horizontal(
+            left: isPrevFertile ? Radius.zero : const Radius.circular(50),
+            right: isNextFertile ? Radius.zero : const Radius.circular(50),
+          ));
     } else if (isPredicted) {
-       decoration = BoxDecoration(
-          border: Border.all(
-            color: primaryColor,
-            style: BorderStyle.solid,
-            width: 1.5,
-          ),
-          shape: BoxShape.circle,
-        );
+      decoration = BoxDecoration(
+        color: predictedColor,
+        shape: BoxShape.circle,
+      );
     }
 
-    final bool isContinuous = (isLogged && (isPrevLogged || isNextLogged)) || (isFertile && (isPrevFertile || isNextFertile));
+    final bool isContinuous = (isLogged && (isPrevLogged || isNextLogged)) ||
+        (isFertile && (isPrevFertile || isNextFertile));
 
     return Container(
-      margin: isContinuous ? const EdgeInsets.symmetric(vertical: 6) : const EdgeInsets.all(6),
+      margin: isContinuous
+          ? const EdgeInsets.symmetric(vertical: 6)
+          : const EdgeInsets.all(6),
       decoration: decoration,
       alignment: Alignment.center,
       child: Container(
@@ -300,20 +519,39 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
           shape: BoxShape.circle,
         ),
         alignment: Alignment.center,
-        child: Text(
-          '${day.day}',
-          style: TextStyle(
-            color: isOutside 
-              ? Theme.of(context).colorScheme.onSurface.withOpacity(0.3)
-              : Theme.of(context).colorScheme.onSurface,
-            fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${day.day}',
+              style: TextStyle(
+                color: isOutside
+                    ? Theme.of(context).colorScheme.onSurface.withOpacity(0.3)
+                    : Theme.of(context).colorScheme.onSurface,
+                fontWeight:
+                    isToday || isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            if (hasSymptoms) ...[
+              const SizedBox(height: 2),
+              Container(
+                width: 4,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: primaryColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
   }
 
-  Widget _legend(PeriodState state, Color primaryColor, Color loggedColor, Color fertileColor) {
+  Widget _legend(PeriodState state, Color primaryColor, Color loggedColor,
+      Color fertileColor, Color predictedColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Wrap(
@@ -323,34 +561,48 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
         children: [
           _legendItem("Logged", loggedColor),
           if (state.trackOvulation) ...[
-            _legendItem("Fertile", fertileColor, isDashed: true),
+            _legendItem("Fertile", fertileColor),
           ],
-          _legendItem("Predicted", Colors.transparent, borderStyle: BorderStyle.solid, borderColor: primaryColor),
-          _legendItem("Selected", Colors.transparent, borderStyle: BorderStyle.solid, borderColor: primaryColor),
+          _legendItem("Predicted", predictedColor),
+          _legendItem("Symptoms", primaryColor, isDot: true),
+          _legendItem("Selected", Colors.transparent,
+              borderStyle: BorderStyle.solid, borderColor: primaryColor),
         ],
       ),
     );
   }
 
-  Widget _legendItem(String label, Color color, {bool isDashed = false, BorderStyle borderStyle = BorderStyle.solid, Color? borderColor}) {
+  Widget _legendItem(String label, Color color,
+      {bool isDot = false,
+      BorderStyle borderStyle = BorderStyle.solid,
+      Color? borderColor}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 14,
-          height: 14,
-          decoration: BoxDecoration(
-            color: color,
-            border: isDashed || borderColor != null
-                ? Border.all(
-                    color: borderColor ?? Theme.of(context).colorScheme.outline,
-                    style: borderStyle,
-                  )
-                : null,
-            shape: isDashed ? BoxShape.rectangle : BoxShape.circle,
-            borderRadius: isDashed ? BorderRadius.circular(4) : null,
+        if (isDot)
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          )
+        else
+          Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              color: color,
+              border: borderColor != null
+                  ? Border.all(
+                      color: borderColor,
+                      style: borderStyle,
+                    )
+                  : null,
+              shape: BoxShape.circle,
+            ),
           ),
-        ),
         const SizedBox(width: 6),
         Text(label, style: Theme.of(context).textTheme.bodySmall),
       ],
@@ -362,7 +614,7 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
 
     final today = DateTime.now();
     final isFertile = isFertileDay(today, state);
-    final isPredicted = state.expectedNextPeriodDate != null && 
+    final isPredicted = state.expectedNextPeriodDate != null &&
         today.compareTo(state.expectedNextPeriodDate!) <= 0 &&
         !isSameDay(today, state.expectedNextPeriodDate);
 
@@ -370,7 +622,9 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
     if (isFertile) {
       message = "You are in your fertile stage.";
     } else if (isPredicted) {
-      final daysTill = state.expectedNextPeriodDate!.difference(DateTime(today.year, today.month, today.day)).inDays;
+      final daysTill = state.expectedNextPeriodDate!
+          .difference(DateTime(today.year, today.month, today.day))
+          .inDays;
       message = "$daysTill days till your next period.";
     }
 
@@ -381,9 +635,9 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
       child: Text(
         message,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          fontStyle: FontStyle.italic,
-        ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
       ),
     );
   }
@@ -391,10 +645,16 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
   Widget _buildDayDetails(PeriodState state) {
     if (_selectedDay == null) return const SizedBox();
 
-    final logForDate = state.currentCycleLogs.cast<PeriodLog?>().firstWhere(
-      (log) => log?.date.year == _selectedDay!.year && log?.date.month == _selectedDay!.month && log?.date.day == _selectedDay!.day,
-      orElse: () => null,
-    );
+    final logForDate = state.allLogs.cast<PeriodLog?>().firstWhere(
+          (log) => log != null && isSameDay(log.date, _selectedDay!),
+          orElse: () => null,
+        );
+
+    final matchingCycle = _findCycleForDate(_selectedDay!, state);
+    final targetCycleId = logForDate?.cycleId ??
+        matchingCycle?.id ??
+        state.currentCycle?.id ??
+        '';
 
     DateTime? blockStart;
     DateTime? blockEnd;
@@ -453,64 +713,70 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
         const SizedBox(height: 16),
         if (blockStart != null && blockEnd != null) ...[
           OutlinedButton.icon(
-            icon: const Icon(Icons.date_range, size: 18),
-            label: Text('Period Dates: ${DateFormat.MMMd().format(blockStart)} - ${DateFormat.MMMd().format(blockEnd)}'),
-            onPressed: () async {
-              final range = await showDateRangePicker(
-                context: context,
-                firstDate: DateTime(2020),
-                lastDate: DateTime.now(),
-                initialDateRange: DateTimeRange(start: blockStart!, end: blockEnd!),
-              );
-              
-              if (range != null && (range.start != blockStart || range.end != blockEnd)) {
-                final notifier = ref.read(periodProvider(widget.profileId).notifier);
-                final cycleId = state.currentCycle!.id;
+              icon: const Icon(Icons.date_range, size: 18),
+              label: Text(
+                  'Period Dates: ${DateFormat.MMMd().format(blockStart)} - ${DateFormat.MMMd().format(blockEnd)}'),
+              onPressed: () async {
+                final range = await showDateRangePicker(
+                  context: context,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now(),
+                  initialDateRange:
+                      DateTimeRange(start: blockStart!, end: blockEnd!),
+                );
 
-                final oldDays = <DateTime>{};
-                var c = blockStart;
-                while (c.compareTo(blockEnd) <= 0) {
-                  oldDays.add(DateTime(c.year, c.month, c.day));
-                  c = c.add(const Duration(days: 1));
-                }
+                if (range != null &&
+                    (range.start != blockStart || range.end != blockEnd)) {
+                  final notifier =
+                      ref.read(periodProvider(widget.profileId).notifier);
+                  final cycleId = targetCycleId.isNotEmpty
+                      ? targetCycleId
+                      : (state.currentCycle?.id ?? '');
 
-                final newDays = <DateTime>{};
-                c = range.start;
-                while (c.compareTo(range.end) <= 0) {
-                  newDays.add(DateTime(c.year, c.month, c.day));
-                  c = c.add(const Duration(days: 1));
-                }
+                  final oldDays = <DateTime>{};
+                  var c = blockStart;
+                  while (c.compareTo(blockEnd) <= 0) {
+                    oldDays.add(DateTime(c.year, c.month, c.day));
+                    c = c.add(const Duration(days: 1));
+                  }
 
-                for (var log in state.currentCycleLogs) {
-                  if (log.flowLevel != null) {
-                    final lDate = DateTime(log.date.year, log.date.month, log.date.day);
-                    if (oldDays.contains(lDate) && !newDays.contains(lDate)) {
-                      final updatedLog = PeriodLog(
-                        id: log.id,
-                        cycleId: log.cycleId,
-                        date: log.date,
-                        flowLevel: null,
-                        moods: log.moods,
-                        physicalSymptoms: log.physicalSymptoms,
+                  final newDays = <DateTime>{};
+                  c = range.start;
+                  while (c.compareTo(range.end) <= 0) {
+                    newDays.add(DateTime(c.year, c.month, c.day));
+                    c = c.add(const Duration(days: 1));
+                  }
+
+                  for (var log in state.allLogs) {
+                    if (log.flowLevel != null) {
+                      final lDate =
+                          DateTime(log.date.year, log.date.month, log.date.day);
+                      if (oldDays.contains(lDate) && !newDays.contains(lDate)) {
+                        final updatedLog = PeriodLog(
+                          id: log.id,
+                          cycleId: log.cycleId,
+                          date: log.date,
+                          flowLevel: null,
+                          moods: log.moods,
+                          physicalSymptoms: log.physicalSymptoms,
+                        );
+                        await notifier.logSymptom(updatedLog);
+                      }
+                    }
+                  }
+
+                  for (var day in newDays) {
+                    if (!oldDays.contains(day)) {
+                      final newLog = PeriodLog(
+                        cycleId: cycleId,
+                        date: day,
+                        flowLevel: FlowLevel.medium,
                       );
-                      await notifier.logSymptom(updatedLog);
+                      await notifier.logSymptom(newLog);
                     }
                   }
                 }
-
-                for (var day in newDays) {
-                  if (!oldDays.contains(day)) {
-                    final newLog = PeriodLog(
-                      cycleId: cycleId,
-                      date: day,
-                      flowLevel: FlowLevel.medium,
-                    );
-                    await notifier.logSymptom(newLog);
-                  }
-                }
-              }
-            }
-          ),
+              }),
           const SizedBox(height: 16),
         ],
         Text('Flow', style: Theme.of(context).textTheme.titleMedium),
@@ -521,19 +787,22 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
           children: FlowLevel.values.map((flow) {
             final isSelected = logForDate?.flowLevel == flow;
             return SymptomButton(
-              iconBuilder: (c) => Icon(Icons.water_drop, color: c, size: 16.0 + (flow.index * 4.0)),
+              iconBuilder: (c) => Icon(Icons.water_drop,
+                  color: c, size: 16.0 + (flow.index * 4.0)),
               label: flow.name.capitalize(),
               isSelected: isSelected,
               onTap: () {
                 final newLog = PeriodLog(
                   id: logForDate?.id,
-                  cycleId: state.currentCycle?.id ?? '',
+                  cycleId: targetCycleId,
                   date: _selectedDay!,
                   flowLevel: isSelected ? null : flow,
                   moods: logForDate?.moods ?? [],
                   physicalSymptoms: logForDate?.physicalSymptoms ?? [],
                 );
-                ref.read(periodProvider(widget.profileId).notifier).logSymptom(newLog);
+                ref
+                    .read(periodProvider(widget.profileId).notifier)
+                    .logSymptom(newLog);
               },
             );
           }).toList(),
@@ -545,28 +814,32 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
           spacing: 8,
           runSpacing: 8,
           children: PhysicalSymptom.values.map((symptom) {
-            final isSelected = logForDate?.physicalSymptoms.contains(symptom) ?? false;
+            final isSelected =
+                logForDate?.physicalSymptoms.contains(symptom) ?? false;
             return SymptomButton(
               iconBuilder: _getPhysicalIcon(symptom),
               label: _formatSymptomName(symptom.name),
               isSelected: isSelected,
               onTap: () {
-                List<PhysicalSymptom> updated = List.from(logForDate?.physicalSymptoms ?? []);
+                List<PhysicalSymptom> updated =
+                    List.from(logForDate?.physicalSymptoms ?? []);
                 if (isSelected) {
                   updated.remove(symptom);
                 } else {
                   updated.add(symptom);
                 }
-                
+
                 final newLog = PeriodLog(
                   id: logForDate?.id,
-                  cycleId: state.currentCycle?.id ?? '',
+                  cycleId: targetCycleId,
                   date: _selectedDay!,
                   flowLevel: logForDate?.flowLevel,
                   moods: logForDate?.moods ?? [],
                   physicalSymptoms: updated,
                 );
-                ref.read(periodProvider(widget.profileId).notifier).logSymptom(newLog);
+                ref
+                    .read(periodProvider(widget.profileId).notifier)
+                    .logSymptom(newLog);
               },
             );
           }).toList(),
@@ -590,16 +863,18 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
                 } else {
                   updated.add(mood);
                 }
-                
+
                 final newLog = PeriodLog(
                   id: logForDate?.id,
-                  cycleId: state.currentCycle?.id ?? '',
+                  cycleId: targetCycleId,
                   date: _selectedDay!,
                   flowLevel: logForDate?.flowLevel,
                   moods: updated,
                   physicalSymptoms: logForDate?.physicalSymptoms ?? [],
                 );
-                ref.read(periodProvider(widget.profileId).notifier).logSymptom(newLog);
+                ref
+                    .read(periodProvider(widget.profileId).notifier)
+                    .logSymptom(newLog);
               },
             );
           }).toList(),
@@ -610,21 +885,30 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
   }
 
   Widget Function(Color) _getPhysicalIcon(PhysicalSymptom s) {
-    switch(s) {
-      case PhysicalSymptom.cramps: return (c) => Stomach(color: c, width: 24, height: 24);
-      case PhysicalSymptom.headache: return (c) => Headache(color: c, width: 24, height: 24);
-      case PhysicalSymptom.bloating: return (c) => Weight(color: c, width: 24, height: 24);
-      case PhysicalSymptom.breastTenderness: return (c) => Breasts(color: c, width: 24, height: 24);
+    switch (s) {
+      case PhysicalSymptom.cramps:
+        return (c) => Stomach(color: c, width: 24, height: 24);
+      case PhysicalSymptom.headache:
+        return (c) => Headache(color: c, width: 24, height: 24);
+      case PhysicalSymptom.bloating:
+        return (c) => Weight(color: c, width: 24, height: 24);
+      case PhysicalSymptom.breastTenderness:
+        return (c) => Breasts(color: c, width: 24, height: 24);
     }
   }
 
   Widget Function(Color) _getMoodIcon(Mood m) {
-     switch(m) {
-      case Mood.happy: return (c) => Happy(color: c, width: 24, height: 24);
-      case Mood.calm: return (c) => Calm(color: c, width: 24, height: 24);
-      case Mood.irritable: return (c) => Angry(color: c, width: 24, height: 24);
-      case Mood.sad: return (c) => Sad(color: c, width: 24, height: 24);
-      case Mood.anxious: return (c) => Nervous(color: c, width: 24, height: 24);
+    switch (m) {
+      case Mood.happy:
+        return (c) => Happy(color: c, width: 24, height: 24);
+      case Mood.calm:
+        return (c) => Calm(color: c, width: 24, height: 24);
+      case Mood.irritable:
+        return (c) => Angry(color: c, width: 24, height: 24);
+      case Mood.sad:
+        return (c) => Sad(color: c, width: 24, height: 24);
+      case Mood.anxious:
+        return (c) => Nervous(color: c, width: 24, height: 24);
     }
   }
 
@@ -635,7 +919,7 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
 }
 
 extension StringExtension on String {
-    String capitalize() {
-      return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
-    }
+  String capitalize() {
+    return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
+  }
 }

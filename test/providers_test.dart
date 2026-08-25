@@ -14,6 +14,7 @@ import 'package:open_cloud_health/models/period_log.dart';
 import 'package:open_cloud_health/providers/allergies_provider.dart';
 import 'package:open_cloud_health/providers/history_provider.dart';
 import 'package:open_cloud_health/providers/medications_provider.dart';
+import 'package:open_cloud_health/providers/period_provider.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/repositories/allergies_repository.dart';
 import 'package:open_cloud_health/repositories/attachment_repository.dart';
@@ -58,6 +59,10 @@ class MockCheckupsRepository extends Mock implements CheckupsRepository {}
 
 class MockEmergencyRepository extends Mock implements EmergencyRepository {}
 
+class FakePeriodCycle extends Fake implements PeriodCycle {}
+
+class FakePeriodLog extends Fake implements PeriodLog {}
+
 void main() {
   late MockProfilesRepository mockProfilesRepository;
   late MockHistoryRepository mockHistoryRepository;
@@ -77,6 +82,8 @@ void main() {
     registerFallbackValue(FakeMedication());
     registerFallbackValue(FakeMedicationLog());
     registerFallbackValue(FakeAllergy());
+    registerFallbackValue(FakePeriodCycle());
+    registerFallbackValue(FakePeriodLog());
     registerFallbackValue(const TimeOfDay(hour: 0, minute: 0));
   });
 
@@ -590,6 +597,37 @@ void main() {
       expect(events[0].title, 'Period');
       expect(events[1].title, 'Period');
     });
+
+    test('fetchEvents should separate period flow events from standalone cycle symptoms', () async {
+      final now = DateTime(2026, 5, 20);
+      final cycle = PeriodCycle(id: 'c1', profileId: 'p1', startDate: now);
+      final logs = [
+        PeriodLog(id: 'l1', cycleId: 'c1', date: now, flowLevel: FlowLevel.heavy),
+        PeriodLog(id: 'l2', cycleId: 'c1', date: now.add(const Duration(days: 1)), flowLevel: FlowLevel.medium),
+        PeriodLog(id: 'l3', cycleId: 'c1', date: now.add(const Duration(days: 10)), physicalSymptoms: [PhysicalSymptom.headache], moods: [Mood.anxious]),
+      ];
+
+      when(() => mockHistoryRepository.fetchEvents('p1'))
+          .thenAnswer((_) async => []);
+      when(() => mockPeriodRepository.getCycles('p1'))
+          .thenAnswer((_) async => [cycle]);
+      when(() => mockPeriodRepository.getLogsForCycle('c1'))
+          .thenAnswer((_) async => logs);
+
+      final events = await container.read(historyProvider('p1').future);
+
+      expect(events.length, 2);
+      final periodEvent = events.firstWhere((e) => e.eventType == EventType.period);
+      final symptomEvent = events.firstWhere((e) => e.eventType == EventType.other);
+
+      expect(periodEvent.title, 'Period (2 days)');
+      expect(periodEvent.description, contains('Flow: heavy, medium'));
+
+      expect(symptomEvent.title, 'Cycle Symptoms');
+      expect(symptomEvent.description, contains('Symptoms: headache'));
+      expect(symptomEvent.description, contains('Moods: anxious'));
+      expect(symptomEvent.description.contains('Flow:'), false);
+    });
   });
 
   group('MedicationsProvider Tests', () {
@@ -1026,6 +1064,232 @@ void main() {
 
       verify(() => mockEmergencyRepository.setPrimaryProfileId('p2')).called(1);
       expect(container.read(primaryProfileIdProvider).value, 'p2');
+    });
+  });
+
+  group('PeriodProvider Tests', () {
+    test('initial state should be empty when no cycles exist', () async {
+      when(() => mockPeriodRepository.getCycles('p1'))
+          .thenAnswer((_) async => []);
+
+      final state = await container.read(periodProvider('p1').future);
+
+      expect(state.currentCycle, isNull);
+      expect(state.pastCycles, isEmpty);
+      expect(state.currentCycleLogs, isEmpty);
+      expect(state.allLogs, isEmpty);
+      expect(state.averageCycleLength, 28);
+      expect(state.currentDayOfCycle, 0);
+      expect(state.expectedNextPeriodDate, isNull);
+    });
+
+    test('startNewCycle for current month should create cycle with 3 default logs and set as current cycle', () async {
+      final startDate = DateTime(2026, 8, 15);
+      final createdCycle = PeriodCycle(id: 'c-aug', profileId: 'p1', startDate: startDate);
+      final defaultLogs = [
+        PeriodLog(id: 'l1', cycleId: 'c-aug', date: startDate, flowLevel: FlowLevel.medium),
+        PeriodLog(id: 'l2', cycleId: 'c-aug', date: startDate.add(const Duration(days: 1)), flowLevel: FlowLevel.medium),
+        PeriodLog(id: 'l3', cycleId: 'c-aug', date: startDate.add(const Duration(days: 2)), flowLevel: FlowLevel.medium),
+      ];
+
+      var getCyclesCount = 0;
+      when(() => mockPeriodRepository.getCycles('p1'))
+          .thenAnswer((_) async {
+            getCyclesCount++;
+            return getCyclesCount <= 2 ? [] : [createdCycle];
+          });
+      when(() => mockPeriodRepository.addCycle(any()))
+          .thenAnswer((_) async {});
+      when(() => mockPeriodRepository.updateCycle(any()))
+          .thenAnswer((_) async {});
+      when(() => mockPeriodRepository.upsertLog(any()))
+          .thenAnswer((_) async {});
+      when(() => mockPeriodRepository.getLogsForCycle('c-aug'))
+          .thenAnswer((_) async => defaultLogs);
+
+      await container.read(periodProvider('p1').future);
+
+      final result = await container
+          .read(periodProvider('p1').notifier)
+          .startNewCycle(startDate);
+
+      expect(result, isA<Success<void, Exception>>());
+      verify(() => mockPeriodRepository.addCycle(any())).called(1);
+      verify(() => mockPeriodRepository.upsertLog(any())).called(3);
+
+      final state = await container.read(periodProvider('p1').future);
+      expect(state.currentCycle?.id, 'c-aug');
+      expect(state.pastCycles, isEmpty);
+      expect(state.currentCycleLogs.length, 3);
+      expect(state.allLogs.length, 3);
+    });
+
+    test('startNewCycle for historical month should reconcile cycle end dates and calculate fertility correctly', () async {
+      final augDate = DateTime(2026, 8, 15);
+      final julyDate = DateTime(2026, 7, 15);
+
+      final augCycle = PeriodCycle(id: 'c-aug', profileId: 'p1', startDate: augDate);
+      final reconciledJulyCycle = PeriodCycle(
+        id: 'c-july',
+        profileId: 'p1',
+        startDate: julyDate,
+        endDate: DateTime(2026, 8, 14),
+      );
+
+      final augLogs = [
+        PeriodLog(id: 'l-aug1', cycleId: 'c-aug', date: augDate, flowLevel: FlowLevel.medium),
+      ];
+      final julyLogs = [
+        PeriodLog(id: 'l-july1', cycleId: 'c-july', date: julyDate, flowLevel: FlowLevel.medium),
+      ];
+
+      // Initial state: only August cycle exists
+      when(() => mockPeriodRepository.getCycles('p1'))
+          .thenAnswer((_) async => [augCycle]);
+      when(() => mockPeriodRepository.getLogsForCycle('c-aug'))
+          .thenAnswer((_) async => augLogs);
+      when(() => mockPeriodRepository.addCycle(any()))
+          .thenAnswer((_) async {});
+      when(() => mockPeriodRepository.updateCycle(any()))
+          .thenAnswer((_) async {});
+      when(() => mockPeriodRepository.upsertLog(any()))
+          .thenAnswer((_) async {});
+      when(() => mockProfilesRepository.getProfile('p1'))
+          .thenAnswer((_) async => Profile(
+                id: 'p1',
+                name: 'Jane',
+                middleNames: '',
+                surname: 'Doe',
+                dateOfBirth: DateTime(1995),
+                gender: Gender.female,
+                bloodType: 'A+',
+                isOrganDonor: false,
+                trackOvulation: true,
+              ));
+
+      await container.read(periodProvider('p1').future);
+
+      // When startNewCycle(julyDate) is called, it reconciles end dates:
+      // July cycle gets endDate = Aug 14 (31 days length)
+      // August cycle has endDate = null
+      when(() => mockPeriodRepository.getCycles('p1')).thenAnswer((_) async => [
+            augCycle, // Most recent first
+            reconciledJulyCycle,
+          ]);
+      when(() => mockPeriodRepository.getLogsForCycle('c-july'))
+          .thenAnswer((_) async => julyLogs);
+
+      final result = await container
+          .read(periodProvider('p1').notifier)
+          .startNewCycle(julyDate);
+
+      expect(result, isA<Success<void, Exception>>());
+
+      final state = await container.read(periodProvider('p1').future);
+
+      // Current cycle should STILL be August cycle with null endDate
+      expect(state.currentCycle?.id, 'c-aug');
+      expect(state.currentCycle?.endDate, isNull);
+
+      // Past cycles should contain July cycle with endDate Aug 14
+      expect(state.pastCycles.length, 1);
+      expect(state.pastCycles.first.id, 'c-july');
+      expect(state.pastCycles.first.endDate, DateTime(2026, 8, 14));
+      expect(state.pastCycles.first.cycleLength, 31);
+
+      // Average cycle length should be 31 days (positive and correct)
+      expect(state.averageCycleLength, 31);
+
+      // Fertility window should be valid positive days (ovulation day 17, window days 12-17)
+      expect(state.trackOvulation, true);
+      expect(state.fertileWindowStartDay, 12);
+      expect(state.fertileWindowEndDay, 17);
+
+      // allLogs should contain logs from both cycles
+      expect(state.allLogs.length, 2);
+    });
+
+    test('Adding multiple cycles out of order reconciles all chronological boundaries', () async {
+      final augDate = DateTime(2026, 8, 15);
+      final juneDate = DateTime(2026, 6, 15);
+      final julyDate = DateTime(2026, 7, 15);
+
+      final augCycle = PeriodCycle(id: 'c-aug', profileId: 'p1', startDate: augDate);
+      final juneCycle = PeriodCycle(id: 'c-june', profileId: 'p1', startDate: juneDate);
+
+      final reconciledJune = PeriodCycle(id: 'c-june', profileId: 'p1', startDate: juneDate, endDate: DateTime(2026, 7, 14));
+      final reconciledJuly = PeriodCycle(id: 'c-july', profileId: 'p1', startDate: julyDate, endDate: DateTime(2026, 8, 14));
+
+      when(() => mockPeriodRepository.getCycles('p1'))
+          .thenAnswer((_) async => [augCycle, juneCycle]);
+      when(() => mockPeriodRepository.getLogsForCycle(any()))
+          .thenAnswer((_) async => []);
+      when(() => mockPeriodRepository.addCycle(any()))
+          .thenAnswer((_) async {});
+      when(() => mockPeriodRepository.updateCycle(any()))
+          .thenAnswer((_) async {});
+      when(() => mockPeriodRepository.upsertLog(any()))
+          .thenAnswer((_) async {});
+
+      await container.read(periodProvider('p1').future);
+
+      // Add July (between June and August)
+      when(() => mockPeriodRepository.getCycles('p1')).thenAnswer((_) async => [
+            augCycle,
+            reconciledJuly,
+            reconciledJune,
+          ]);
+
+      final result = await container
+          .read(periodProvider('p1').notifier)
+          .startNewCycle(julyDate);
+
+      expect(result, isA<Success<void, Exception>>());
+
+      final state = await container.read(periodProvider('p1').future);
+      expect(state.currentCycle?.id, 'c-aug');
+      expect(state.pastCycles.length, 2);
+
+      // June cycle: June 15 to July 14 -> 30 days
+      expect(reconciledJune.cycleLength, 30);
+      // July cycle: July 15 to Aug 14 -> 31 days
+      expect(reconciledJuly.cycleLength, 31);
+      // Average: (30 + 31) / 2 = 31
+      expect(state.averageCycleLength, 31);
+    });
+
+    test('logSymptom on historical date attaches to matching historical cycle', () async {
+      final augDate = DateTime(2026, 8, 15);
+      final julyDate = DateTime(2026, 7, 15);
+
+      final augCycle = PeriodCycle(id: 'c-aug', profileId: 'p1', startDate: augDate);
+      final julyCycle = PeriodCycle(id: 'c-july', profileId: 'p1', startDate: julyDate, endDate: DateTime(2026, 8, 14));
+
+      when(() => mockPeriodRepository.getCycles('p1'))
+          .thenAnswer((_) async => [augCycle, julyCycle]);
+      when(() => mockPeriodRepository.getLogsForCycle(any()))
+          .thenAnswer((_) async => []);
+      when(() => mockPeriodRepository.upsertLog(any()))
+          .thenAnswer((_) async {});
+
+      await container.read(periodProvider('p1').future);
+
+      // Log headache on July 20
+      final symptomLog = PeriodLog(
+        cycleId: '',
+        date: DateTime(2026, 7, 20),
+        physicalSymptoms: [PhysicalSymptom.headache],
+      );
+
+      final result = await container
+          .read(periodProvider('p1').notifier)
+          .logSymptom(symptomLog);
+
+      expect(result, isA<Success<void, Exception>>());
+      final captured = verify(() => mockPeriodRepository.upsertLog(captureAny())).captured;
+      final savedLog = captured.first as PeriodLog;
+      expect(savedLog.cycleId, 'c-july');
+      expect(savedLog.physicalSymptoms, [PhysicalSymptom.headache]);
     });
   });
 }

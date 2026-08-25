@@ -16,7 +16,7 @@ class PeriodCycle {
   final DateTime? endDate;
 
   int? get cycleLength {
-    if (endDate == null) return null;
+    if (endDate == null || endDate!.isBefore(startDate)) return null;
     return endDate!.difference(startDate).inDays + 1; // Inclusive of start day
   }
 }
