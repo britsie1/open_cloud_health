@@ -623,7 +623,7 @@ class _PdfExportOptionsSheetState extends State<_PdfExportOptionsSheet> {
                   _buildSwitchTile('Allergies & Adverse Reactions', 'Critical alert callout for drug/food sensitivities', _includeAllergies, (v) => setState(() => _includeAllergies = v), isHighPriority: true),
                   _buildSwitchTile('Active Chronic Conditions', 'Long-term diagnoses and management tags', _includeConditions, (v) => setState(() => _includeConditions = v)),
                   _buildSwitchTile('Medications & Schedules', 'Active & PRN regimens with dosing times', _includeMedications, (v) => setState(() => _includeMedications = v)),
-                  _buildSwitchTile('Vital Signs & Biometrics', 'Blood pressure, heart rate, glucose, weight', _includeVitals, (v) => setState(() => _includeVitals = v)),
+                  _buildSwitchTile('Vital Signs & Biometrics', 'Blood pressure, glucose, weight', _includeVitals, (v) => setState(() => _includeVitals = v)),
                   _buildSwitchTile('Medical History & Encounters', 'Consultations, surgeries, hospitalizations, scans', _includeHistory, (v) => setState(() => _includeHistory = v)),
                   _buildSwitchTile('Preventive Health & Checkups', 'Routine screenings, intervals, and last dates', _includeCheckups, (v) => setState(() => _includeCheckups = v)),
                   if (isFemale)

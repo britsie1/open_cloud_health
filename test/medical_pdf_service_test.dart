@@ -149,13 +149,6 @@ void main() {
         ),
         VitalLog(
           profileId: profile.id,
-          type: VitalType.heartRate,
-          date: DateTime.now().subtract(const Duration(days: 2)),
-          value1: 72,
-          unit: 'bpm',
-        ),
-        VitalLog(
-          profileId: profile.id,
           type: VitalType.bloodSugar,
           date: DateTime.now().subtract(const Duration(days: 1)),
           value1: 94,

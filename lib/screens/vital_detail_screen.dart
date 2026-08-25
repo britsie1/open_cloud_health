@@ -25,8 +25,6 @@ class _VitalDetailScreenState extends ConsumerState<VitalDetailScreen> {
     switch (widget.vitalType) {
       case VitalType.bloodPressure:
         return 'Blood Pressure';
-      case VitalType.heartRate:
-        return 'Heart Rate';
       case VitalType.weight:
         return 'Weight';
       case VitalType.bloodSugar:
@@ -38,8 +36,6 @@ class _VitalDetailScreenState extends ConsumerState<VitalDetailScreen> {
     switch (widget.vitalType) {
       case VitalType.bloodPressure:
         return 'mmHg';
-      case VitalType.heartRate:
-        return 'bpm';
       case VitalType.weight:
         return 'kg';
       case VitalType.bloodSugar:

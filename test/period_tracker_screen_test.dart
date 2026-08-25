@@ -6,7 +6,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:open_cloud_health/models/period_cycle.dart';
 import 'package:open_cloud_health/models/period_log.dart';
 import 'package:open_cloud_health/models/profile.dart';
-import 'package:open_cloud_health/providers/period_provider.dart';
 import 'package:open_cloud_health/repositories/period_repository.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
 import 'package:open_cloud_health/screens/period_tracker.dart';

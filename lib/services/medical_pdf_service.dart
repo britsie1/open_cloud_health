@@ -855,7 +855,6 @@ class MedicalPdfService {
 
   pw.Widget _buildVitalsSection(List<VitalLog> vitals) {
     final bpLogs = vitals.where((v) => v.type == VitalType.bloodPressure).toList();
-    final hrLogs = vitals.where((v) => v.type == VitalType.heartRate).toList();
     final bgLogs = vitals.where((v) => v.type == VitalType.bloodSugar).toList();
     final wtLogs = vitals.where((v) => v.type == VitalType.weight).toList();
 
@@ -880,8 +879,6 @@ class MedicalPdfService {
           pw.Row(
             children: [
               _buildVitalKpiCard('Blood Pressure', bpLogs, isBp: true, normalRef: 'Normal: <120/80 mmHg'),
-              pw.SizedBox(width: 8),
-              _buildVitalKpiCard('Heart Rate', hrLogs, normalRef: 'Normal: 60-100 bpm'),
               pw.SizedBox(width: 8),
               _buildVitalKpiCard('Blood Sugar', bgLogs, normalRef: 'Fasting: 70-99 mg/dL'),
               pw.SizedBox(width: 8),
@@ -983,8 +980,6 @@ class MedicalPdfService {
     switch (type) {
       case VitalType.bloodPressure:
         return 'Blood Pressure';
-      case VitalType.heartRate:
-        return 'Heart Rate';
       case VitalType.bloodSugar:
         return 'Blood Glucose';
       case VitalType.weight:

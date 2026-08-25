@@ -35,7 +35,7 @@ Open Cloud Health is a cross-platform, local-first personal health tracking appl
 *   **Reminders:** Native local push notifications (`flutter_local_notifications` and `timezone` configuration) scheduled dynamically to remind users to take their medications.
 
 ### 📊 Vitals & Measurements
-*   **Chronic & General Logging:** Log quantitative health data over time, including Blood Pressure (Systolic/Diastolic), Heart Rate, Weight, and Blood Sugar.
+*   **Chronic & General Logging:** Log quantitative health data over time, including Blood Pressure (Systolic/Diastolic), Weight, and Blood Sugar.
 *   **Visual Trends:** Graphical representations of logged vitals using custom dynamic charts via `fl_chart`.
 
 ### 📋 Medical History Timeline

@@ -385,7 +385,7 @@ class _ShareProfileScreenState extends ConsumerState<ShareProfileScreen> {
                           });
                         },
                         title: const Text('Vital Signs & Logs'),
-                        subtitle: const Text('Blood pressure, heart rate, sugar, weight'),
+                        subtitle: const Text('Blood pressure, sugar, weight'),
                         secondary: const Icon(Icons.monitor_heart_outlined, color: Colors.red),
                       ),
                       const Divider(height: 1),

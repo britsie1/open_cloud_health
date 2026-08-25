@@ -1297,13 +1297,6 @@ class _VitalsSection extends StatelessWidget {
                 '${AppRoutes.vitalTracker}/${profile.id}/${VitalType.bloodPressure.name}'),
           ),
           _VitalItem(
-            icon: getVitalIcon('Heart', color: Colors.red, size: 28),
-            color: Colors.red,
-            label: 'Heart',
-            onTap: () => context.push(
-                '${AppRoutes.vitalTracker}/${profile.id}/${VitalType.heartRate.name}'),
-          ),
-          _VitalItem(
             icon: getVitalIcon('Weight', color: Colors.blue, size: 28),
             color: Colors.blue,
             label: 'Weight',

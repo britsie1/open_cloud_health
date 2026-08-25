@@ -525,10 +525,10 @@ void main() {
             VitalLogEntry(
               id: 'vl-casc',
               profileId: 'prof-cascade',
-              type: 'heartRate',
+              type: 'weight',
               date: DateTime.now(),
               value1: 72.0,
-              unit: 'bpm',
+              unit: 'kg',
             ),
           );
       await db.into(db.emergencyContacts).insert(

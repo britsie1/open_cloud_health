@@ -2,7 +2,7 @@ import 'package:uuid/uuid.dart';
 
 const uuid = Uuid();
 
-enum VitalType { bloodPressure, heartRate, weight, bloodSugar }
+enum VitalType { bloodPressure, weight, bloodSugar }
 
 class VitalLog {
   VitalLog({

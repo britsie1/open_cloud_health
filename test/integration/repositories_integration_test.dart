@@ -218,10 +218,10 @@ void main() {
         await vitalsRepo.addLog(VitalLog(
           id: 'vit-cascade-1',
           profileId: 'prof-cascade-root',
-          type: VitalType.heartRate,
+          type: VitalType.weight,
           date: DateTime.now(),
           value1: 72.0,
-          unit: 'bpm',
+          unit: 'kg',
         ));
 
         // Add emergency contact + lock screen setting
@@ -251,7 +251,7 @@ void main() {
         expect(await checkupsRepo.loadLogsForCheckup('chk-cascade-1'), isEmpty);
         expect(await periodRepo.getCycles('prof-cascade-root'), isEmpty);
         expect(await periodRepo.getLogsForCycle('cyc-cascade-1'), isEmpty);
-        expect(await vitalsRepo.getLogs('prof-cascade-root', VitalType.heartRate), isEmpty);
+        expect(await vitalsRepo.getLogs('prof-cascade-root', VitalType.weight), isEmpty);
         expect(await emergencyRepo.getEmergencyContacts('prof-cascade-root'), isEmpty);
       });
 
