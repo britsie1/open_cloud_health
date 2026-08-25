@@ -12,13 +12,19 @@ import 'package:open_cloud_health/repositories/profiles_repository.dart';
 import 'package:open_cloud_health/screens/security_setup.dart';
 import 'package:open_cloud_health/screens/settings.dart';
 import 'package:open_cloud_health/services/backup_service.dart';
+import 'package:open_cloud_health/services/file_service.dart';
+import 'package:open_cloud_health/services/notification_service.dart';
+import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
+import 'package:open_cloud_health/utils/constants.dart';
 
 class MockBackupService extends Mock implements BackupService {}
 class MockAppDatabase extends Mock implements AppDatabase {}
 class MockSecureStorage extends Mock implements SecureStorage {}
 class MockProfilesRepository extends Mock implements ProfilesRepository {}
 class MockGoogleSignInAccount extends Mock implements GoogleSignInAccount {}
+class MockFileService extends Mock implements FileService {}
+class MockNotificationService extends Mock implements NotificationService {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -26,6 +32,8 @@ void main() {
   late MockAppDatabase mockAppDatabase;
   late MockSecureStorage mockSecureStorage;
   late MockProfilesRepository mockProfilesRepository;
+  late MockFileService mockFileService;
+  late MockNotificationService mockNotificationService;
 
   setUpAll(() {
     registerFallbackValue(BackupFrequency.daily);
@@ -36,9 +44,19 @@ void main() {
     mockAppDatabase = MockAppDatabase();
     mockSecureStorage = MockSecureStorage();
     mockProfilesRepository = MockProfilesRepository();
+    mockFileService = MockFileService();
+    mockNotificationService = MockNotificationService();
 
     when(() => mockAppDatabase.getDatabaseSize())
         .thenAnswer((_) async => 1024 * 50); // 50 KB
+    when(() => mockAppDatabase.resetDatabase())
+        .thenAnswer((_) async => {});
+    when(() => mockFileService.deleteAllLocalFiles())
+        .thenAnswer((_) async => {});
+    when(() => mockNotificationService.cancelAllNotifications())
+        .thenAnswer((_) async => {});
+    when(() => mockSecureStorage.clear())
+        .thenAnswer((_) async => {});
     when(() => mockAppDatabase.isLocalAuthEnabled())
         .thenAnswer((_) async => false);
     when(() => mockAppDatabase.isSecurityBannerDismissed())
@@ -62,6 +80,10 @@ void main() {
     when(() => mockSecureStorage.isStrictBiometricsOnly())
         .thenAnswer((_) async => false);
     when(() => mockSecureStorage.setStrictBiometricsOnly(any()))
+        .thenAnswer((_) async {});
+    when(() => mockSecureStorage.getAutoLockGraceSeconds())
+        .thenAnswer((_) async => 30);
+    when(() => mockSecureStorage.setAutoLockGraceSeconds(any()))
         .thenAnswer((_) async {});
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -292,5 +314,69 @@ void main() {
 
     expect(find.text('End-to-End Encryption Active'), findsNothing);
     expect(find.text('App Lock & Security'), findsOneWidget);
+  });
+
+  testWidgets('SettingsScreen Reset All Data triggers full teardown and wipe',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    when(() => mockBackupService.getConnectedUser()).thenAnswer((_) async => null);
+    when(() => mockProfilesRepository.fetchProfiles()).thenAnswer((_) async => []);
+
+    final router = GoRouter(
+      initialLocation: '/settings',
+      routes: [
+        GoRoute(
+          path: '/settings',
+          builder: (context, state) => const SettingsScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.welcome,
+          builder: (context, state) => const Scaffold(body: Text('Welcome Screen')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          backupServiceProvider.overrideWithValue(mockBackupService),
+          appDatabaseProvider.overrideWithValue(mockAppDatabase),
+          secureStorageProvider.overrideWithValue(mockSecureStorage),
+          profilesRepositoryProvider.overrideWithValue(mockProfilesRepository),
+          fileServiceProvider.overrideWithValue(mockFileService),
+          notificationServiceProvider.overrideWithValue(mockNotificationService),
+        ],
+        child: MaterialApp.router(
+          routerConfig: router,
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Find and tap "Reset Database"
+    final resetFinder = find.text('Reset Database');
+    await tester.scrollUntilVisible(resetFinder, 500);
+    expect(resetFinder, findsOneWidget);
+    await tester.tap(resetFinder);
+    await tester.pumpAndSettle();
+
+    // Verify confirmation modal appears
+    expect(find.text('Reset Everything'), findsOneWidget);
+    expect(find.text('Cancel'), findsOneWidget);
+
+    // Tap "Reset Everything"
+    await tester.tap(find.text('Reset Everything'));
+    await tester.pumpAndSettle();
+
+    // Verify teardown actions were called
+    verify(() => mockNotificationService.cancelAllNotifications()).called(1);
+    verify(() => mockFileService.deleteAllLocalFiles()).called(1);
+    verify(() => mockAppDatabase.resetDatabase()).called(1);
+    verify(() => mockSecureStorage.clear()).called(1);
+    expect(find.text('Welcome Screen'), findsOneWidget);
   });
 }

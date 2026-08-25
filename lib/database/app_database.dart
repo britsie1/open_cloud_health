@@ -1,3 +1,4 @@
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:drift/drift.dart';
@@ -7,6 +8,7 @@ import 'package:open_cloud_health/database/tables.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart' as sql;
+import 'package:sqlite3/open.dart';
 
 part 'app_database.g.dart';
 
@@ -42,7 +44,14 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        await m.createAll();
+        // Step-by-step incremental migration pattern
+        for (var targetVersion = from + 1; targetVersion <= to; targetVersion++) {
+          switch (targetVersion) {
+            // Incremental migrations for future versions will be placed here
+            default:
+              break;
+          }
+        }
       },
     );
   }
@@ -113,21 +122,53 @@ class AppDatabase extends _$AppDatabase {
     return 0;
   }
 
-  Future<void> resetDatabase() async {
+  Future<void> prepareForDatabaseReplacement() async {
+    try {
+      await customStatement('PRAGMA wal_checkpoint(FULL);');
+    } catch (_) {}
     await close();
-    final dbPath = await sql.getDatabasesPath();
-    final file = File(path.join(dbPath, 'opencloudhealth.db'));
-    if (file.existsSync()) {
-      await file.delete();
-    }
-    final walFile = File(path.join(dbPath, 'opencloudhealth.db-wal'));
-    if (walFile.existsSync()) {
-      await walFile.delete();
-    }
-    final shmFile = File(path.join(dbPath, 'opencloudhealth.db-shm'));
-    if (shmFile.existsSync()) {
-      await shmFile.delete();
-    }
+    try {
+      final dbPath = await sql.getDatabasesPath();
+      final walFile = File(path.join(dbPath, 'opencloudhealth.db-wal'));
+      if (walFile.existsSync()) walFile.deleteSync();
+      final shmFile = File(path.join(dbPath, 'opencloudhealth.db-shm'));
+      if (shmFile.existsSync()) shmFile.deleteSync();
+      final journalFile = File(path.join(dbPath, 'opencloudhealth.db-journal'));
+      if (journalFile.existsSync()) journalFile.deleteSync();
+    } catch (_) {}
+  }
+
+  Future<void> resetDatabase() async {
+    try {
+      await customStatement('PRAGMA wal_checkpoint(FULL);');
+    } catch (_) {}
+    await close();
+    try {
+      final dbPath = await sql.getDatabasesPath();
+      final file = File(path.join(dbPath, 'opencloudhealth.db'));
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
+      final walFile = File(path.join(dbPath, 'opencloudhealth.db-wal'));
+      if (walFile.existsSync()) {
+        walFile.deleteSync();
+      }
+      final shmFile = File(path.join(dbPath, 'opencloudhealth.db-shm'));
+      if (shmFile.existsSync()) {
+        shmFile.deleteSync();
+      }
+      final journalFile = File(path.join(dbPath, 'opencloudhealth.db-journal'));
+      if (journalFile.existsSync()) {
+        journalFile.deleteSync();
+      }
+    } catch (_) {}
+  }
+}
+
+@pragma('vm:entry-point')
+void _setupSqlCipher() {
+  if (Platform.isAndroid) {
+    open.overrideFor(OperatingSystem.android, () => DynamicLibrary.open('libsqlcipher.so'));
   }
 }
 
@@ -137,8 +178,11 @@ LazyDatabase _openConnection([String? explicitDbKey]) {
     final file = File(path.join(dbFolder, 'opencloudhealth.db'));
     final key = explicitDbKey ?? await SecureStorage().getOrCreateDatabaseKey();
 
+    _setupSqlCipher();
+
     return NativeDatabase.createInBackground(
       file,
+      isolateSetup: _setupSqlCipher,
       setup: (rawDb) {
         rawDb.execute("PRAGMA key = '$key';");
         rawDb.execute('PRAGMA foreign_keys = ON;');

@@ -6,6 +6,7 @@ import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/models/profile_share_models.dart';
 import 'package:open_cloud_health/providers/allergies_provider.dart';
 import 'package:open_cloud_health/repositories/allergies_repository.dart';
+import 'package:open_cloud_health/repositories/history_repository.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
 import 'package:open_cloud_health/repositories/shared_profiles_repository.dart';
 import 'package:open_cloud_health/services/file_service.dart';
@@ -17,6 +18,7 @@ export 'package:open_cloud_health/providers/active_shares_provider.dart';
 
 class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
   ProfilesRepository get _repository => ref.read(profilesRepositoryProvider);
+  HistoryRepository get _historyRepo => ref.read(historyRepositoryProvider);
   SharedProfilesRepository get _sharedRepo => ref.read(sharedProfilesRepositoryProvider);
   FileService get _fileService => ref.read(fileServiceProvider);
   ProfileSharingService get _sharingService => ref.read(profileSharingServiceProvider);
@@ -286,7 +288,16 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
 
   Future<Result<void, Exception>> deleteProfilePermanently(String id) async {
     try {
+      // 1. Fetch all history events for profile to clean up attachments on disk
+      final events = await _historyRepo.fetchEvents(id);
+      final historyIds = events.map((e) => e.id).toList();
+
+      // 2. Delete physical profile image & all history attachment directories
+      await _fileService.deleteProfileFiles(id, historyIds);
+
+      // 3. Delete database records (cascading all child tables)
       await _repository.deleteProfile(id);
+
       await loadProfiles();
       await ref.read(notificationServiceProvider).syncEmergencyNotification(id);
       return const Success(null);
@@ -304,6 +315,9 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
         if (profile.isArchived && profile.archivedAt != null) {
           final difference = now.difference(profile.archivedAt!);
           if (difference.inDays >= 30) {
+            final events = await _historyRepo.fetchEvents(profile.id);
+            final historyIds = events.map((e) => e.id).toList();
+            await _fileService.deleteProfileFiles(profile.id, historyIds);
             await _repository.deleteProfile(profile.id);
             deletedAny = true;
             debugPrint('Automatically deleted expired profile: ${profile.name} ${profile.surname}');

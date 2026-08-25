@@ -24,6 +24,7 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
   bool _isBannerDismissed = false;
   bool _isE2eEnabled = false;
   bool _isStrictBiometrics = false;
+  int _autoLockGraceSeconds = 30;
   bool _isLoading = true;
 
   @override
@@ -53,6 +54,10 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
       final isDismissed = await ref.read(appDatabaseProvider).isSecurityBannerDismissed();
       final isE2e = await ref.read(secureStorageProvider).isE2eBackupEnabled();
       final isStrict = await ref.read(secureStorageProvider).isStrictBiometricsOnly();
+      int graceSeconds = 30;
+      try {
+        graceSeconds = await ref.read(secureStorageProvider).getAutoLockGraceSeconds();
+      } catch (_) {}
 
       if (isEnabled && !isDeviceSecure) {
         // Auto-disable in database since the device lock was removed
@@ -67,6 +72,7 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
           _isBannerDismissed = isDismissed;
           _isE2eEnabled = isE2e;
           _isStrictBiometrics = isStrict;
+          _autoLockGraceSeconds = graceSeconds;
           _isLoading = false;
         });
       }
@@ -1336,6 +1342,34 @@ class _SecuritySetupScreenState extends ConsumerState<SecuritySetupScreen> with 
                         ),
                         value: _isStrictBiometrics,
                         onChanged: _toggleStrictBiometrics,
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.timer_outlined, color: Colors.blue),
+                        title: const Text('Auto-Lock Timeout'),
+                        subtitle: Text(
+                          _autoLockGraceSeconds == 0
+                              ? 'Immediately when leaving app'
+                              : _autoLockGraceSeconds < 60
+                                  ? '$_autoLockGraceSeconds seconds of background inactivity'
+                                  : '${_autoLockGraceSeconds ~/ 60} minute(s) of background inactivity',
+                        ),
+                        trailing: DropdownButton<int>(
+                          value: _autoLockGraceSeconds,
+                          underline: const SizedBox.shrink(),
+                          items: const [
+                            DropdownMenuItem(value: 0, child: Text('Immediately')),
+                            DropdownMenuItem(value: 30, child: Text('30s')),
+                            DropdownMenuItem(value: 60, child: Text('1m')),
+                            DropdownMenuItem(value: 300, child: Text('5m')),
+                          ],
+                          onChanged: (val) async {
+                            if (val != null) {
+                              await ref.read(secureStorageProvider).setAutoLockGraceSeconds(val);
+                              setState(() => _autoLockGraceSeconds = val);
+                            }
+                          },
+                        ),
                       ),
                     ],
                     const Divider(height: 1),

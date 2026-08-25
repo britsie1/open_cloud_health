@@ -220,6 +220,14 @@ class BackupEncryptionService {
       if (file.isFile) {
         final data = file.content as List<int>;
         if (filename == 'opencloudhealth.db') {
+          // Remove any stale auxiliary sqlite files before writing restored DB
+          final walFile = File(path.join(dbDirectoryPath, 'opencloudhealth.db-wal'));
+          if (walFile.existsSync()) walFile.deleteSync();
+          final shmFile = File(path.join(dbDirectoryPath, 'opencloudhealth.db-shm'));
+          if (shmFile.existsSync()) shmFile.deleteSync();
+          final journalFile = File(path.join(dbDirectoryPath, 'opencloudhealth.db-journal'));
+          if (journalFile.existsSync()) journalFile.deleteSync();
+
           final targetDbFile = File(path.join(dbDirectoryPath, 'opencloudhealth.db'));
           if (!targetDbFile.parent.existsSync()) {
             targetDbFile.parent.createSync(recursive: true);

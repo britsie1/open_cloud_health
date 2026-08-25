@@ -30,7 +30,7 @@ class _AccountAppBarActionsState extends ConsumerState<AccountAppBarActions> {
         PopupMenuItem(
           value: 'emergency',
           child: ListTile(
-            leading: Icon(Icons.emergency, color: Colors.red),
+            leading: Icon(Icons.emergency),
             title: Text('Emergency Lock Screen'),
           ),
         ),

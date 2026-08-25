@@ -170,8 +170,15 @@ void notificationTapForeground(NotificationResponse response) async {
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
-  factory NotificationService() => _instance;
+  factory NotificationService({Ref? ref}) {
+    if (ref != null) {
+      _instance._ref = ref;
+    }
+    return _instance;
+  }
   NotificationService._internal();
+
+  Ref? _ref;
 
   static const _emergencyNotificationChannel = MethodChannel('com.opencloudhealth.app/emergency_notification');
 
@@ -180,8 +187,25 @@ class NotificationService {
 
   final onMedicationMarkedTaken = StreamController<String>.broadcast();
 
-  Future<void> markMedicationTaken(String medicationId) async {
-    final db = AppDatabase();
+  AppDatabase _resolveDatabase([AppDatabase? customDb]) {
+    if (customDb != null) return customDb;
+    if (_ref != null) {
+      try {
+        return _ref!.read(appDatabaseProvider);
+      } catch (_) {}
+    }
+    return AppDatabase();
+  }
+
+  bool _isSharedDb(AppDatabase db, [AppDatabase? customDb]) {
+    if (customDb != null) return true;
+    if (_ref != null) return true;
+    return false;
+  }
+
+  Future<void> markMedicationTaken(String medicationId, [AppDatabase? database]) async {
+    final db = _resolveDatabase(database);
+    final isShared = _isSharedDb(db, database);
     try {
       final med = await (db.select(db.medications)..where((tbl) => tbl.id.equals(medicationId))).getSingleOrNull();
       final String? medDosage = med?.dosage;
@@ -214,12 +238,15 @@ class NotificationService {
 
       onMedicationMarkedTaken.add(medicationId);
     } finally {
-      await db.close();
+      if (!isShared) {
+        await db.close();
+      }
     }
   }
 
-  Future<void> snoozeMedication(String medicationId) async {
-    final db = AppDatabase();
+  Future<void> snoozeMedication(String medicationId, [AppDatabase? database]) async {
+    final db = _resolveDatabase(database);
+    final isShared = _isSharedDb(db, database);
     try {
       final med = await (db.select(db.medications)..where((tbl) => tbl.id.equals(medicationId))).getSingleOrNull();
       final String medName = med?.name ?? 'Medication';
@@ -241,7 +268,7 @@ class NotificationService {
           showsUserInterface: false,
         ),
         AndroidNotificationAction(
-          'snooze_15',
+          'snooze_15', 
           'Snooze (15m)',
           cancelNotification: true,
           showsUserInterface: false,
@@ -264,7 +291,9 @@ class NotificationService {
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: medicationId);
     } finally {
-      await db.close();
+      if (!isShared) {
+        await db.close();
+      }
     }
   }
 
@@ -484,8 +513,18 @@ class NotificationService {
     }
   }
 
-  Future<void> syncEmergencyNotification(String profileId) async {
-    final db = AppDatabase();
+  Future<void> cancelAllNotifications() async {
+    try {
+      await cancelEmergencyNotification();
+      await flutterLocalNotificationsPlugin.cancelAll();
+    } catch (e) {
+      debugPrint('Error cancelling all notifications: $e');
+    }
+  }
+
+  Future<void> syncEmergencyNotification(String profileId, [AppDatabase? database]) async {
+    final db = _resolveDatabase(database);
+    final isShared = _isSharedDb(db, database);
     try {
       // Get all active lock screen settings
       final activeSettings = await (db.select(db.lockScreenSettings)..where((tbl) => tbl.isEnabled.equals(true))).get();
@@ -662,7 +701,9 @@ class NotificationService {
     } catch (e) {
       debugPrint('Error syncing emergency notification: $e');
     } finally {
-      await db.close();
+      if (!isShared) {
+        await db.close();
+      }
     }
   }
 
@@ -723,5 +764,5 @@ class NotificationService {
 }
 
 final notificationServiceProvider = Provider<NotificationService>((ref) {
-  return NotificationService();
+  return NotificationService(ref: ref);
 });

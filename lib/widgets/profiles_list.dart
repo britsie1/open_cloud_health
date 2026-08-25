@@ -93,13 +93,6 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
 
     Widget content = Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 24, bottom: 20),
-          child: Text(
-            'Select a profile',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-        ),
         Expanded(
           child: ListView.builder(
             itemCount: profiles.length,

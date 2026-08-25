@@ -250,14 +250,11 @@ class HistoryNotifier extends FamilyAsyncNotifier<List<HistoryEvent>, String> {
 
   Future<Result<void, Exception>> deleteEvent(String id) async {
     try {
+      // 1. Delete physical attachment files and directory
+      await _fileService.deleteHistoryAttachmentsDirectory(id);
+
+      // 2. Delete database rows (history event and its attachments)
       await _repository.deleteEvent(id);
-      // Also delete attachments and files
-      final attachments = await _attachmentRepository.getAttachments(id);
-      for (final att in attachments) {
-        await _fileService.deleteAttachment(id, att.filename);
-      }
-      await _attachmentRepository
-          .deleteAttachments(attachments.map((e) => e.id).toList());
 
       await refreshEvents();
       return const Success(null);

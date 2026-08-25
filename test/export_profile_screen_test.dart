@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:open_cloud_health/models/profile.dart';
-import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
 import 'package:open_cloud_health/screens/export_profile.dart';
 import 'package:open_cloud_health/services/file_service.dart';

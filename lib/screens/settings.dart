@@ -7,8 +7,17 @@ import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/backup_frequency.dart';
 import 'package:open_cloud_health/models/storage_info.dart';
+import 'package:open_cloud_health/providers/allergies_provider.dart';
+import 'package:open_cloud_health/providers/checkups_provider.dart';
+import 'package:open_cloud_health/providers/emergency_provider.dart';
+import 'package:open_cloud_health/providers/history_provider.dart';
+import 'package:open_cloud_health/providers/medications_provider.dart';
+import 'package:open_cloud_health/providers/period_provider.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
+import 'package:open_cloud_health/providers/vitals_provider.dart';
 import 'package:open_cloud_health/services/backup_service.dart';
+import 'package:open_cloud_health/services/file_service.dart';
+import 'package:open_cloud_health/services/notification_service.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/utils/format_utils.dart';
@@ -493,16 +502,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     if (confirm != true) return;
 
+    // 1. Cancel all notifications & alarms
+    await ref.read(notificationServiceProvider).cancelAllNotifications();
+
+    // 2. Delete all physical documents, photos, and local files
+    await ref.read(fileServiceProvider).deleteAllLocalFiles();
+
+    // 3. Wipe and close SQLite database files
     await ref.read(appDatabaseProvider).resetDatabase();
 
-    Directory dir = await getTemporaryDirectory();
-    if (dir.existsSync()) {
-      dir.deleteSync(recursive: true);
-      dir.create();
-    }
+    // 4. Clear all secure storage credentials, keys, and cached state
+    await ref.read(secureStorageProvider).clear();
 
+    // 6. Invalidate database and all Riverpod state providers
+    ref.invalidate(appDatabaseProvider);
+    ref.invalidate(profilesProvider);
+    ref.invalidate(historyProvider);
+    ref.invalidate(allergiesProvider);
+    ref.invalidate(medicationsProvider);
+    ref.invalidate(medicationLogsProvider);
+    ref.invalidate(checkupsProvider);
+    ref.invalidate(periodProvider);
+    ref.invalidate(vitalsProvider);
+    ref.invalidate(emergencyContactsProvider);
+    ref.invalidate(lockScreenSettingsProvider);
+    ref.invalidate(primaryProfileIdProvider);
+
+    // 7. Route directly to Welcome screen
     if (!mounted) return;
-    context.go(AppRoutes.auth);
+    context.go(AppRoutes.welcome);
   }
 
   Color _getStorageProgressColor(double fraction) {

@@ -414,7 +414,7 @@ class MedicalPdfService {
               pw.SizedBox(height: 3),
               pw.Text(
                 'Date: $dateGenStr',
-                style: pw.TextStyle(color: PdfColors.white, fontSize: 8),
+                style: const pw.TextStyle(color: PdfColors.white, fontSize: 8),
               ),
             ],
           ),

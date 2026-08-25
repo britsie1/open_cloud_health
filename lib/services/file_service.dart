@@ -94,6 +94,35 @@ class FileService {
       await file.delete();
     }
   }
+
+  Future<void> deleteHistoryAttachmentsDirectory(String historyId) async {
+    final dir = await _getDirectory(attachmentsSubdir, nestedSubdir: historyId);
+    if (await dir.exists()) {
+      await dir.delete(recursive: true);
+    }
+  }
+
+  Future<void> deleteProfileFiles(String profileId, List<String> historyIds) async {
+    await deleteProfileImage(profileId);
+    for (final historyId in historyIds) {
+      await deleteHistoryAttachmentsDirectory(historyId);
+    }
+  }
+
+  Future<void> deleteAllLocalFiles() async {
+    try {
+      final profileDir = await getProfileImagesDirectory();
+      if (await profileDir.exists()) {
+        await profileDir.delete(recursive: true);
+      }
+    } catch (_) {}
+    try {
+      final attachmentsDir = await getAttachmentsDirectory();
+      if (await attachmentsDir.exists()) {
+        await attachmentsDir.delete(recursive: true);
+      }
+    } catch (_) {}
+  }
 }
 
 final fileServiceProvider = Provider<FileService>((ref) {

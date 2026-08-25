@@ -312,6 +312,19 @@ class SecureStorage {
   Future<void> deleteActiveShareConfig(String profileId) async {
     await storage.delete(key: '$_activeSharePrefix$profileId');
   }
+
+  static const _autoLockGraceSecondsKey = 'auto_lock_grace_seconds';
+
+  /// Returns the grace period in seconds before background lock triggers (defaults to 30 seconds).
+  Future<int> getAutoLockGraceSeconds() async {
+    final value = await storage.read(key: _autoLockGraceSecondsKey);
+    if (value == null) return 30;
+    return int.tryParse(value) ?? 30;
+  }
+
+  Future<void> setAutoLockGraceSeconds(int seconds) async {
+    await storage.write(key: _autoLockGraceSecondsKey, value: seconds.toString());
+  }
 }
 
 final secureStorageProvider = Provider<SecureStorage>((ref) {

@@ -24,7 +24,7 @@ class _ProfilesScreenState extends ConsumerState<ProfilesScreen> {
         title: const Text('Manage Profiles'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.archive_outlined),
+            icon: const Icon(Icons.delete_outline),
             tooltip: 'Archived Profiles',
             onPressed: () {
               context.push(AppRoutes.archivedProfiles);

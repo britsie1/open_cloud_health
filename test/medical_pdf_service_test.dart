@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,14 +7,11 @@ import 'package:open_cloud_health/models/checkup_log.dart';
 import 'package:open_cloud_health/models/emergency_contact.dart';
 import 'package:open_cloud_health/models/history_event.dart';
 import 'package:open_cloud_health/models/medication.dart';
-import 'package:open_cloud_health/models/medication_log.dart';
-import 'package:open_cloud_health/models/pdf_export_options.dart';
 import 'package:open_cloud_health/models/period_cycle.dart';
 import 'package:open_cloud_health/models/period_log.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/models/vital_log.dart';
 import 'package:open_cloud_health/providers/medical_pdf_provider.dart';
-import 'package:open_cloud_health/services/medical_pdf_service.dart';
 
 void main() {
   group('MedicalPdfExportOptions & Date Filters Tests', () {

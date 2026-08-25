@@ -121,6 +121,14 @@ void main() {
         .thenAnswer((_) => const Stream.empty());
     when(() => mockHistoryRepository.watchEvents(any()))
         .thenAnswer((_) => const Stream.empty());
+    when(() => mockHistoryRepository.fetchEvents(any()))
+        .thenAnswer((_) async => []);
+    when(() => mockFileService.deleteHistoryAttachmentsDirectory(any()))
+        .thenAnswer((_) async {});
+    when(() => mockFileService.deleteProfileFiles(any(), any()))
+        .thenAnswer((_) async {});
+    when(() => mockFileService.deleteProfileImage(any()))
+        .thenAnswer((_) async {});
     when(() => mockMedicationsRepository.watchMedications(any()))
         .thenAnswer((_) => const Stream.empty());
     when(() => mockMedicationsRepository.watchLogsForDate(any(), any()))

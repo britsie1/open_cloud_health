@@ -69,7 +69,7 @@ class WelcomeScreen extends StatelessWidget {
                         
                         // Description Text
                         Text(
-                          'A local-first, highly secure medical tracking companion. Your health timeline, prescriptions, cycle history, and vitals are stored on this device—completely under your control.',
+                          'A highly secure medical tracking companion. Your health timeline, prescriptions, cycle history, and vitals are stored on this device—completely under your control.',
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onBackground.withOpacity(0.6),
@@ -135,29 +135,6 @@ class WelcomeScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Small security disclaimer at bottom
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.lock_outline,
-                              size: 14,
-                              color: theme.colorScheme.primary.withOpacity(0.5),
-                            ),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                'Zero-knowledge architecture. No cloud login required.',
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onBackground.withOpacity(0.4),
-                                ),
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),

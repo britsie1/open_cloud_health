@@ -115,19 +115,19 @@ class _ExportProfileScreenState extends ConsumerState<ExportProfileScreen> {
           }
         });
 
-        return AlertDialog(
+        return const AlertDialog(
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 20),
-              const Text(
+              CircularProgressIndicator(),
+              SizedBox(height: 20),
+              Text(
                 'Compiling health data into JSON...',
                 style: TextStyle(fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
-              const Text(
+              SizedBox(height: 8),
+              Text(
                 'Please wait while we package your local medical records securely.',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
                 textAlign: TextAlign.center,

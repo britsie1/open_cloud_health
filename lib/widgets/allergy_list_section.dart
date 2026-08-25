@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:healthicons_flutter/healthicons_flutter.dart';
 import 'package:open_cloud_health/models/allergy.dart';
 import 'package:open_cloud_health/providers/allergies_provider.dart';

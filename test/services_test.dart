@@ -91,6 +91,37 @@ void main() {
       final savedPath = await fileService.getAttachmentPath('history-123', 'report.pdf');
       expect(await File(savedPath).exists(), false);
     });
+
+    test('deleteHistoryAttachmentsDirectory recursively removes history folder', () async {
+      final testFile = File(path.join(tempDir.path, 'doc_source.pdf'));
+      await testFile.writeAsBytes([4, 5, 6]);
+      await fileService.saveAttachment('history-456', testFile, 'lab1.pdf');
+      await fileService.saveAttachment('history-456', testFile, 'lab2.pdf');
+
+      await fileService.deleteHistoryAttachmentsDirectory('history-456');
+
+      final file1 = await fileService.getAttachmentPath('history-456', 'lab1.pdf');
+      final file2 = await fileService.getAttachmentPath('history-456', 'lab2.pdf');
+      expect(await File(file1).exists(), false);
+      expect(await File(file2).exists(), false);
+    });
+
+    test('deleteProfileFiles removes profile image and all history attachment folders', () async {
+      final imgFile = File(path.join(tempDir.path, 'avatar.jpg'));
+      await imgFile.writeAsBytes([1, 2, 3]);
+      await fileService.saveProfileImage('profile-999', imgFile);
+
+      final docFile = File(path.join(tempDir.path, 'doc.pdf'));
+      await docFile.writeAsBytes([4, 5, 6]);
+      await fileService.saveAttachment('hist-1', docFile, 'doc1.pdf');
+      await fileService.saveAttachment('hist-2', docFile, 'doc2.pdf');
+
+      await fileService.deleteProfileFiles('profile-999', ['hist-1', 'hist-2']);
+
+      expect(await fileService.getProfileImagePath('profile-999'), '');
+      expect(await File(await fileService.getAttachmentPath('hist-1', 'doc1.pdf')).exists(), false);
+      expect(await File(await fileService.getAttachmentPath('hist-2', 'doc2.pdf')).exists(), false);
+    });
   });
 
   group('BackupService Mock Tests', () {

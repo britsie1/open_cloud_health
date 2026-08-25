@@ -512,6 +512,9 @@ class BackupService {
       final zipBytes = BackupEncryptionService.decryptBundle(
           encryptedBytes, effectivePassword);
 
+      // Safely close database connection and remove stale WAL/SHM before overwriting files
+      await _ref.read(appDatabaseProvider).prepareForDatabaseReplacement();
+
       // Unpack into db and document directories
       final dbPath = await sql.getDatabasesPath();
       final localBaseDir = await _fileService.localPath;
@@ -523,8 +526,13 @@ class BackupService {
       if (restoredDbKey != null && restoredDbKey.isNotEmpty) {
         await _secureStorage.setDatabaseKey(restoredDbKey);
       }
+
+      // Re-initialize database provider with fresh connection and restored key
+      _ref.invalidate(appDatabaseProvider);
     } else {
       debugPrint('Found standard legacy unencrypted backup. Restoring files...');
+      await _ref.read(appDatabaseProvider).prepareForDatabaseReplacement();
+
       final localBaseDir = await _fileService.localPath;
 
       for (var file in fileList.files!) {
@@ -537,6 +545,8 @@ class BackupService {
               file.id!, path.join(localBaseDir, file.name!), driveApi);
         }
       }
+
+      _ref.invalidate(appDatabaseProvider);
     }
 
     // Reload profiles after database restore
@@ -597,6 +607,9 @@ class BackupService {
             ? customPassword
             : localMasterKey;
 
+    // Safely close database connection and remove stale WAL/SHM before overwriting files
+    await _ref.read(appDatabaseProvider).prepareForDatabaseReplacement();
+
     final restoredDbKey = await BackupEncryptionService.importLocalBackupFromFile(
       backupFile: backupFile,
       dbDirectoryPath: dbPath,
@@ -606,6 +619,9 @@ class BackupService {
     if (restoredDbKey != null && restoredDbKey.isNotEmpty) {
       await _secureStorage.setDatabaseKey(restoredDbKey);
     }
+
+    // Re-initialize database provider with fresh connection and restored key
+    _ref.invalidate(appDatabaseProvider);
 
     // Reload profiles and active state
     await _ref.read(profilesProvider.notifier).loadProfiles();
