@@ -160,11 +160,20 @@ void main() {
     testWidgets('VitalDetailScreen layout across device & text scale matrix', (tester) async {
       await testScreenAcrossMatrix(
         tester,
-        screenName: 'VitalDetailScreen',
+        screenName: 'VitalDetailScreen_BP',
         ctx: ctx,
         screenBuilder: (c) => VitalDetailScreen(
           profileId: c.sampleProfile.id,
           vitalType: VitalType.bloodPressure,
+        ),
+      );
+      await testScreenAcrossMatrix(
+        tester,
+        screenName: 'VitalDetailScreen_Weight',
+        ctx: ctx,
+        screenBuilder: (c) => VitalDetailScreen(
+          profileId: c.sampleProfile.id,
+          vitalType: VitalType.weight,
         ),
       );
     });

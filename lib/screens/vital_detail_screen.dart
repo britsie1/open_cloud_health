@@ -2,9 +2,18 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/models/vital_log.dart';
+import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/providers/vitals_provider.dart';
+import 'package:open_cloud_health/providers/weight_preferences_provider.dart';
 import 'package:open_cloud_health/utils/result.dart';
+import 'package:open_cloud_health/widgets/weight/bmi_summary_card.dart';
+import 'package:open_cloud_health/widgets/weight/set_goal_dialog.dart';
+import 'package:open_cloud_health/widgets/weight/set_height_dialog.dart';
+import 'package:open_cloud_health/widgets/weight/weight_chart_widget.dart';
+import 'package:open_cloud_health/widgets/weight/weight_goal_card.dart';
+import 'package:open_cloud_health/widgets/weight/weight_history_list.dart';
 
 class VitalDetailScreen extends ConsumerStatefulWidget {
   const VitalDetailScreen({
@@ -26,7 +35,7 @@ class _VitalDetailScreenState extends ConsumerState<VitalDetailScreen> {
       case VitalType.bloodPressure:
         return 'Blood Pressure';
       case VitalType.weight:
-        return 'Weight';
+        return 'Weight Tracker';
       case VitalType.bloodSugar:
         return 'Blood Sugar';
     }
@@ -54,11 +63,133 @@ class _VitalDetailScreenState extends ConsumerState<VitalDetailScreen> {
     );
   }
 
+  void _openHeightDialog(double? currentHeight) {
+    showDialog(
+      context: context,
+      builder: (ctx) => SetHeightDialog(
+        profileId: widget.profileId,
+        initialHeightCm: currentHeight,
+      ),
+    );
+  }
+
+  void _openGoalDialog(double? currentTarget, double? currentWeight) {
+    showDialog(
+      context: context,
+      builder: (ctx) => SetGoalDialog(
+        profileId: widget.profileId,
+        initialTargetKg: currentTarget,
+        currentWeightKg: currentWeight,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final vitalsArgs = (profileId: widget.profileId, type: widget.vitalType);
     final vitalsAsync = ref.watch(vitalsProvider(vitalsArgs));
+    final isWeight = widget.vitalType == VitalType.weight;
+    final weightPrefsAsync = isWeight
+        ? ref.watch(weightPreferencesProvider(widget.profileId))
+        : null;
+    final profilesAsync = isWeight ? ref.watch(profilesProvider) : null;
+    final profile = profilesAsync?.value?.where((p) => p.id == widget.profileId).firstOrNull;
 
+    if (isWeight) {
+      return DefaultTabController(
+        length: 3,
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(_title),
+            actions: [
+              if (weightPrefsAsync != null)
+                IconButton(
+                  icon: const Icon(Icons.straighten),
+                  tooltip: 'Set Height for BMI',
+                  onPressed: () {
+                    final height = weightPrefsAsync.value?.heightCm;
+                    _openHeightDialog(height);
+                  },
+                ),
+              if (weightPrefsAsync != null)
+                IconButton(
+                  icon: const Icon(Icons.flag_outlined),
+                  tooltip: 'Set Goal Weight',
+                  onPressed: () {
+                    final target = weightPrefsAsync.value?.targetWeightKg;
+                    final currentWeight = vitalsAsync.value?.isNotEmpty == true
+                        ? vitalsAsync.value!.last.value1
+                        : null;
+                    _openGoalDialog(target, currentWeight);
+                  },
+                ),
+            ],
+            bottom: const TabBar(
+              indicatorColor: Colors.white,
+              tabs: [
+                Tab(icon: Icon(Icons.dashboard_outlined), text: 'Overview'),
+                Tab(icon: Icon(Icons.show_chart), text: 'Trends'),
+                Tab(icon: Icon(Icons.history), text: 'History'),
+              ],
+            ),
+          ),
+          body: vitalsAsync.when(
+            data: (logs) {
+              final prefs = weightPrefsAsync?.value ?? const WeightPreferences();
+              final sortedAsc = List<VitalLog>.from(logs)..sort((a, b) => a.date.compareTo(b.date));
+              final latestWeight = sortedAsc.isNotEmpty ? sortedAsc.last.value1 : null;
+              final startWeight = sortedAsc.isNotEmpty ? sortedAsc.first.value1 : null;
+
+              return TabBarView(
+                children: [
+                  // Tab 1: Overview & Insights
+                  _WeightOverviewTab(
+                    profileId: widget.profileId,
+                    logs: logs,
+                    heightCm: prefs.heightCm,
+                    targetWeightKg: prefs.targetWeightKg,
+                    currentWeightKg: latestWeight,
+                    startWeightKg: startWeight,
+                    unit: _unit,
+                    age: profile?.age,
+                    gender: profile?.gender,
+                    onOpenAddLog: _openAddVitalDialog,
+                  ),
+
+                  // Tab 2: Trends Chart
+                  WeightChartWidget(
+                    logs: logs,
+                    unit: _unit,
+                    heightCm: prefs.heightCm,
+                    targetWeightKg: prefs.targetWeightKg,
+                    onOpenAddLog: _openAddVitalDialog,
+                  ),
+
+                  // Tab 3: History List
+                  WeightHistoryList(
+                    logs: logs,
+                    unit: _unit,
+                    vitalsArgs: vitalsArgs,
+                    heightCm: prefs.heightCm,
+                  ),
+                ],
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, stack) => Center(child: Text('Error: $err')),
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            heroTag: 'vital_add_fab_weight',
+            onPressed: _openAddVitalDialog,
+            icon: const Icon(Icons.add),
+            label: const Text('Log Weight'),
+            tooltip: 'Log weight entry',
+          ),
+        ),
+      );
+    }
+
+    // Standard 2-tab view for other vitals (Blood Pressure, Blood Sugar)
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -84,10 +215,195 @@ class _VitalDetailScreenState extends ConsumerState<VitalDetailScreen> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, stack) => Center(child: Text('Error: $err')),
         ),
-        floatingActionButton: FloatingActionButton(
+        floatingActionButton: FloatingActionButton.extended(
+          heroTag: 'vital_add_fab_${widget.vitalType.name}',
           onPressed: _openAddVitalDialog,
-          child: const Icon(Icons.add),
+          icon: const Icon(Icons.add),
+          label: const Text('Log Entry'),
+          tooltip: 'Log measurement entry',
         ),
+      ),
+    );
+  }
+}
+
+class _WeightOverviewTab extends StatelessWidget {
+  const _WeightOverviewTab({
+    required this.profileId,
+    required this.logs,
+    required this.heightCm,
+    required this.targetWeightKg,
+    required this.currentWeightKg,
+    required this.startWeightKg,
+    required this.unit,
+    this.age,
+    this.gender,
+    required this.onOpenAddLog,
+  });
+
+  final String profileId;
+  final List<VitalLog> logs;
+  final double? heightCm;
+  final double? targetWeightKg;
+  final double? currentWeightKg;
+  final double? startWeightKg;
+  final String unit;
+  final int? age;
+  final Gender? gender;
+  final VoidCallback onOpenAddLog;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final borderColor = theme.colorScheme.outlineVariant.withOpacity(0.6);
+
+    if (logs.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.scale_outlined, size: 48, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(height: 12),
+              const Text(
+                'No Weight Entries',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Log your first entry to track BMI and trends.',
+                style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: onOpenAddLog,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Log Weight'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final latestLog = logs.last;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section 1: Latest Weight Measurement
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.monitor_weight_outlined, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'Current Weight',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              Text(
+                DateFormat('MMM d, y').format(latestLog.date),
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                '${latestLog.value1.toStringAsFixed(1)} $unit',
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(width: 12),
+              if (logs.length > 1) _buildRecentDelta(logs),
+            ],
+          ),
+          if (latestLog.note != null && latestLog.note!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              latestLog.note!,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            ),
+          ],
+
+          const SizedBox(height: 20),
+          const Divider(height: 1),
+          const SizedBox(height: 20),
+
+          // Section 2: BMI & Body Composition
+          BmiSummaryCard(
+            profileId: profileId,
+            currentWeightKg: currentWeightKg,
+            heightCm: heightCm,
+            age: age,
+            gender: gender,
+          ),
+
+          const SizedBox(height: 20),
+          const Divider(height: 1),
+          const SizedBox(height: 20),
+
+          // Section 3: Goal Progress
+          WeightGoalCard(
+            profileId: profileId,
+            targetWeightKg: targetWeightKg,
+            currentWeightKg: currentWeightKg,
+            startWeightKg: startWeightKg,
+          ),
+
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentDelta(List<VitalLog> logs) {
+    final sorted = List<VitalLog>.from(logs)..sort((a, b) => a.date.compareTo(b.date));
+    if (sorted.length < 2) return const SizedBox.shrink();
+    final latest = sorted.last.value1;
+    final previous = sorted[sorted.length - 2].value1;
+    final diff = latest - previous;
+
+    final isPositive = diff > 0;
+    final color = diff == 0
+        ? Colors.grey.shade700
+        : (isPositive ? Colors.amber.shade900 : Colors.teal.shade700);
+    final bgColor = color.withOpacity(0.08);
+    final sign = isPositive ? '+' : '';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            diff == 0 ? Icons.remove : (isPositive ? Icons.arrow_upward : Icons.arrow_downward),
+            size: 12,
+            color: color,
+          ),
+          const SizedBox(width: 2),
+          Text(
+            '$sign${diff.toStringAsFixed(1)} $unit',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+          ),
+        ],
       ),
     );
   }
@@ -158,7 +474,6 @@ class _ChartTab extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
-                  // Only show a few labels on the X axis to prevent crowding
                   if (value % 5 != 0 && value != spots1.last.x) return const SizedBox.shrink();
                   final date = firstDate.add(Duration(days: value.toInt()));
                   return Padding(
@@ -262,7 +577,6 @@ class _HistoryTab extends ConsumerWidget {
   }
 }
 
-
 class _AddVitalDialog extends ConsumerStatefulWidget {
   const _AddVitalDialog({
     required this.profileId,
@@ -319,7 +633,7 @@ class _AddVitalDialogState extends ConsumerState<_AddVitalDialog> {
     final now = DateTime.now();
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: now,
+      initialDate: _selectedDate,
       firstDate: DateTime(now.year - 5),
       lastDate: now,
     );
@@ -331,16 +645,17 @@ class _AddVitalDialogState extends ConsumerState<_AddVitalDialog> {
   @override
   Widget build(BuildContext context) {
     final isBP = widget.vitalType == VitalType.bloodPressure;
+    final isWeight = widget.vitalType == VitalType.weight;
 
     return AlertDialog(
-      title: const Text('Log Measurement'),
+      title: Text(isWeight ? 'Log Weight' : 'Log Measurement'),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-               Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(DateFormat.yMMMd().format(_selectedDate)),
@@ -376,7 +691,11 @@ class _AddVitalDialogState extends ConsumerState<_AddVitalDialog> {
                 ),
               ] else ...[
                 TextFormField(
-                  decoration: InputDecoration(labelText: 'Value', suffixText: widget.unit),
+                  decoration: InputDecoration(
+                    labelText: isWeight ? 'Weight' : 'Value',
+                    suffixText: widget.unit,
+                    hintText: isWeight ? 'e.g. 74.5' : null,
+                  ),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   validator: (value) => value == null || double.tryParse(value) == null ? 'Invalid number' : null,
                   onSaved: (value) => _enteredValue1 = double.parse(value!),
