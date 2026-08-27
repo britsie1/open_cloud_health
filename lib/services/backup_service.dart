@@ -242,13 +242,15 @@ class BackupService {
     final dbFile = File(path.join(dbPath, 'opencloudhealth.db'));
     final profileImagesDir = await _fileService.getProfileImagesDirectory();
     final attachmentsDir = await _fileService.getAttachmentsDirectory();
+    final insuranceCardsDir = await _fileService.getInsuranceCardsDirectory();
 
-    // 2. Create in-memory ZIP containing database, photos, attachments, and db key
+    // 2. Create in-memory ZIP containing database, photos, attachments, insurance cards, and db key
     final dbKey = await _secureStorage.getDatabaseKey() ?? await _secureStorage.getOrCreateDatabaseKey();
     final zipBytes = BackupEncryptionService.createZipArchive(
       dbFile: dbFile,
       profileImagesDir: profileImagesDir,
       attachmentsDir: attachmentsDir,
+      insuranceCardsDir: insuranceCardsDir,
       databaseEncryptionKey: dbKey,
     );
 
@@ -569,6 +571,7 @@ class BackupService {
     final dbFile = File(path.join(dbPath, 'opencloudhealth.db'));
     final profileImagesDir = await _fileService.getProfileImagesDirectory();
     final attachmentsDir = await _fileService.getAttachmentsDirectory();
+    final insuranceCardsDir = await _fileService.getInsuranceCardsDirectory();
 
     final localMasterKey = await _secureStorage.getOrCreateLocalMasterKey();
     final dbKey = await _secureStorage.getDatabaseKey() ?? await _secureStorage.getOrCreateDatabaseKey();
@@ -587,6 +590,7 @@ class BackupService {
       targetFilePath: exportFilePath,
       profileImagesDir: profileImagesDir,
       attachmentsDir: attachmentsDir,
+      insuranceCardsDir: insuranceCardsDir,
       encryptionPasswordOrKey: effectiveKey,
       databaseEncryptionKey: dbKey,
     );

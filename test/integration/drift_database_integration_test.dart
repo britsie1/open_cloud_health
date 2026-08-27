@@ -26,7 +26,7 @@ void main() {
     });
 
     test('Schema version and table creation', () async {
-      expect(db.schemaVersion, 1);
+      expect(db.schemaVersion, 2);
 
       // Verify all tables can be queried
       expect(await db.select(db.profiles).get(), isEmpty);
@@ -43,6 +43,7 @@ void main() {
       expect(await db.select(db.settings).get(), isEmpty);
       expect(await db.select(db.emergencyContacts).get(), isEmpty);
       expect(await db.select(db.lockScreenSettings).get(), isEmpty);
+      expect(await db.select(db.insurance).get(), isEmpty);
     });
 
     test('Profiles table insert, select, update, and defaults', () async {

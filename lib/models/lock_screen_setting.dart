@@ -9,6 +9,7 @@ class LockScreenSetting {
     this.showAllergies = true,
     this.showMedications = true,
     this.showContacts = true,
+    this.showInsurance = true,
     this.isEnabled = false,
   });
 
@@ -21,6 +22,7 @@ class LockScreenSetting {
   final bool showAllergies;
   final bool showMedications;
   final bool showContacts;
+  final bool showInsurance;
   final bool isEnabled;
 
   LockScreenSetting copyWith({
@@ -33,6 +35,7 @@ class LockScreenSetting {
     bool? showAllergies,
     bool? showMedications,
     bool? showContacts,
+    bool? showInsurance,
     bool? isEnabled,
   }) {
     return LockScreenSetting(
@@ -45,6 +48,7 @@ class LockScreenSetting {
       showAllergies: showAllergies ?? this.showAllergies,
       showMedications: showMedications ?? this.showMedications,
       showContacts: showContacts ?? this.showContacts,
+      showInsurance: showInsurance ?? this.showInsurance,
       isEnabled: isEnabled ?? this.isEnabled,
     );
   }

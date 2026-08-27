@@ -314,6 +314,9 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                     data: (allergies) {
                       return medicationsAsync.when(
                         data: (medications) {
+                          final theme = Theme.of(context);
+                          final isDark = theme.brightness == Brightness.dark;
+
                           return SingleChildScrollView(
                             padding: const EdgeInsets.all(24.0),
                             child: Column(
@@ -321,18 +324,21 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                               children: [
                                 if (!_notificationsEnabled)
                                   Card(
-                                    color: Colors.red.shade50,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    color: isDark ? Colors.red.shade900.withOpacity(0.25) : Colors.red.shade50,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      side: BorderSide(color: isDark ? Colors.red.shade700 : Colors.red.shade200),
+                                    ),
                                     margin: const EdgeInsets.only(bottom: 20),
                                     child: ListTile(
                                       leading: const Icon(Icons.warning, color: Colors.red),
-                                      title: const Text(
+                                      title: Text(
                                         'Emergency Channel Blocked',
-                                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                                        style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.red.shade200 : Colors.red),
                                       ),
-                                      subtitle: const Text(
+                                      subtitle: Text(
                                         'The emergency notification channel is disabled. Turn it on in system settings to show your Medical ID.',
-                                        style: TextStyle(fontSize: 12),
+                                        style: TextStyle(fontSize: 12, color: isDark ? Colors.grey.shade300 : Colors.grey.shade700),
                                       ),
                                       trailing: TextButton(
                                         onPressed: () => ref.read(notificationServiceProvider).openNotificationSettings(),
@@ -342,8 +348,11 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                                   ),
                                 if (!_batteryOptimizationDisabled)
                                   Card(
-                                    color: Colors.orange.shade50,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    color: isDark ? Colors.orange.shade900.withOpacity(0.25) : Colors.orange.shade50,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      side: BorderSide(color: isDark ? Colors.orange.shade700 : Colors.orange.shade200),
+                                    ),
                                     margin: const EdgeInsets.only(bottom: 20),
                                     child: Padding(
                                       padding: const EdgeInsets.all(16.0),
@@ -352,20 +361,23 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                                         children: [
                                           Row(
                                             children: [
-                                              Icon(Icons.battery_alert, color: Colors.orange.shade900),
+                                              Icon(Icons.battery_alert, color: isDark ? Colors.orange.shade300 : Colors.orange.shade900),
                                               const SizedBox(width: 12),
                                               Expanded(
                                                 child: Text(
                                                   'Battery Optimization Enabled',
-                                                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange.shade900),
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: isDark ? Colors.orange.shade300 : Colors.orange.shade900,
+                                                  ),
                                                 ),
                                               ),
                                             ],
                                           ),
                                           const SizedBox(height: 8),
-                                          const Text(
+                                          Text(
                                             'Android battery optimization may periodically dismiss your emergency notification or prevent your Medical ID from remaining active on the lock screen. Turn off battery optimization for Open Cloud Health to keep your Medical ID reliably visible.',
-                                            style: TextStyle(fontSize: 12, color: Colors.black87),
+                                            style: TextStyle(fontSize: 12, color: isDark ? Colors.grey.shade300 : Colors.black87),
                                           ),
                                           const SizedBox(height: 12),
                                           Align(
@@ -402,8 +414,11 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                                   )
                                 else
                                   Card(
-                                    color: Colors.blueGrey.shade50,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    color: isDark ? const Color(0xFF1E1E1E) : Colors.blueGrey.shade50,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      side: BorderSide(color: isDark ? const Color(0xFF2E2E2E) : Colors.blueGrey.shade100),
+                                    ),
                                     margin: const EdgeInsets.only(bottom: 20),
                                     child: Padding(
                                       padding: const EdgeInsets.all(16.0),
@@ -417,15 +432,15 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                                               Expanded(
                                                 child: Text(
                                                   'Battery Optimization Disabled',
-                                                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade900),
+                                                  style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.grey.shade900),
                                                 ),
                                               ),
                                             ],
                                           ),
                                           const SizedBox(height: 8),
-                                          const Text(
+                                          Text(
                                             'Battery optimization is turned off for this app. On devices like Xiaomi, Samsung, Huawei, Oppo, or Vivo, ensure "Auto-start" or "Allow background activity" is enabled in App Settings so your Medical ID stays active after rebooting.',
-                                            style: TextStyle(fontSize: 12, color: Colors.black87),
+                                            style: TextStyle(fontSize: 12, color: isDark ? Colors.grey.shade300 : Colors.black87),
                                           ),
                                           const SizedBox(height: 8),
                                           Align(
@@ -442,15 +457,24 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                                   ),
                                 // Activation Toggle Card
                                 Card(
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                  color: settings.isEnabled ? Colors.red.shade900 : Colors.grey.shade100,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                    side: BorderSide(
+                                      color: settings.isEnabled
+                                          ? (isDark ? Colors.red.shade700 : Colors.red.shade800)
+                                          : (isDark ? const Color(0xFF2E2E2E) : Colors.grey.shade300),
+                                    ),
+                                  ),
+                                  color: settings.isEnabled
+                                      ? (isDark ? const Color(0xFF3B1212) : Colors.red.shade900)
+                                      : (isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade100),
                                   child: Padding(
                                     padding: const EdgeInsets.all(20.0),
                                     child: Row(
                                       children: [
                                         Icon(
                                           Icons.emergency,
-                                          color: settings.isEnabled ? Colors.white : Colors.grey.shade600,
+                                          color: settings.isEnabled ? Colors.white : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
                                           size: 32,
                                         ),
                                         const SizedBox(width: 16),
@@ -463,7 +487,7 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                                                 style: TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
-                                                  color: settings.isEnabled ? Colors.white : Colors.black,
+                                                  color: settings.isEnabled ? Colors.white : (isDark ? Colors.white : Colors.black),
                                                 ),
                                               ),
                                               const SizedBox(height: 4),
@@ -473,7 +497,7 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                                                     : 'Disabled. First responders will not see your details.',
                                                 style: TextStyle(
                                                   fontSize: 12,
-                                                  color: settings.isEnabled ? Colors.red.shade100 : Colors.grey.shade600,
+                                                  color: settings.isEnabled ? Colors.red.shade100 : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
                                                 ),
                                               ),
                                             ],
@@ -557,7 +581,7 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                                           settings.copyWith(showAllergies: val),
                                         );
                                       }),
-                                      _buildCheckboxTile('Active Medications', settings.showMedications, (val) {
+                                          _buildCheckboxTile('Active Medications', settings.showMedications, (val) {
                                         ref.read(lockScreenSettingsProvider(profile.id).notifier).updateSettings(
                                           settings.copyWith(showMedications: val),
                                         );
@@ -565,6 +589,11 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                                       _buildCheckboxTile('Emergency Contacts', settings.showContacts, (val) {
                                         ref.read(lockScreenSettingsProvider(profile.id).notifier).updateSettings(
                                           settings.copyWith(showContacts: val),
+                                        );
+                                      }),
+                                      _buildCheckboxTile('Health Insurance & Cards', settings.showInsurance, (val) {
+                                        ref.read(lockScreenSettingsProvider(profile.id).notifier).updateSettings(
+                                          settings.copyWith(showInsurance: val),
                                         );
                                       }),
                                     ],
@@ -630,7 +659,7 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                                 Card(
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(20),
-                                    side: BorderSide(color: Colors.grey.shade300),
+                                    side: BorderSide(color: isDark ? const Color(0xFF2E2E2E) : Colors.grey.shade300),
                                   ),
                                   child: Padding(
                                     padding: const EdgeInsets.all(20.0),

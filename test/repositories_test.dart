@@ -9,7 +9,9 @@ import 'package:open_cloud_health/repositories/history_repository.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
 import 'package:open_cloud_health/repositories/emergency_repository.dart';
 import 'package:open_cloud_health/models/emergency_contact.dart';
+import 'package:open_cloud_health/models/insurance_policy.dart';
 import 'package:open_cloud_health/models/lock_screen_setting.dart';
+import 'package:open_cloud_health/repositories/insurance_repository.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -264,6 +266,51 @@ void main() {
       
       await repository.setPrimaryProfileId(null);
       expect(await repository.getPrimaryProfileId(), isNull);
+    });
+  });
+
+  group('InsuranceRepository Tests', () {
+    test('saveInsurance, getInsurance, watchInsurance, and deleteInsurance', () async {
+      final repository = InsuranceRepository(db);
+
+      // Initially null
+      expect(await repository.getInsurance('p1'), isNull);
+
+      final policy = InsurancePolicy(
+        profileId: 'p1',
+        provider: 'Blue Cross Blue Shield',
+        planName: 'Gold Preferred',
+        policyNumber: 'BCBS-998877',
+        groupNumber: 'GRP-100',
+        subscriberName: 'Primary User',
+        memberId: '01',
+        emergencyPhone: '1-800-555-1234',
+        frontCardImagePath: '/path/to/front.jpg',
+        backCardImagePath: '/path/to/back.jpg',
+        notes: 'In-network copay \$20',
+      );
+
+      // Save policy
+      await repository.saveInsurance(policy);
+
+      // Retrieve policy
+      final retrieved = await repository.getInsurance('p1');
+      expect(retrieved, isNotNull);
+      expect(retrieved!.provider, 'Blue Cross Blue Shield');
+      expect(retrieved.planName, 'Gold Preferred');
+      expect(retrieved.policyNumber, 'BCBS-998877');
+      expect(retrieved.emergencyPhone, '1-800-555-1234');
+      expect(retrieved.notes, 'In-network copay \$20');
+
+      // Update policy
+      final updatedPolicy = retrieved.copyWith(planName: 'Platinum PPO');
+      await repository.saveInsurance(updatedPolicy);
+      final updated = await repository.getInsurance('p1');
+      expect(updated!.planName, 'Platinum PPO');
+
+      // Delete policy
+      await repository.deleteInsurance(retrieved.id);
+      expect(await repository.getInsurance('p1'), isNull);
     });
   });
 }

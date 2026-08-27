@@ -20,6 +20,7 @@ import 'package:open_cloud_health/screens/security_setup.dart';
 import 'package:open_cloud_health/screens/settings.dart';
 import 'package:open_cloud_health/screens/vital_detail_screen.dart';
 import 'package:open_cloud_health/screens/welcome.dart';
+import 'package:open_cloud_health/widgets/emergency_card_view.dart';
 import 'overflow_test_helper.dart';
 
 void main() {
@@ -67,6 +68,15 @@ void main() {
         screenName: 'EmergencySettingsScreen',
         ctx: ctx,
         screenBuilder: (c) => EmergencySettingsScreen(profileId: c.sampleProfile.id),
+      );
+    });
+
+    testWidgets('EmergencyCardView layout across device & text scale matrix', (tester) async {
+      await testScreenAcrossMatrix(
+        tester,
+        screenName: 'EmergencyCardView',
+        ctx: ctx,
+        screenBuilder: (c) => const EmergencyCardView(),
       );
     });
 

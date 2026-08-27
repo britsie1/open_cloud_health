@@ -214,8 +214,31 @@ class LockScreenSettings extends Table {
   BoolColumn get showAllergies => boolean().named('showAllergies').nullable().withDefault(const Constant(true))();
   BoolColumn get showMedications => boolean().named('showMedications').nullable().withDefault(const Constant(true))();
   BoolColumn get showContacts => boolean().named('showContacts').nullable().withDefault(const Constant(true))();
+  BoolColumn get showInsurance => boolean().named('showInsurance').nullable().withDefault(const Constant(true))();
   BoolColumn get isEnabled => boolean().named('isEnabled').nullable().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {profileId};
+}
+
+@DataClassName('InsuranceEntry')
+class Insurance extends Table {
+  @override
+  String get tableName => 'insurance';
+
+  TextColumn get id => text()();
+  TextColumn get profileId => text().named('profileId').references(Profiles, #id, onDelete: KeyAction.cascade)();
+  TextColumn get provider => text()();
+  TextColumn get planName => text().named('planName').nullable()();
+  TextColumn get policyNumber => text().named('policyNumber')();
+  TextColumn get groupNumber => text().named('groupNumber').nullable()();
+  TextColumn get subscriberName => text().named('subscriberName').nullable()();
+  TextColumn get memberId => text().named('memberId').nullable()();
+  TextColumn get emergencyPhone => text().named('emergencyPhone').nullable()();
+  TextColumn get frontCardImage => text().named('frontCardImage').nullable()();
+  TextColumn get backCardImage => text().named('backCardImage').nullable()();
+  TextColumn get notes => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
 }

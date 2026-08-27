@@ -7,6 +7,7 @@ import 'package:open_cloud_health/services/backup_encryption_service.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/utils/security_utils.dart';
+import 'package:open_cloud_health/widgets/emergency_card_view.dart';
 
 final isAppLockedProvider = StateProvider<bool>((ref) => false);
 
@@ -141,6 +142,19 @@ class _AppLockOverlayState extends ConsumerState<AppLockOverlay> {
                         icon: const Icon(Icons.pin_outlined, size: 20),
                         label: const Text('Enter PIN / Password'),
                       ),
+                      const SizedBox(height: 24),
+                      TextButton.icon(
+                        onPressed: _showEmergencyCard,
+                        icon: const Icon(Icons.emergency, color: Colors.red),
+                        label: const Text(
+                          'Emergency Medical ID',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -148,6 +162,32 @@ class _AppLockOverlayState extends ConsumerState<AppLockOverlay> {
             ),
           ),
       ],
+    );
+  }
+
+  Future<void> _showEmergencyCard() async {
+    final db = ref.read(appDatabaseProvider);
+    final settingsData = await (db.select(db.lockScreenSettings)..where((tbl) => tbl.isEnabled.equals(true))).get();
+
+    if (settingsData.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No emergency profiles enabled in settings.')),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Emergency Card',
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return const EmergencyCardView();
+      },
     );
   }
 

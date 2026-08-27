@@ -64,7 +64,73 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
       _isRestoring = true;
     });
     try {
-      await ref.read(backupServiceProvider).restoreFromBackup();
+      final backupService = ref.read(backupServiceProvider);
+      try {
+        await backupService.restoreFromBackup();
+      } on FormatException {
+        setState(() => _isRestoring = false);
+        if (!mounted) return;
+
+        final passwordController = TextEditingController();
+        bool obscure = true;
+
+        final password = await showDialog<String>(
+          context: context,
+          builder: (dialogCtx) => StatefulBuilder(
+            builder: (ctx, setDialogState) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Text('Encrypted Cloud Backup', style: TextStyle(fontWeight: FontWeight.bold)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Please enter your encryption password or recovery key to restore this cloud backup:'),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: obscure,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: 'Password or Key',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      suffixIcon: IconButton(
+                        icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => setDialogState(() => obscure = !obscure),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(null),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(passwordController.text.trim()),
+                  child: const Text('Restore'),
+                ),
+              ],
+            ),
+          ),
+        );
+
+        if (password == null || password.isEmpty) return;
+
+        setState(() => _isRestoring = true);
+        await backupService.restoreFromBackup(password: password);
+      }
+      await ref.read(profilesProvider.notifier).loadProfiles();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Backup restored successfully!'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Restore failed: $e'), backgroundColor: Colors.red),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {

@@ -5,6 +5,7 @@ import 'package:open_cloud_health/models/checkup.dart';
 import 'package:open_cloud_health/models/checkup_log.dart';
 import 'package:open_cloud_health/models/emergency_contact.dart';
 import 'package:open_cloud_health/models/history_event.dart';
+import 'package:open_cloud_health/models/insurance_policy.dart';
 import 'package:open_cloud_health/models/lock_screen_setting.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
@@ -25,6 +26,7 @@ class ShareModuleOptions {
     this.includeHistory = true,
     this.includeEmergency = true,
     this.includeFertility = true,
+    this.includeInsurance = true,
   });
 
   final bool includeDemographics;
@@ -36,6 +38,7 @@ class ShareModuleOptions {
   final bool includeHistory;
   final bool includeEmergency;
   final bool includeFertility;
+  final bool includeInsurance;
 
   ShareModuleOptions copyWith({
     bool? includeDemographics,
@@ -47,6 +50,7 @@ class ShareModuleOptions {
     bool? includeHistory,
     bool? includeEmergency,
     bool? includeFertility,
+    bool? includeInsurance,
   }) {
     return ShareModuleOptions(
       includeDemographics: includeDemographics ?? this.includeDemographics,
@@ -58,6 +62,7 @@ class ShareModuleOptions {
       includeHistory: includeHistory ?? this.includeHistory,
       includeEmergency: includeEmergency ?? this.includeEmergency,
       includeFertility: includeFertility ?? this.includeFertility,
+      includeInsurance: includeInsurance ?? this.includeInsurance,
     );
   }
 
@@ -71,6 +76,7 @@ class ShareModuleOptions {
         'includeHistory': includeHistory,
         'includeEmergency': includeEmergency,
         'includeFertility': includeFertility,
+        'includeInsurance': includeInsurance,
       };
 
   factory ShareModuleOptions.fromJson(Map<String, dynamic> json) {
@@ -84,6 +90,7 @@ class ShareModuleOptions {
       includeHistory: json['includeHistory'] as bool? ?? true,
       includeEmergency: json['includeEmergency'] as bool? ?? true,
       includeFertility: json['includeFertility'] as bool? ?? true,
+      includeInsurance: json['includeInsurance'] as bool? ?? true,
     );
   }
 }
@@ -309,6 +316,7 @@ class SharedProfileBundle {
   final List<HistoryEvent> historyEvents;
   final List<EmergencyContact> emergencyContacts;
   final LockScreenSetting? lockScreenSetting;
+  final InsurancePolicy? insurance;
 
   SharedProfileBundle({
     this.version = currentVersion,
@@ -325,6 +333,7 @@ class SharedProfileBundle {
     this.historyEvents = const [],
     this.emergencyContacts = const [],
     this.lockScreenSetting,
+    this.insurance,
   });
 
   Map<String, dynamic> toJson() => {
@@ -393,7 +402,22 @@ class SharedProfileBundle {
                 'showAllergies': lockScreenSetting!.showAllergies,
                 'showMedications': lockScreenSetting!.showMedications,
                 'showContacts': lockScreenSetting!.showContacts,
+                'showInsurance': lockScreenSetting!.showInsurance,
                 'isEnabled': lockScreenSetting!.isEnabled,
+              }
+            : null,
+        'insurance': insurance != null
+            ? {
+                'id': insurance!.id,
+                'profileId': insurance!.profileId,
+                'provider': insurance!.provider,
+                'planName': insurance!.planName,
+                'policyNumber': insurance!.policyNumber,
+                'groupNumber': insurance!.groupNumber,
+                'subscriberName': insurance!.subscriberName,
+                'memberId': insurance!.memberId,
+                'emergencyPhone': insurance!.emergencyPhone,
+                'notes': insurance!.notes,
               }
             : null,
       };
@@ -479,22 +503,38 @@ class SharedProfileBundle {
       );
     }).toList();
 
-    LockScreenSetting? lockSetting;
-    if (json['lockScreenSetting'] != null) {
-      final ls = json['lockScreenSetting'] as Map<String, dynamic>;
-      lockSetting = LockScreenSetting(
-        profileId: ls['profileId'] as String,
-        showName: ls['showName'] as bool? ?? true,
-        showAge: ls['showAge'] as bool? ?? true,
-        showBloodType: ls['showBloodType'] as bool? ?? true,
-        showOrganDonor: ls['showOrganDonor'] as bool? ?? true,
-        showChronicConditions: ls['showChronicConditions'] as bool? ?? true,
-        showAllergies: ls['showAllergies'] as bool? ?? true,
-        showMedications: ls['showMedications'] as bool? ?? true,
-        showContacts: ls['showContacts'] as bool? ?? true,
-        isEnabled: ls['isEnabled'] as bool? ?? false,
-      );
-    }
+    final lockJson = json['lockScreenSetting'] as Map<String, dynamic>?;
+    final lockScreenSetting = lockJson != null
+        ? LockScreenSetting(
+            profileId: lockJson['profileId'] as String,
+            showName: lockJson['showName'] as bool? ?? true,
+            showAge: lockJson['showAge'] as bool? ?? true,
+            showBloodType: lockJson['showBloodType'] as bool? ?? true,
+            showOrganDonor: lockJson['showOrganDonor'] as bool? ?? true,
+            showChronicConditions: lockJson['showChronicConditions'] as bool? ?? true,
+            showAllergies: lockJson['showAllergies'] as bool? ?? true,
+            showMedications: lockJson['showMedications'] as bool? ?? true,
+            showContacts: lockJson['showContacts'] as bool? ?? true,
+            showInsurance: lockJson['showInsurance'] as bool? ?? true,
+            isEnabled: lockJson['isEnabled'] as bool? ?? false,
+          )
+        : null;
+
+    final insJson = json['insurance'] as Map<String, dynamic>?;
+    final insurance = insJson != null
+        ? InsurancePolicy(
+            id: insJson['id'] as String?,
+            profileId: insJson['profileId'] as String,
+            provider: insJson['provider'] as String,
+            planName: insJson['planName'] as String?,
+            policyNumber: insJson['policyNumber'] as String,
+            groupNumber: insJson['groupNumber'] as String?,
+            subscriberName: insJson['subscriberName'] as String?,
+            memberId: insJson['memberId'] as String?,
+            emergencyPhone: insJson['emergencyPhone'] as String?,
+            notes: insJson['notes'] as String?,
+          )
+        : null;
 
     return SharedProfileBundle(
       version: json['version'] as int? ?? currentVersion,
@@ -510,7 +550,8 @@ class SharedProfileBundle {
       vitals: vitals,
       historyEvents: historyEvents,
       emergencyContacts: emergencyContacts,
-      lockScreenSetting: lockSetting,
+      lockScreenSetting: lockScreenSetting,
+      insurance: insurance,
     );
   }
 

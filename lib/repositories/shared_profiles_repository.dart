@@ -7,6 +7,7 @@ import 'package:open_cloud_health/models/checkup.dart';
 import 'package:open_cloud_health/models/checkup_log.dart';
 import 'package:open_cloud_health/models/emergency_contact.dart';
 import 'package:open_cloud_health/models/history_event.dart';
+import 'package:open_cloud_health/models/insurance_policy.dart';
 import 'package:open_cloud_health/models/lock_screen_setting.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
@@ -279,6 +280,11 @@ class SharedProfilesRepository {
   Future<LockScreenSetting?> getLockScreenSetting(String profileId) async {
     final bundle = await getSharedProfileBundle(profileId);
     return bundle?.lockScreenSetting;
+  }
+
+  Future<InsurancePolicy?> getInsurance(String profileId) async {
+    final bundle = await getSharedProfileBundle(profileId);
+    return bundle?.insurance;
   }
 
   Future<List<PeriodCycle>> getPeriodCycles(String profileId) async {

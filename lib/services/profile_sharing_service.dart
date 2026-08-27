@@ -19,6 +19,7 @@ import 'package:open_cloud_health/repositories/allergies_repository.dart';
 import 'package:open_cloud_health/repositories/checkups_repository.dart';
 import 'package:open_cloud_health/repositories/emergency_repository.dart';
 import 'package:open_cloud_health/repositories/history_repository.dart';
+import 'package:open_cloud_health/repositories/insurance_repository.dart';
 import 'package:open_cloud_health/repositories/medications_repository.dart';
 import 'package:open_cloud_health/repositories/period_repository.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
@@ -219,6 +220,11 @@ class ProfileSharingService {
         ? await _ref.read(emergencyRepositoryProvider).getLockScreenSetting(profileId)
         : null;
 
+    // Insurance
+    final insurance = options.includeInsurance
+        ? await _ref.read(insuranceRepositoryProvider).getInsurance(profileId)
+        : null;
+
     // 2. Build Bundle
     final bundle = SharedProfileBundle(
       profile: profile,
@@ -234,6 +240,7 @@ class ProfileSharingService {
       historyEvents: historyEvents,
       emergencyContacts: emergencyContacts,
       lockScreenSetting: lockScreenSetting,
+      insurance: insurance,
     );
 
     // 3. Encrypt bundle with AES-256 (reusing deterministic key if already shared)

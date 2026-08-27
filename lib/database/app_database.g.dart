@@ -5238,6 +5238,16 @@ class $LockScreenSettingsTable extends LockScreenSettings
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("showContacts" IN (0, 1))'),
       defaultValue: const Constant(true));
+  static const VerificationMeta _showInsuranceMeta =
+      const VerificationMeta('showInsurance');
+  @override
+  late final GeneratedColumn<bool> showInsurance = GeneratedColumn<bool>(
+      'showInsurance', aliasedName, true,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("showInsurance" IN (0, 1))'),
+      defaultValue: const Constant(true));
   static const VerificationMeta _isEnabledMeta =
       const VerificationMeta('isEnabled');
   @override
@@ -5259,6 +5269,7 @@ class $LockScreenSettingsTable extends LockScreenSettings
         showAllergies,
         showMedications,
         showContacts,
+        showInsurance,
         isEnabled
       ];
   @override
@@ -5322,6 +5333,12 @@ class $LockScreenSettingsTable extends LockScreenSettings
           showContacts.isAcceptableOrUnknown(
               data['showContacts']!, _showContactsMeta));
     }
+    if (data.containsKey('showInsurance')) {
+      context.handle(
+          _showInsuranceMeta,
+          showInsurance.isAcceptableOrUnknown(
+              data['showInsurance']!, _showInsuranceMeta));
+    }
     if (data.containsKey('isEnabled')) {
       context.handle(_isEnabledMeta,
           isEnabled.isAcceptableOrUnknown(data['isEnabled']!, _isEnabledMeta));
@@ -5353,6 +5370,8 @@ class $LockScreenSettingsTable extends LockScreenSettings
           .read(DriftSqlType.bool, data['${effectivePrefix}showMedications']),
       showContacts: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}showContacts']),
+      showInsurance: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}showInsurance']),
       isEnabled: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}isEnabled']),
     );
@@ -5375,6 +5394,7 @@ class LockScreenSettingEntry extends DataClass
   final bool? showAllergies;
   final bool? showMedications;
   final bool? showContacts;
+  final bool? showInsurance;
   final bool? isEnabled;
   const LockScreenSettingEntry(
       {required this.profileId,
@@ -5386,6 +5406,7 @@ class LockScreenSettingEntry extends DataClass
       this.showAllergies,
       this.showMedications,
       this.showContacts,
+      this.showInsurance,
       this.isEnabled});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5414,6 +5435,9 @@ class LockScreenSettingEntry extends DataClass
     }
     if (!nullToAbsent || showContacts != null) {
       map['showContacts'] = Variable<bool>(showContacts);
+    }
+    if (!nullToAbsent || showInsurance != null) {
+      map['showInsurance'] = Variable<bool>(showInsurance);
     }
     if (!nullToAbsent || isEnabled != null) {
       map['isEnabled'] = Variable<bool>(isEnabled);
@@ -5448,6 +5472,9 @@ class LockScreenSettingEntry extends DataClass
       showContacts: showContacts == null && nullToAbsent
           ? const Value.absent()
           : Value(showContacts),
+      showInsurance: showInsurance == null && nullToAbsent
+          ? const Value.absent()
+          : Value(showInsurance),
       isEnabled: isEnabled == null && nullToAbsent
           ? const Value.absent()
           : Value(isEnabled),
@@ -5468,6 +5495,7 @@ class LockScreenSettingEntry extends DataClass
       showAllergies: serializer.fromJson<bool?>(json['showAllergies']),
       showMedications: serializer.fromJson<bool?>(json['showMedications']),
       showContacts: serializer.fromJson<bool?>(json['showContacts']),
+      showInsurance: serializer.fromJson<bool?>(json['showInsurance']),
       isEnabled: serializer.fromJson<bool?>(json['isEnabled']),
     );
   }
@@ -5484,6 +5512,7 @@ class LockScreenSettingEntry extends DataClass
       'showAllergies': serializer.toJson<bool?>(showAllergies),
       'showMedications': serializer.toJson<bool?>(showMedications),
       'showContacts': serializer.toJson<bool?>(showContacts),
+      'showInsurance': serializer.toJson<bool?>(showInsurance),
       'isEnabled': serializer.toJson<bool?>(isEnabled),
     };
   }
@@ -5498,6 +5527,7 @@ class LockScreenSettingEntry extends DataClass
           Value<bool?> showAllergies = const Value.absent(),
           Value<bool?> showMedications = const Value.absent(),
           Value<bool?> showContacts = const Value.absent(),
+          Value<bool?> showInsurance = const Value.absent(),
           Value<bool?> isEnabled = const Value.absent()}) =>
       LockScreenSettingEntry(
         profileId: profileId ?? this.profileId,
@@ -5517,6 +5547,8 @@ class LockScreenSettingEntry extends DataClass
             : this.showMedications,
         showContacts:
             showContacts.present ? showContacts.value : this.showContacts,
+        showInsurance:
+            showInsurance.present ? showInsurance.value : this.showInsurance,
         isEnabled: isEnabled.present ? isEnabled.value : this.isEnabled,
       );
   LockScreenSettingEntry copyWithCompanion(LockScreenSettingsCompanion data) {
@@ -5542,6 +5574,9 @@ class LockScreenSettingEntry extends DataClass
       showContacts: data.showContacts.present
           ? data.showContacts.value
           : this.showContacts,
+      showInsurance: data.showInsurance.present
+          ? data.showInsurance.value
+          : this.showInsurance,
       isEnabled: data.isEnabled.present ? data.isEnabled.value : this.isEnabled,
     );
   }
@@ -5558,6 +5593,7 @@ class LockScreenSettingEntry extends DataClass
           ..write('showAllergies: $showAllergies, ')
           ..write('showMedications: $showMedications, ')
           ..write('showContacts: $showContacts, ')
+          ..write('showInsurance: $showInsurance, ')
           ..write('isEnabled: $isEnabled')
           ..write(')'))
         .toString();
@@ -5574,6 +5610,7 @@ class LockScreenSettingEntry extends DataClass
       showAllergies,
       showMedications,
       showContacts,
+      showInsurance,
       isEnabled);
   @override
   bool operator ==(Object other) =>
@@ -5588,6 +5625,7 @@ class LockScreenSettingEntry extends DataClass
           other.showAllergies == this.showAllergies &&
           other.showMedications == this.showMedications &&
           other.showContacts == this.showContacts &&
+          other.showInsurance == this.showInsurance &&
           other.isEnabled == this.isEnabled);
 }
 
@@ -5602,6 +5640,7 @@ class LockScreenSettingsCompanion
   final Value<bool?> showAllergies;
   final Value<bool?> showMedications;
   final Value<bool?> showContacts;
+  final Value<bool?> showInsurance;
   final Value<bool?> isEnabled;
   final Value<int> rowid;
   const LockScreenSettingsCompanion({
@@ -5614,6 +5653,7 @@ class LockScreenSettingsCompanion
     this.showAllergies = const Value.absent(),
     this.showMedications = const Value.absent(),
     this.showContacts = const Value.absent(),
+    this.showInsurance = const Value.absent(),
     this.isEnabled = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -5627,6 +5667,7 @@ class LockScreenSettingsCompanion
     this.showAllergies = const Value.absent(),
     this.showMedications = const Value.absent(),
     this.showContacts = const Value.absent(),
+    this.showInsurance = const Value.absent(),
     this.isEnabled = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : profileId = Value(profileId);
@@ -5640,6 +5681,7 @@ class LockScreenSettingsCompanion
     Expression<bool>? showAllergies,
     Expression<bool>? showMedications,
     Expression<bool>? showContacts,
+    Expression<bool>? showInsurance,
     Expression<bool>? isEnabled,
     Expression<int>? rowid,
   }) {
@@ -5654,6 +5696,7 @@ class LockScreenSettingsCompanion
       if (showAllergies != null) 'showAllergies': showAllergies,
       if (showMedications != null) 'showMedications': showMedications,
       if (showContacts != null) 'showContacts': showContacts,
+      if (showInsurance != null) 'showInsurance': showInsurance,
       if (isEnabled != null) 'isEnabled': isEnabled,
       if (rowid != null) 'rowid': rowid,
     });
@@ -5669,6 +5712,7 @@ class LockScreenSettingsCompanion
       Value<bool?>? showAllergies,
       Value<bool?>? showMedications,
       Value<bool?>? showContacts,
+      Value<bool?>? showInsurance,
       Value<bool?>? isEnabled,
       Value<int>? rowid}) {
     return LockScreenSettingsCompanion(
@@ -5682,6 +5726,7 @@ class LockScreenSettingsCompanion
       showAllergies: showAllergies ?? this.showAllergies,
       showMedications: showMedications ?? this.showMedications,
       showContacts: showContacts ?? this.showContacts,
+      showInsurance: showInsurance ?? this.showInsurance,
       isEnabled: isEnabled ?? this.isEnabled,
       rowid: rowid ?? this.rowid,
     );
@@ -5718,6 +5763,9 @@ class LockScreenSettingsCompanion
     if (showContacts.present) {
       map['showContacts'] = Variable<bool>(showContacts.value);
     }
+    if (showInsurance.present) {
+      map['showInsurance'] = Variable<bool>(showInsurance.value);
+    }
     if (isEnabled.present) {
       map['isEnabled'] = Variable<bool>(isEnabled.value);
     }
@@ -5739,7 +5787,636 @@ class LockScreenSettingsCompanion
           ..write('showAllergies: $showAllergies, ')
           ..write('showMedications: $showMedications, ')
           ..write('showContacts: $showContacts, ')
+          ..write('showInsurance: $showInsurance, ')
           ..write('isEnabled: $isEnabled, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $InsuranceTable extends Insurance
+    with TableInfo<$InsuranceTable, InsuranceEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InsuranceTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _profileIdMeta =
+      const VerificationMeta('profileId');
+  @override
+  late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
+      'profileId', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES profiles (id) ON DELETE CASCADE'));
+  static const VerificationMeta _providerMeta =
+      const VerificationMeta('provider');
+  @override
+  late final GeneratedColumn<String> provider = GeneratedColumn<String>(
+      'provider', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _planNameMeta =
+      const VerificationMeta('planName');
+  @override
+  late final GeneratedColumn<String> planName = GeneratedColumn<String>(
+      'planName', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _policyNumberMeta =
+      const VerificationMeta('policyNumber');
+  @override
+  late final GeneratedColumn<String> policyNumber = GeneratedColumn<String>(
+      'policyNumber', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _groupNumberMeta =
+      const VerificationMeta('groupNumber');
+  @override
+  late final GeneratedColumn<String> groupNumber = GeneratedColumn<String>(
+      'groupNumber', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _subscriberNameMeta =
+      const VerificationMeta('subscriberName');
+  @override
+  late final GeneratedColumn<String> subscriberName = GeneratedColumn<String>(
+      'subscriberName', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _memberIdMeta =
+      const VerificationMeta('memberId');
+  @override
+  late final GeneratedColumn<String> memberId = GeneratedColumn<String>(
+      'memberId', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _emergencyPhoneMeta =
+      const VerificationMeta('emergencyPhone');
+  @override
+  late final GeneratedColumn<String> emergencyPhone = GeneratedColumn<String>(
+      'emergencyPhone', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _frontCardImageMeta =
+      const VerificationMeta('frontCardImage');
+  @override
+  late final GeneratedColumn<String> frontCardImage = GeneratedColumn<String>(
+      'frontCardImage', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _backCardImageMeta =
+      const VerificationMeta('backCardImage');
+  @override
+  late final GeneratedColumn<String> backCardImage = GeneratedColumn<String>(
+      'backCardImage', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+      'notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        profileId,
+        provider,
+        planName,
+        policyNumber,
+        groupNumber,
+        subscriberName,
+        memberId,
+        emergencyPhone,
+        frontCardImage,
+        backCardImage,
+        notes
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'insurance';
+  @override
+  VerificationContext validateIntegrity(Insertable<InsuranceEntry> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('profileId')) {
+      context.handle(_profileIdMeta,
+          profileId.isAcceptableOrUnknown(data['profileId']!, _profileIdMeta));
+    } else if (isInserting) {
+      context.missing(_profileIdMeta);
+    }
+    if (data.containsKey('provider')) {
+      context.handle(_providerMeta,
+          provider.isAcceptableOrUnknown(data['provider']!, _providerMeta));
+    } else if (isInserting) {
+      context.missing(_providerMeta);
+    }
+    if (data.containsKey('planName')) {
+      context.handle(_planNameMeta,
+          planName.isAcceptableOrUnknown(data['planName']!, _planNameMeta));
+    }
+    if (data.containsKey('policyNumber')) {
+      context.handle(
+          _policyNumberMeta,
+          policyNumber.isAcceptableOrUnknown(
+              data['policyNumber']!, _policyNumberMeta));
+    } else if (isInserting) {
+      context.missing(_policyNumberMeta);
+    }
+    if (data.containsKey('groupNumber')) {
+      context.handle(
+          _groupNumberMeta,
+          groupNumber.isAcceptableOrUnknown(
+              data['groupNumber']!, _groupNumberMeta));
+    }
+    if (data.containsKey('subscriberName')) {
+      context.handle(
+          _subscriberNameMeta,
+          subscriberName.isAcceptableOrUnknown(
+              data['subscriberName']!, _subscriberNameMeta));
+    }
+    if (data.containsKey('memberId')) {
+      context.handle(_memberIdMeta,
+          memberId.isAcceptableOrUnknown(data['memberId']!, _memberIdMeta));
+    }
+    if (data.containsKey('emergencyPhone')) {
+      context.handle(
+          _emergencyPhoneMeta,
+          emergencyPhone.isAcceptableOrUnknown(
+              data['emergencyPhone']!, _emergencyPhoneMeta));
+    }
+    if (data.containsKey('frontCardImage')) {
+      context.handle(
+          _frontCardImageMeta,
+          frontCardImage.isAcceptableOrUnknown(
+              data['frontCardImage']!, _frontCardImageMeta));
+    }
+    if (data.containsKey('backCardImage')) {
+      context.handle(
+          _backCardImageMeta,
+          backCardImage.isAcceptableOrUnknown(
+              data['backCardImage']!, _backCardImageMeta));
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InsuranceEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InsuranceEntry(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      profileId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}profileId'])!,
+      provider: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}provider'])!,
+      planName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}planName']),
+      policyNumber: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}policyNumber'])!,
+      groupNumber: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}groupNumber']),
+      subscriberName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}subscriberName']),
+      memberId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}memberId']),
+      emergencyPhone: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}emergencyPhone']),
+      frontCardImage: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}frontCardImage']),
+      backCardImage: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}backCardImage']),
+      notes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+    );
+  }
+
+  @override
+  $InsuranceTable createAlias(String alias) {
+    return $InsuranceTable(attachedDatabase, alias);
+  }
+}
+
+class InsuranceEntry extends DataClass implements Insertable<InsuranceEntry> {
+  final String id;
+  final String profileId;
+  final String provider;
+  final String? planName;
+  final String policyNumber;
+  final String? groupNumber;
+  final String? subscriberName;
+  final String? memberId;
+  final String? emergencyPhone;
+  final String? frontCardImage;
+  final String? backCardImage;
+  final String? notes;
+  const InsuranceEntry(
+      {required this.id,
+      required this.profileId,
+      required this.provider,
+      this.planName,
+      required this.policyNumber,
+      this.groupNumber,
+      this.subscriberName,
+      this.memberId,
+      this.emergencyPhone,
+      this.frontCardImage,
+      this.backCardImage,
+      this.notes});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['profileId'] = Variable<String>(profileId);
+    map['provider'] = Variable<String>(provider);
+    if (!nullToAbsent || planName != null) {
+      map['planName'] = Variable<String>(planName);
+    }
+    map['policyNumber'] = Variable<String>(policyNumber);
+    if (!nullToAbsent || groupNumber != null) {
+      map['groupNumber'] = Variable<String>(groupNumber);
+    }
+    if (!nullToAbsent || subscriberName != null) {
+      map['subscriberName'] = Variable<String>(subscriberName);
+    }
+    if (!nullToAbsent || memberId != null) {
+      map['memberId'] = Variable<String>(memberId);
+    }
+    if (!nullToAbsent || emergencyPhone != null) {
+      map['emergencyPhone'] = Variable<String>(emergencyPhone);
+    }
+    if (!nullToAbsent || frontCardImage != null) {
+      map['frontCardImage'] = Variable<String>(frontCardImage);
+    }
+    if (!nullToAbsent || backCardImage != null) {
+      map['backCardImage'] = Variable<String>(backCardImage);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    return map;
+  }
+
+  InsuranceCompanion toCompanion(bool nullToAbsent) {
+    return InsuranceCompanion(
+      id: Value(id),
+      profileId: Value(profileId),
+      provider: Value(provider),
+      planName: planName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(planName),
+      policyNumber: Value(policyNumber),
+      groupNumber: groupNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(groupNumber),
+      subscriberName: subscriberName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(subscriberName),
+      memberId: memberId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(memberId),
+      emergencyPhone: emergencyPhone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(emergencyPhone),
+      frontCardImage: frontCardImage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(frontCardImage),
+      backCardImage: backCardImage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(backCardImage),
+      notes:
+          notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+    );
+  }
+
+  factory InsuranceEntry.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InsuranceEntry(
+      id: serializer.fromJson<String>(json['id']),
+      profileId: serializer.fromJson<String>(json['profileId']),
+      provider: serializer.fromJson<String>(json['provider']),
+      planName: serializer.fromJson<String?>(json['planName']),
+      policyNumber: serializer.fromJson<String>(json['policyNumber']),
+      groupNumber: serializer.fromJson<String?>(json['groupNumber']),
+      subscriberName: serializer.fromJson<String?>(json['subscriberName']),
+      memberId: serializer.fromJson<String?>(json['memberId']),
+      emergencyPhone: serializer.fromJson<String?>(json['emergencyPhone']),
+      frontCardImage: serializer.fromJson<String?>(json['frontCardImage']),
+      backCardImage: serializer.fromJson<String?>(json['backCardImage']),
+      notes: serializer.fromJson<String?>(json['notes']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'profileId': serializer.toJson<String>(profileId),
+      'provider': serializer.toJson<String>(provider),
+      'planName': serializer.toJson<String?>(planName),
+      'policyNumber': serializer.toJson<String>(policyNumber),
+      'groupNumber': serializer.toJson<String?>(groupNumber),
+      'subscriberName': serializer.toJson<String?>(subscriberName),
+      'memberId': serializer.toJson<String?>(memberId),
+      'emergencyPhone': serializer.toJson<String?>(emergencyPhone),
+      'frontCardImage': serializer.toJson<String?>(frontCardImage),
+      'backCardImage': serializer.toJson<String?>(backCardImage),
+      'notes': serializer.toJson<String?>(notes),
+    };
+  }
+
+  InsuranceEntry copyWith(
+          {String? id,
+          String? profileId,
+          String? provider,
+          Value<String?> planName = const Value.absent(),
+          String? policyNumber,
+          Value<String?> groupNumber = const Value.absent(),
+          Value<String?> subscriberName = const Value.absent(),
+          Value<String?> memberId = const Value.absent(),
+          Value<String?> emergencyPhone = const Value.absent(),
+          Value<String?> frontCardImage = const Value.absent(),
+          Value<String?> backCardImage = const Value.absent(),
+          Value<String?> notes = const Value.absent()}) =>
+      InsuranceEntry(
+        id: id ?? this.id,
+        profileId: profileId ?? this.profileId,
+        provider: provider ?? this.provider,
+        planName: planName.present ? planName.value : this.planName,
+        policyNumber: policyNumber ?? this.policyNumber,
+        groupNumber: groupNumber.present ? groupNumber.value : this.groupNumber,
+        subscriberName:
+            subscriberName.present ? subscriberName.value : this.subscriberName,
+        memberId: memberId.present ? memberId.value : this.memberId,
+        emergencyPhone:
+            emergencyPhone.present ? emergencyPhone.value : this.emergencyPhone,
+        frontCardImage:
+            frontCardImage.present ? frontCardImage.value : this.frontCardImage,
+        backCardImage:
+            backCardImage.present ? backCardImage.value : this.backCardImage,
+        notes: notes.present ? notes.value : this.notes,
+      );
+  InsuranceEntry copyWithCompanion(InsuranceCompanion data) {
+    return InsuranceEntry(
+      id: data.id.present ? data.id.value : this.id,
+      profileId: data.profileId.present ? data.profileId.value : this.profileId,
+      provider: data.provider.present ? data.provider.value : this.provider,
+      planName: data.planName.present ? data.planName.value : this.planName,
+      policyNumber: data.policyNumber.present
+          ? data.policyNumber.value
+          : this.policyNumber,
+      groupNumber:
+          data.groupNumber.present ? data.groupNumber.value : this.groupNumber,
+      subscriberName: data.subscriberName.present
+          ? data.subscriberName.value
+          : this.subscriberName,
+      memberId: data.memberId.present ? data.memberId.value : this.memberId,
+      emergencyPhone: data.emergencyPhone.present
+          ? data.emergencyPhone.value
+          : this.emergencyPhone,
+      frontCardImage: data.frontCardImage.present
+          ? data.frontCardImage.value
+          : this.frontCardImage,
+      backCardImage: data.backCardImage.present
+          ? data.backCardImage.value
+          : this.backCardImage,
+      notes: data.notes.present ? data.notes.value : this.notes,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InsuranceEntry(')
+          ..write('id: $id, ')
+          ..write('profileId: $profileId, ')
+          ..write('provider: $provider, ')
+          ..write('planName: $planName, ')
+          ..write('policyNumber: $policyNumber, ')
+          ..write('groupNumber: $groupNumber, ')
+          ..write('subscriberName: $subscriberName, ')
+          ..write('memberId: $memberId, ')
+          ..write('emergencyPhone: $emergencyPhone, ')
+          ..write('frontCardImage: $frontCardImage, ')
+          ..write('backCardImage: $backCardImage, ')
+          ..write('notes: $notes')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      profileId,
+      provider,
+      planName,
+      policyNumber,
+      groupNumber,
+      subscriberName,
+      memberId,
+      emergencyPhone,
+      frontCardImage,
+      backCardImage,
+      notes);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InsuranceEntry &&
+          other.id == this.id &&
+          other.profileId == this.profileId &&
+          other.provider == this.provider &&
+          other.planName == this.planName &&
+          other.policyNumber == this.policyNumber &&
+          other.groupNumber == this.groupNumber &&
+          other.subscriberName == this.subscriberName &&
+          other.memberId == this.memberId &&
+          other.emergencyPhone == this.emergencyPhone &&
+          other.frontCardImage == this.frontCardImage &&
+          other.backCardImage == this.backCardImage &&
+          other.notes == this.notes);
+}
+
+class InsuranceCompanion extends UpdateCompanion<InsuranceEntry> {
+  final Value<String> id;
+  final Value<String> profileId;
+  final Value<String> provider;
+  final Value<String?> planName;
+  final Value<String> policyNumber;
+  final Value<String?> groupNumber;
+  final Value<String?> subscriberName;
+  final Value<String?> memberId;
+  final Value<String?> emergencyPhone;
+  final Value<String?> frontCardImage;
+  final Value<String?> backCardImage;
+  final Value<String?> notes;
+  final Value<int> rowid;
+  const InsuranceCompanion({
+    this.id = const Value.absent(),
+    this.profileId = const Value.absent(),
+    this.provider = const Value.absent(),
+    this.planName = const Value.absent(),
+    this.policyNumber = const Value.absent(),
+    this.groupNumber = const Value.absent(),
+    this.subscriberName = const Value.absent(),
+    this.memberId = const Value.absent(),
+    this.emergencyPhone = const Value.absent(),
+    this.frontCardImage = const Value.absent(),
+    this.backCardImage = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InsuranceCompanion.insert({
+    required String id,
+    required String profileId,
+    required String provider,
+    this.planName = const Value.absent(),
+    required String policyNumber,
+    this.groupNumber = const Value.absent(),
+    this.subscriberName = const Value.absent(),
+    this.memberId = const Value.absent(),
+    this.emergencyPhone = const Value.absent(),
+    this.frontCardImage = const Value.absent(),
+    this.backCardImage = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        profileId = Value(profileId),
+        provider = Value(provider),
+        policyNumber = Value(policyNumber);
+  static Insertable<InsuranceEntry> custom({
+    Expression<String>? id,
+    Expression<String>? profileId,
+    Expression<String>? provider,
+    Expression<String>? planName,
+    Expression<String>? policyNumber,
+    Expression<String>? groupNumber,
+    Expression<String>? subscriberName,
+    Expression<String>? memberId,
+    Expression<String>? emergencyPhone,
+    Expression<String>? frontCardImage,
+    Expression<String>? backCardImage,
+    Expression<String>? notes,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (profileId != null) 'profileId': profileId,
+      if (provider != null) 'provider': provider,
+      if (planName != null) 'planName': planName,
+      if (policyNumber != null) 'policyNumber': policyNumber,
+      if (groupNumber != null) 'groupNumber': groupNumber,
+      if (subscriberName != null) 'subscriberName': subscriberName,
+      if (memberId != null) 'memberId': memberId,
+      if (emergencyPhone != null) 'emergencyPhone': emergencyPhone,
+      if (frontCardImage != null) 'frontCardImage': frontCardImage,
+      if (backCardImage != null) 'backCardImage': backCardImage,
+      if (notes != null) 'notes': notes,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InsuranceCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? profileId,
+      Value<String>? provider,
+      Value<String?>? planName,
+      Value<String>? policyNumber,
+      Value<String?>? groupNumber,
+      Value<String?>? subscriberName,
+      Value<String?>? memberId,
+      Value<String?>? emergencyPhone,
+      Value<String?>? frontCardImage,
+      Value<String?>? backCardImage,
+      Value<String?>? notes,
+      Value<int>? rowid}) {
+    return InsuranceCompanion(
+      id: id ?? this.id,
+      profileId: profileId ?? this.profileId,
+      provider: provider ?? this.provider,
+      planName: planName ?? this.planName,
+      policyNumber: policyNumber ?? this.policyNumber,
+      groupNumber: groupNumber ?? this.groupNumber,
+      subscriberName: subscriberName ?? this.subscriberName,
+      memberId: memberId ?? this.memberId,
+      emergencyPhone: emergencyPhone ?? this.emergencyPhone,
+      frontCardImage: frontCardImage ?? this.frontCardImage,
+      backCardImage: backCardImage ?? this.backCardImage,
+      notes: notes ?? this.notes,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (profileId.present) {
+      map['profileId'] = Variable<String>(profileId.value);
+    }
+    if (provider.present) {
+      map['provider'] = Variable<String>(provider.value);
+    }
+    if (planName.present) {
+      map['planName'] = Variable<String>(planName.value);
+    }
+    if (policyNumber.present) {
+      map['policyNumber'] = Variable<String>(policyNumber.value);
+    }
+    if (groupNumber.present) {
+      map['groupNumber'] = Variable<String>(groupNumber.value);
+    }
+    if (subscriberName.present) {
+      map['subscriberName'] = Variable<String>(subscriberName.value);
+    }
+    if (memberId.present) {
+      map['memberId'] = Variable<String>(memberId.value);
+    }
+    if (emergencyPhone.present) {
+      map['emergencyPhone'] = Variable<String>(emergencyPhone.value);
+    }
+    if (frontCardImage.present) {
+      map['frontCardImage'] = Variable<String>(frontCardImage.value);
+    }
+    if (backCardImage.present) {
+      map['backCardImage'] = Variable<String>(backCardImage.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InsuranceCompanion(')
+          ..write('id: $id, ')
+          ..write('profileId: $profileId, ')
+          ..write('provider: $provider, ')
+          ..write('planName: $planName, ')
+          ..write('policyNumber: $policyNumber, ')
+          ..write('groupNumber: $groupNumber, ')
+          ..write('subscriberName: $subscriberName, ')
+          ..write('memberId: $memberId, ')
+          ..write('emergencyPhone: $emergencyPhone, ')
+          ..write('frontCardImage: $frontCardImage, ')
+          ..write('backCardImage: $backCardImage, ')
+          ..write('notes: $notes, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5765,6 +6442,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $EmergencyContactsTable(this);
   late final $LockScreenSettingsTable lockScreenSettings =
       $LockScreenSettingsTable(this);
+  late final $InsuranceTable insurance = $InsuranceTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5783,7 +6461,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         vitalLogs,
         settings,
         emergencyContacts,
-        lockScreenSettings
+        lockScreenSettings,
+        insurance
       ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
@@ -5870,6 +6549,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
                 limitUpdateKind: UpdateKind.delete),
             result: [
               TableUpdate('lock_screen_settings', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('profiles',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('insurance', kind: UpdateKind.delete),
             ],
           ),
         ],
@@ -6158,6 +6844,19 @@ class $$ProfilesTableFilterComposer
                     $state.db.lockScreenSettings,
                     joinBuilder,
                     parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter insuranceRefs(
+      ComposableFilter Function($$InsuranceTableFilterComposer f) f) {
+    final $$InsuranceTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $state.db.insurance,
+        getReferencedColumn: (t) => t.profileId,
+        builder: (joinBuilder, parentComposers) =>
+            $$InsuranceTableFilterComposer(ComposerState(
+                $state.db, $state.db.insurance, joinBuilder, parentComposers)));
     return f(composer);
   }
 }
@@ -8225,6 +8924,7 @@ typedef $$LockScreenSettingsTableCreateCompanionBuilder
   Value<bool?> showAllergies,
   Value<bool?> showMedications,
   Value<bool?> showContacts,
+  Value<bool?> showInsurance,
   Value<bool?> isEnabled,
   Value<int> rowid,
 });
@@ -8239,6 +8939,7 @@ typedef $$LockScreenSettingsTableUpdateCompanionBuilder
   Value<bool?> showAllergies,
   Value<bool?> showMedications,
   Value<bool?> showContacts,
+  Value<bool?> showInsurance,
   Value<bool?> isEnabled,
   Value<int> rowid,
 });
@@ -8270,6 +8971,7 @@ class $$LockScreenSettingsTableTableManager extends RootTableManager<
             Value<bool?> showAllergies = const Value.absent(),
             Value<bool?> showMedications = const Value.absent(),
             Value<bool?> showContacts = const Value.absent(),
+            Value<bool?> showInsurance = const Value.absent(),
             Value<bool?> isEnabled = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -8283,6 +8985,7 @@ class $$LockScreenSettingsTableTableManager extends RootTableManager<
             showAllergies: showAllergies,
             showMedications: showMedications,
             showContacts: showContacts,
+            showInsurance: showInsurance,
             isEnabled: isEnabled,
             rowid: rowid,
           ),
@@ -8296,6 +8999,7 @@ class $$LockScreenSettingsTableTableManager extends RootTableManager<
             Value<bool?> showAllergies = const Value.absent(),
             Value<bool?> showMedications = const Value.absent(),
             Value<bool?> showContacts = const Value.absent(),
+            Value<bool?> showInsurance = const Value.absent(),
             Value<bool?> isEnabled = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -8309,6 +9013,7 @@ class $$LockScreenSettingsTableTableManager extends RootTableManager<
             showAllergies: showAllergies,
             showMedications: showMedications,
             showContacts: showContacts,
+            showInsurance: showInsurance,
             isEnabled: isEnabled,
             rowid: rowid,
           ),
@@ -8355,6 +9060,11 @@ class $$LockScreenSettingsTableFilterComposer
 
   ColumnFilters<bool> get showContacts => $state.composableBuilder(
       column: $state.table.showContacts,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<bool> get showInsurance => $state.composableBuilder(
+      column: $state.table.showInsurance,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -8419,8 +9129,265 @@ class $$LockScreenSettingsTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
+  ColumnOrderings<bool> get showInsurance => $state.composableBuilder(
+      column: $state.table.showInsurance,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
   ColumnOrderings<bool> get isEnabled => $state.composableBuilder(
       column: $state.table.isEnabled,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableOrderingComposer get profileId {
+    final $$ProfilesTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableOrderingComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
+typedef $$InsuranceTableCreateCompanionBuilder = InsuranceCompanion Function({
+  required String id,
+  required String profileId,
+  required String provider,
+  Value<String?> planName,
+  required String policyNumber,
+  Value<String?> groupNumber,
+  Value<String?> subscriberName,
+  Value<String?> memberId,
+  Value<String?> emergencyPhone,
+  Value<String?> frontCardImage,
+  Value<String?> backCardImage,
+  Value<String?> notes,
+  Value<int> rowid,
+});
+typedef $$InsuranceTableUpdateCompanionBuilder = InsuranceCompanion Function({
+  Value<String> id,
+  Value<String> profileId,
+  Value<String> provider,
+  Value<String?> planName,
+  Value<String> policyNumber,
+  Value<String?> groupNumber,
+  Value<String?> subscriberName,
+  Value<String?> memberId,
+  Value<String?> emergencyPhone,
+  Value<String?> frontCardImage,
+  Value<String?> backCardImage,
+  Value<String?> notes,
+  Value<int> rowid,
+});
+
+class $$InsuranceTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $InsuranceTable,
+    InsuranceEntry,
+    $$InsuranceTableFilterComposer,
+    $$InsuranceTableOrderingComposer,
+    $$InsuranceTableCreateCompanionBuilder,
+    $$InsuranceTableUpdateCompanionBuilder> {
+  $$InsuranceTableTableManager(_$AppDatabase db, $InsuranceTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$InsuranceTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$InsuranceTableOrderingComposer(ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> profileId = const Value.absent(),
+            Value<String> provider = const Value.absent(),
+            Value<String?> planName = const Value.absent(),
+            Value<String> policyNumber = const Value.absent(),
+            Value<String?> groupNumber = const Value.absent(),
+            Value<String?> subscriberName = const Value.absent(),
+            Value<String?> memberId = const Value.absent(),
+            Value<String?> emergencyPhone = const Value.absent(),
+            Value<String?> frontCardImage = const Value.absent(),
+            Value<String?> backCardImage = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              InsuranceCompanion(
+            id: id,
+            profileId: profileId,
+            provider: provider,
+            planName: planName,
+            policyNumber: policyNumber,
+            groupNumber: groupNumber,
+            subscriberName: subscriberName,
+            memberId: memberId,
+            emergencyPhone: emergencyPhone,
+            frontCardImage: frontCardImage,
+            backCardImage: backCardImage,
+            notes: notes,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String profileId,
+            required String provider,
+            Value<String?> planName = const Value.absent(),
+            required String policyNumber,
+            Value<String?> groupNumber = const Value.absent(),
+            Value<String?> subscriberName = const Value.absent(),
+            Value<String?> memberId = const Value.absent(),
+            Value<String?> emergencyPhone = const Value.absent(),
+            Value<String?> frontCardImage = const Value.absent(),
+            Value<String?> backCardImage = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              InsuranceCompanion.insert(
+            id: id,
+            profileId: profileId,
+            provider: provider,
+            planName: planName,
+            policyNumber: policyNumber,
+            groupNumber: groupNumber,
+            subscriberName: subscriberName,
+            memberId: memberId,
+            emergencyPhone: emergencyPhone,
+            frontCardImage: frontCardImage,
+            backCardImage: backCardImage,
+            notes: notes,
+            rowid: rowid,
+          ),
+        ));
+}
+
+class $$InsuranceTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $InsuranceTable> {
+  $$InsuranceTableFilterComposer(super.$state);
+  ColumnFilters<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get provider => $state.composableBuilder(
+      column: $state.table.provider,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get planName => $state.composableBuilder(
+      column: $state.table.planName,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get policyNumber => $state.composableBuilder(
+      column: $state.table.policyNumber,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get groupNumber => $state.composableBuilder(
+      column: $state.table.groupNumber,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get subscriberName => $state.composableBuilder(
+      column: $state.table.subscriberName,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get memberId => $state.composableBuilder(
+      column: $state.table.memberId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get emergencyPhone => $state.composableBuilder(
+      column: $state.table.emergencyPhone,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get frontCardImage => $state.composableBuilder(
+      column: $state.table.frontCardImage,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get backCardImage => $state.composableBuilder(
+      column: $state.table.backCardImage,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get notes => $state.composableBuilder(
+      column: $state.table.notes,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$ProfilesTableFilterComposer get profileId {
+    final $$ProfilesTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.profileId,
+        referencedTable: $state.db.profiles,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$ProfilesTableFilterComposer(ComposerState(
+                $state.db, $state.db.profiles, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
+class $$InsuranceTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $InsuranceTable> {
+  $$InsuranceTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get provider => $state.composableBuilder(
+      column: $state.table.provider,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get planName => $state.composableBuilder(
+      column: $state.table.planName,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get policyNumber => $state.composableBuilder(
+      column: $state.table.policyNumber,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get groupNumber => $state.composableBuilder(
+      column: $state.table.groupNumber,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get subscriberName => $state.composableBuilder(
+      column: $state.table.subscriberName,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get memberId => $state.composableBuilder(
+      column: $state.table.memberId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get emergencyPhone => $state.composableBuilder(
+      column: $state.table.emergencyPhone,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get frontCardImage => $state.composableBuilder(
+      column: $state.table.frontCardImage,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get backCardImage => $state.composableBuilder(
+      column: $state.table.backCardImage,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get notes => $state.composableBuilder(
+      column: $state.table.notes,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
@@ -8468,4 +9435,6 @@ class $AppDatabaseManager {
       $$EmergencyContactsTableTableManager(_db, _db.emergencyContacts);
   $$LockScreenSettingsTableTableManager get lockScreenSettings =>
       $$LockScreenSettingsTableTableManager(_db, _db.lockScreenSettings);
+  $$InsuranceTableTableManager get insurance =>
+      $$InsuranceTableTableManager(_db, _db.insurance);
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
@@ -476,12 +477,13 @@ class NotificationService {
     }
   }
 
-  Future<void> showEmergencyNotification(String title, String body) async {
+  Future<void> showEmergencyNotification(String title, String body, {String? dataJson}) async {
     if (Platform.isAndroid) {
       try {
         await _emergencyNotificationChannel.invokeMethod('showNotification', {
           'title': title,
           'body': body,
+          'data_json': dataJson ?? '',
         });
       } catch (e) {
         debugPrint('Error showing native Android emergency notification: $e');
@@ -534,7 +536,7 @@ class NotificationService {
       }
 
       if (activeSettings.length == 1) {
-        // Sync single profile (exact same logic as original)
+        // Sync single profile
         final setRow = activeSettings.first;
         final pId = setRow.profileId;
         final showName = setRow.showName ?? true;
@@ -545,6 +547,7 @@ class NotificationService {
         final showAllergies = setRow.showAllergies ?? true;
         final showMedications = setRow.showMedications ?? true;
         final showContacts = setRow.showContacts ?? true;
+        final showInsurance = setRow.showInsurance ?? true;
 
         final p = await (db.select(db.profiles)..where((tbl) => tbl.id.equals(pId))).getSingleOrNull();
         if (p == null) {
@@ -572,6 +575,7 @@ class NotificationService {
         final medications = medsData.map((row) => row.name).toList();
 
         final contactsData = await (db.select(db.emergencyContacts)..where((tbl) => tbl.profileId.equals(pId))).get();
+        final ins = await (db.select(db.insurance)..where((tbl) => tbl.profileId.equals(pId))).getSingleOrNull();
 
         final title = '🚨 Emergency Medical ID: ${showName ? name : "Medical Information"}';
         final buffer = StringBuffer();
@@ -600,6 +604,9 @@ class NotificationService {
         if (showMedications && medications.isNotEmpty) {
           buffer.writeln('Meds: ${medications.join(", ")}');
         }
+        if (showInsurance && ins != null) {
+          buffer.writeln('Insurance: ${ins.provider} #${ins.policyNumber}');
+        }
         if (showContacts && contactsData.isNotEmpty) {
           buffer.writeln('Emergency Contacts:');
           for (final c in contactsData) {
@@ -607,15 +614,48 @@ class NotificationService {
           }
         }
 
+        final profileJson = {
+          'profileId': pId,
+          'name': showName ? name : 'Medical Information',
+          'fullName': name,
+          'dobFormatted': dobFormatted,
+          'age': age,
+          'bloodType': bloodType,
+          'isOrganDonor': isOrganDonor,
+          'chronicConditions': chronicConditions,
+          'allergies': allergiesData.map((a) => {'name': a.name, 'note': a.note}).toList(),
+          'medications': medsData.map((m) => {'name': m.name, 'dosage': m.dosage}).toList(),
+          'contacts': contactsData.map((c) => {'name': c.name, 'relationship': c.relationship, 'phoneNumber': c.phoneNumber}).toList(),
+          'insurance': ins != null ? {
+            'provider': ins.provider,
+            'planName': ins.planName ?? '',
+            'policyNumber': ins.policyNumber,
+            'groupNumber': ins.groupNumber ?? '',
+            'subscriberName': ins.subscriberName ?? '',
+            'emergencyPhone': ins.emergencyPhone ?? '',
+          } : null,
+          'showName': showName,
+          'showAge': showAge,
+          'showBloodType': showBloodType,
+          'showOrganDonor': showOrganDonor,
+          'showChronicConditions': showChronicConditions,
+          'showAllergies': showAllergies,
+          'showMedications': showMedications,
+          'showContacts': showContacts,
+          'showInsurance': showInsurance,
+        };
+
         final body = buffer.toString().trim();
+        final dataJson = jsonEncode([profileJson]);
         if (body.isEmpty) {
           await cancelEmergencyNotification();
         } else {
-          await showEmergencyNotification(title, body);
+          await showEmergencyNotification(title, body, dataJson: dataJson);
         }
       } else {
         // Sync multiple profiles
         final List<String> namesList = [];
+        final List<Map<String, dynamic>> profilesDataList = [];
         final buffer = StringBuffer();
 
         // Get primary profile ID to list first
@@ -638,6 +678,8 @@ class NotificationService {
           final showChronicConditions = setRow.showChronicConditions ?? true;
           final showAllergies = setRow.showAllergies ?? true;
           final showMedications = setRow.showMedications ?? true;
+          final showContacts = setRow.showContacts ?? true;
+          final showInsurance = setRow.showInsurance ?? true;
 
           final p = await (db.select(db.profiles)..where((tbl) => tbl.id.equals(pId))).getSingleOrNull();
           if (p == null) continue;
@@ -665,6 +707,9 @@ class NotificationService {
           final medsData = await (db.select(db.medications)..where((tbl) => tbl.profileId.equals(pId) & tbl.isActive.equals(true))).get();
           final medications = medsData.map((row) => row.name).toList();
 
+          final contactsData = await (db.select(db.emergencyContacts)..where((tbl) => tbl.profileId.equals(pId))).get();
+          final ins = await (db.select(db.insurance)..where((tbl) => tbl.profileId.equals(pId))).getSingleOrNull();
+
           buffer.writeln('${showName ? name : "Profile"}:');
           final details = <String>[];
           if (showAge) {
@@ -686,16 +731,51 @@ class NotificationService {
           if (showMedications && medications.isNotEmpty) {
             buffer.writeln('  Meds: ${medications.join(", ")}');
           }
+          if (showInsurance && ins != null) {
+            buffer.writeln('  Insurance: ${ins.provider} #${ins.policyNumber}');
+          }
+
+          profilesDataList.add({
+            'profileId': pId,
+            'name': showName ? name : 'Medical Information',
+            'fullName': name,
+            'dobFormatted': dobFormatted,
+            'age': age,
+            'bloodType': bloodType,
+            'isOrganDonor': isOrganDonor,
+            'chronicConditions': chronicConditions,
+            'allergies': allergiesData.map((a) => {'name': a.name, 'note': a.note}).toList(),
+            'medications': medsData.map((m) => {'name': m.name, 'dosage': m.dosage}).toList(),
+            'contacts': contactsData.map((c) => {'name': c.name, 'relationship': c.relationship, 'phoneNumber': c.phoneNumber}).toList(),
+            'insurance': ins != null ? {
+              'provider': ins.provider,
+              'planName': ins.planName ?? '',
+              'policyNumber': ins.policyNumber,
+              'groupNumber': ins.groupNumber ?? '',
+              'subscriberName': ins.subscriberName ?? '',
+              'emergencyPhone': ins.emergencyPhone ?? '',
+            } : null,
+            'showName': showName,
+            'showAge': showAge,
+            'showBloodType': showBloodType,
+            'showOrganDonor': showOrganDonor,
+            'showChronicConditions': showChronicConditions,
+            'showAllergies': showAllergies,
+            'showMedications': showMedications,
+            'showContacts': showContacts,
+            'showInsurance': showInsurance,
+          });
         }
 
         final title = namesList.isNotEmpty
             ? '🚨 Emergency Medical IDs: ${namesList.join(" & ")}'
             : '🚨 Emergency Medical IDs';
         final body = buffer.toString().trim();
+        final dataJson = jsonEncode(profilesDataList);
         if (body.isEmpty) {
           await cancelEmergencyNotification();
         } else {
-          await showEmergencyNotification(title, body);
+          await showEmergencyNotification(title, body, dataJson: dataJson);
         }
       }
     } catch (e) {

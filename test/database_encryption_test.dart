@@ -54,7 +54,7 @@ void main() {
       ));
 
       try {
-        expect(db.schemaVersion, 1);
+        expect(db.schemaVersion, 2);
         final profile = ProfileEntry(
           id: 'test-enc-prof-1',
           name: 'Encrypted Patient',

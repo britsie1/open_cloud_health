@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/insuranceProvider"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/insurancePlan"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#00B0FF"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:layout_marginTop="2dp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/insurancePolicy"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#ECEFF1"
+        android:textSize="13sp"
+        android:layout_marginTop="4dp" />
+
+    <TextView
+        android:id="@+id/insuranceSubscriber"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#B0BEC5"
+        android:textSize="12sp"
+        android:layout_marginTop="2dp"
+        android:visibility="gone" />
+
+    <!-- Emergency Pre-Auth Hotline Button -->
+    <RelativeLayout
+        android:id="@+id/insuranceEmergencyRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/card_clickable_background"
+        android:clickable="true"
+        android:focusable="true"
+        android:padding="10dp"
+        android:layout_marginTop="10dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/insurancePhoneIcon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_alignParentLeft="true"
+            android:layout_centerVertical="true"
+            android:layout_marginRight="10dp"
+            android:src="@drawable/ic_phone_green" />
+
+        <TextView
+            android:id="@+id/insuranceEmergencyLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toRightOf="@id/insurancePhoneIcon"
+            android:layout_centerVertical="true"
+            android:text="Pre-Auth Hotline"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/insuranceEmergencyPhone"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:textColor="#4CAF50"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </RelativeLayout>
+
+</LinearLayout>

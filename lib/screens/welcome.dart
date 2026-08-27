@@ -136,6 +136,26 @@ class WelcomeScreen extends StatelessWidget {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 12),
+
+                        // Restore / Migration action: Restore from Cloud or Backup
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: TextButton.icon(
+                            onPressed: () {
+                              context.push(AppRoutes.importProfile);
+                            },
+                            icon: const Icon(Icons.cloud_download_outlined, size: 20),
+                            label: const Text(
+                              'Restore from Cloud or Backup',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),

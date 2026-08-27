@@ -33,6 +33,7 @@ class EmergencyRepository {
       showAllergies: row.showAllergies ?? true,
       showMedications: row.showMedications ?? true,
       showContacts: row.showContacts ?? true,
+      showInsurance: row.showInsurance ?? true,
       isEnabled: row.isEnabled ?? false,
     );
   }
@@ -100,6 +101,7 @@ class EmergencyRepository {
         showAllergies: setting.showAllergies,
         showMedications: setting.showMedications,
         showContacts: setting.showContacts,
+        showInsurance: setting.showInsurance,
         isEnabled: setting.isEnabled,
       ),
     );

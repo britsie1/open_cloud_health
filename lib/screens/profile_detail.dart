@@ -14,6 +14,7 @@ import 'package:open_cloud_health/utils/result.dart';
 import 'package:open_cloud_health/widgets/allergy_list_section.dart';
 import 'package:open_cloud_health/widgets/profile_image_picker.dart';
 import 'package:open_cloud_health/widgets/chronic_conditions_section.dart';
+import 'package:open_cloud_health/widgets/insurance_section.dart';
 
 class ProfileDetailScreen extends ConsumerStatefulWidget {
   const ProfileDetailScreen({super.key, this.profile, this.profileId});
@@ -572,6 +573,11 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                                   _selectedChronicConditions = newConditions;
                                 });
                               },
+                      ),
+                      const SizedBox(height: 16),
+                      InsuranceSection(
+                        profileId: _activeProfile!.id,
+                        isReadOnly: isReadOnly,
                       ),
                     ],
                     const SizedBox(height: 32),

@@ -13,6 +13,7 @@ import 'package:open_cloud_health/models/checkup.dart';
 import 'package:open_cloud_health/models/checkup_log.dart';
 import 'package:open_cloud_health/models/emergency_contact.dart';
 import 'package:open_cloud_health/models/history_event.dart';
+import 'package:open_cloud_health/models/insurance_policy.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
 import 'package:open_cloud_health/models/pdf_export_options.dart';
@@ -24,6 +25,7 @@ import 'package:open_cloud_health/repositories/allergies_repository.dart';
 import 'package:open_cloud_health/repositories/checkups_repository.dart';
 import 'package:open_cloud_health/repositories/emergency_repository.dart';
 import 'package:open_cloud_health/repositories/history_repository.dart';
+import 'package:open_cloud_health/repositories/insurance_repository.dart';
 import 'package:open_cloud_health/repositories/medications_repository.dart';
 import 'package:open_cloud_health/repositories/period_repository.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
@@ -36,6 +38,7 @@ class MedicalPdfDataBundle {
   final Uint8List? profileImageBytes;
   final List<Allergy> allergies;
   final List<EmergencyContact> emergencyContacts;
+  final InsurancePolicy? insurance;
   final List<Medication> medications;
   final List<MedicationLog> medicationLogs;
   final List<VitalLog> vitals;
@@ -51,6 +54,7 @@ class MedicalPdfDataBundle {
     this.profileImageBytes,
     this.allergies = const [],
     this.emergencyContacts = const [],
+    this.insurance,
     this.medications = const [],
     this.medicationLogs = const [],
     this.vitals = const [],
@@ -181,11 +185,18 @@ class MedicalPdfService {
       }
     }
 
+    // Insurance
+    InsurancePolicy? insurance;
+    if (options.includeInsurance) {
+      insurance = await _ref.read(insuranceRepositoryProvider).getInsurance(profileId);
+    }
+
     return MedicalPdfDataBundle(
       profile: profile,
       profileImageBytes: photoBytes,
       allergies: allergies,
       emergencyContacts: emergencyContacts,
+      insurance: insurance,
       medications: medications,
       medicationLogs: medLogs,
       vitals: vitals,
@@ -226,6 +237,12 @@ class MedicalPdfService {
           // 2. Patient Demographics & Identification Card
           if (options.includeDemographics) {
             widgets.add(_buildDemographicsSection(profile, bundle.profileImageBytes, bundle.emergencyContacts, options));
+            widgets.add(pw.SizedBox(height: 12));
+          }
+
+          // 2.5 Health Insurance & Policy Information
+          if (options.includeInsurance && bundle.insurance != null) {
+            widgets.add(_buildInsuranceSection(bundle.insurance!));
             widgets.add(pw.SizedBox(height: 12));
           }
 
@@ -585,6 +602,60 @@ class MedicalPdfService {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  pw.Widget _buildInsuranceSection(InsurancePolicy insurance) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        color: lightBlueBg,
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+        border: pw.Border.all(color: borderSlate, width: 0.8),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                'HEALTH INSURANCE & COVERAGE',
+                style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: primaryNavy),
+              ),
+              if (insurance.planName != null && insurance.planName!.isNotEmpty)
+                pw.Text(
+                  insurance.planName!,
+                  style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: clinicalBlue),
+                ),
+            ],
+          ),
+          pw.SizedBox(height: 6),
+          pw.Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            children: [
+              _buildInfoBadge('Provider', insurance.provider),
+              _buildInfoBadge('Policy #', insurance.policyNumber, isHighlight: true),
+              if (insurance.groupNumber != null && insurance.groupNumber!.isNotEmpty)
+                _buildInfoBadge('Group #', insurance.groupNumber!),
+              if (insurance.subscriberName != null && insurance.subscriberName!.isNotEmpty)
+                _buildInfoBadge('Main Member', insurance.subscriberName!),
+              if (insurance.memberId != null && insurance.memberId!.isNotEmpty)
+                _buildInfoBadge('Dependent Code', insurance.memberId!),
+              if (insurance.emergencyPhone != null && insurance.emergencyPhone!.isNotEmpty)
+                _buildInfoBadge('Pre-Auth Hotline', insurance.emergencyPhone!),
+            ],
+          ),
+          if (insurance.notes != null && insurance.notes!.isNotEmpty) ...[
+            pw.SizedBox(height: 4),
+            pw.Text(
+              'Coverage Notes: ${insurance.notes}',
+              style: pw.TextStyle(fontSize: 8, color: textMuted, fontStyle: pw.FontStyle.italic),
+            ),
+          ],
+        ],
       ),
     );
   }

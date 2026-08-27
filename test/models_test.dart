@@ -7,6 +7,7 @@ import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
 import 'package:open_cloud_health/models/allergy.dart';
 import 'package:open_cloud_health/models/emergency_contact.dart';
+import 'package:open_cloud_health/models/insurance_policy.dart';
 import 'package:open_cloud_health/models/lock_screen_setting.dart';
 import 'package:open_cloud_health/models/storage_info.dart';
 import 'package:open_cloud_health/utils/format_utils.dart';
@@ -477,6 +478,47 @@ void main() {
       expect(updated.usedBytes, 6000);
       expect(updated.userEmail, 'new@example.com');
       expect(updated.appBackupBytes, 200);
+    });
+  });
+
+  group('InsurancePolicy & LockScreenSetting Tests', () {
+    test('InsurancePolicy generates unique ID and copyWith functions properly', () {
+      final policy = InsurancePolicy(
+        profileId: 'prof-1',
+        provider: 'Discovery Health',
+        planName: 'Classic Comprehensive',
+        policyNumber: 'DH-12345678',
+        groupNumber: 'GRP-99',
+        subscriberName: 'John Doe',
+        memberId: '01',
+        emergencyPhone: '+1-800-555-0199',
+        frontCardImagePath: '/path/to/front.jpg',
+        backCardImagePath: '/path/to/back.jpg',
+        notes: 'Covers private hospital network',
+      );
+
+      expect(policy.id, isNotEmpty);
+      expect(policy.provider, 'Discovery Health');
+      expect(policy.planName, 'Classic Comprehensive');
+      expect(policy.policyNumber, 'DH-12345678');
+      expect(policy.emergencyPhone, '+1-800-555-0199');
+
+      final updated = policy.copyWith(
+        planName: 'Executive Plan',
+        policyNumber: 'DH-87654321',
+      );
+      expect(updated.id, policy.id);
+      expect(updated.planName, 'Executive Plan');
+      expect(updated.policyNumber, 'DH-87654321');
+      expect(updated.provider, 'Discovery Health');
+    });
+
+    test('LockScreenSetting includes showInsurance by default', () {
+      final setting = LockScreenSetting(profileId: 'prof-1');
+      expect(setting.showInsurance, isTrue);
+
+      final modified = setting.copyWith(showInsurance: false);
+      expect(modified.showInsurance, isFalse);
     });
   });
 }

@@ -36,6 +36,7 @@ class MedicalPdfExportOptions {
   final bool includeCheckups;
   final bool includeFertility;
   final bool includeEmergencyContacts;
+  final bool includeInsurance;
   final bool includeDoctorNotesSection;
   final PdfDateRangeFilter dateRange;
 
@@ -49,6 +50,7 @@ class MedicalPdfExportOptions {
     this.includeCheckups = true,
     this.includeFertility = true,
     this.includeEmergencyContacts = true,
+    this.includeInsurance = true,
     this.includeDoctorNotesSection = true,
     this.dateRange = PdfDateRangeFilter.allTime,
   });
@@ -63,6 +65,7 @@ class MedicalPdfExportOptions {
     bool? includeCheckups,
     bool? includeFertility,
     bool? includeEmergencyContacts,
+    bool? includeInsurance,
     bool? includeDoctorNotesSection,
     PdfDateRangeFilter? dateRange,
   }) {
@@ -76,6 +79,7 @@ class MedicalPdfExportOptions {
       includeCheckups: includeCheckups ?? this.includeCheckups,
       includeFertility: includeFertility ?? this.includeFertility,
       includeEmergencyContacts: includeEmergencyContacts ?? this.includeEmergencyContacts,
+      includeInsurance: includeInsurance ?? this.includeInsurance,
       includeDoctorNotesSection: includeDoctorNotesSection ?? this.includeDoctorNotesSection,
       dateRange: dateRange ?? this.dateRange,
     );

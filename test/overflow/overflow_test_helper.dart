@@ -12,6 +12,7 @@ import 'package:open_cloud_health/models/checkup.dart';
 import 'package:open_cloud_health/models/checkup_log.dart';
 import 'package:open_cloud_health/models/emergency_contact.dart';
 import 'package:open_cloud_health/models/history_event.dart';
+import 'package:open_cloud_health/models/insurance_policy.dart';
 import 'package:open_cloud_health/models/lock_screen_setting.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/medication_log.dart';
@@ -23,6 +24,7 @@ import 'package:open_cloud_health/repositories/allergies_repository.dart';
 import 'package:open_cloud_health/repositories/checkups_repository.dart';
 import 'package:open_cloud_health/repositories/emergency_repository.dart';
 import 'package:open_cloud_health/repositories/history_repository.dart';
+import 'package:open_cloud_health/repositories/insurance_repository.dart';
 import 'package:open_cloud_health/repositories/medications_repository.dart';
 import 'package:open_cloud_health/repositories/period_repository.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
@@ -176,6 +178,20 @@ Future<OverflowTestContext> setupOverflowTestContext() async {
     showAllergies: true,
     showMedications: true,
     showContacts: true,
+    showInsurance: true,
+  ));
+
+  final insuranceRepo = InsuranceRepository(db);
+  await insuranceRepo.saveInsurance(InsurancePolicy(
+    profileId: sampleProfile.id,
+    provider: 'Discovery Health Comprehensive Plan',
+    planName: 'Classic Comprehensive PPO Network',
+    policyNumber: 'DH-99887766-001',
+    groupNumber: 'GRP-1002-XYZ',
+    subscriberName: 'Alexander Fleming Scott',
+    memberId: '01',
+    emergencyPhone: '+1-800-555-0199',
+    notes: 'Covers emergency triage and critical care',
   ));
 
   await allergiesRepo.addAllergy(Allergy(

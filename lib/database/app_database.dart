@@ -27,12 +27,13 @@ part 'app_database.g.dart';
   Settings,
   EmergencyContacts,
   LockScreenSettings,
+  Insurance,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
@@ -47,7 +48,10 @@ class AppDatabase extends _$AppDatabase {
         // Step-by-step incremental migration pattern
         for (var targetVersion = from + 1; targetVersion <= to; targetVersion++) {
           switch (targetVersion) {
-            // Incremental migrations for future versions will be placed here
+            case 2:
+              await m.createTable(insurance);
+              await m.addColumn(lockScreenSettings, lockScreenSettings.showInsurance);
+              break;
             default:
               break;
           }

@@ -496,6 +496,7 @@ class _PdfExportOptionsSheetState extends State<_PdfExportOptionsSheet> {
   bool _includeCheckups = true;
   bool _includeFertility = true;
   bool _includeEmergency = true;
+  bool _includeInsurance = true;
   bool _includeDoctorNotes = true;
   PdfDateRangeFilter _dateRange = PdfDateRangeFilter.allTime;
 
@@ -510,6 +511,7 @@ class _PdfExportOptionsSheetState extends State<_PdfExportOptionsSheet> {
       includeCheckups: _includeCheckups,
       includeFertility: _includeFertility,
       includeEmergencyContacts: _includeEmergency,
+      includeInsurance: _includeInsurance,
       includeDoctorNotesSection: _includeDoctorNotes,
       dateRange: _dateRange,
     );
@@ -629,6 +631,7 @@ class _PdfExportOptionsSheetState extends State<_PdfExportOptionsSheet> {
                   if (isFemale)
                     _buildSwitchTile('Menstrual & Reproductive Health', 'Cycle durations, symptoms, and flow patterns', _includeFertility, (v) => setState(() => _includeFertility = v)),
                   _buildSwitchTile('Emergency Contacts', 'Next of kin and primary emergency phone numbers', _includeEmergency, (v) => setState(() => _includeEmergency = v)),
+                  _buildSwitchTile('Health Insurance & Coverage', 'Provider, plan name, policy #, group #, pre-auth phone', _includeInsurance, (v) => setState(() => _includeInsurance = v)),
                   _buildSwitchTile('Doctor Notes & Signature Section', 'Blank clinician notes, sign-off line, and clinic stamp', _includeDoctorNotes, (v) => setState(() => _includeDoctorNotes = v)),
                   
                   const SizedBox(height: 12),

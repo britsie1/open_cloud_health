@@ -13,7 +13,7 @@ object NotificationHelper {
     const val CHANNEL_NAME = "Critical Medical Info"
     const val NOTIFICATION_ID = 999
 
-    fun showNotification(context: Context, title: String, body: String) {
+    fun showNotification(context: Context, title: String, body: String, dataJson: String = "") {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -71,6 +71,7 @@ object NotificationHelper {
                 .edit()
                 .putString("title", title)
                 .putString("body", body)
+                .putString("data_json", dataJson)
                 .putBoolean("isEnabled", true)
                 .apply()
         } catch (e: Exception) {

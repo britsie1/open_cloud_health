@@ -31,7 +31,8 @@ class MainActivity: FlutterFragmentActivity() {
             if (call.method == "showNotification") {
                 val title = call.argument<String>("title") ?: ""
                 val body = call.argument<String>("body") ?: ""
-                NotificationHelper.showNotification(this, title, body)
+                val dataJson = call.argument<String>("data_json") ?: ""
+                NotificationHelper.showNotification(this, title, body, dataJson)
                 result.success(null)
             } else if (call.method == "cancelNotification") {
                 NotificationHelper.cancelNotification(this)

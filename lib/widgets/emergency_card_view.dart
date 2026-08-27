@@ -1,42 +1,47 @@
 import 'dart:io';
-import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/models/allergy.dart';
 import 'package:open_cloud_health/models/medication.dart';
 import 'package:open_cloud_health/models/emergency_contact.dart';
+import 'package:open_cloud_health/models/insurance_policy.dart';
 import 'package:open_cloud_health/models/lock_screen_setting.dart';
 import 'package:open_cloud_health/models/profile.dart';
-import 'package:open_cloud_health/services/file_service.dart';
+import 'package:open_cloud_health/providers/emergency_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class EmergencyCardView extends ConsumerWidget {
   const EmergencyCardView({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final emergencyAsync = ref.watch(emergencyProfilesDetailsProvider);
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.red.shade900,
+        backgroundColor: const Color(0xFFB91C1C),
         foregroundColor: Colors.white,
-        title: const Text('🚨 EMERGENCY MEDICAL ID'),
+        elevation: 2,
+        title: const Text(
+          '🚨 EMERGENCY MEDICAL ID',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.0,
+            fontSize: 16,
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.close),
+          icon: const Icon(Icons.close, color: Colors.white, size: 26),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _fetchAllEmergencyDetails(ref),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError || !snapshot.hasData) {
-            return const Center(child: Text('Failed to load Emergency Medical ID.'));
-          }
-
-          final results = snapshot.data!;
+      body: emergencyAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(child: Text('Failed to load Emergency Medical ID: $err')),
+        data: (results) {
           if (results.isEmpty) {
             return const Center(
               child: Padding(
@@ -61,6 +66,7 @@ class EmergencyCardView extends ConsumerWidget {
               final medications = data['medications'] as List<Medication>;
               final activeMeds = medications.where((m) => m.isActive).toList();
               final contacts = data['contacts'] as List<EmergencyContact>;
+              final insurance = data['insurance'] as InsurancePolicy?;
               final imagePath = data['imagePath'] as String;
 
               return Column(
@@ -208,6 +214,62 @@ class EmergencyCardView extends ConsumerWidget {
                         )),
                     const SizedBox(height: 24),
                   ],
+                  if (settings.showInsurance && insurance != null) ...[
+                    _buildSectionTitle('HEALTH INSURANCE / MEDICAL AID'),
+                    const SizedBox(height: 8),
+                    Card(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      color: Colors.teal.shade50,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              insurance.provider,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            if (insurance.planName != null && insurance.planName!.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text('Plan: ${insurance.planName}', style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold)),
+                            ],
+                            const SizedBox(height: 4),
+                            Text('Policy / Member ID: ${insurance.policyNumber}${insurance.groupNumber != null && insurance.groupNumber!.isNotEmpty ? " • Group: ${insurance.groupNumber}" : ""}'),
+                            if (insurance.subscriberName != null && insurance.subscriberName!.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text('Subscriber: ${insurance.subscriberName}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
+                            ],
+                            if (insurance.emergencyPhone != null && insurance.emergencyPhone!.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              InkWell(
+                                onTap: () => launchUrl(Uri.parse('tel:${insurance.emergencyPhone}')),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.teal.shade200),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.phone, size: 16, color: Colors.teal),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Pre-Auth Line: ${insurance.emergencyPhone}',
+                                        style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold, fontSize: 13),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                   if (index < results.length - 1) ...[
                     const Divider(height: 48, thickness: 2, color: Colors.grey),
                   ],
@@ -295,115 +357,5 @@ class EmergencyCardView extends ConsumerWidget {
         color: Colors.grey,
       ),
     );
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchAllEmergencyDetails(WidgetRef ref) async {
-    final db = ref.read(appDatabaseProvider);
-
-    final activeSettings = await (db.select(db.lockScreenSettings)..where((tbl) => tbl.isEnabled.equals(true))).get();
-    if (activeSettings.isEmpty) {
-      return [];
-    }
-
-    final List<Map<String, dynamic>> results = [];
-    final fileService = ref.read(fileServiceProvider);
-
-    for (final setRow in activeSettings) {
-      final pId = setRow.profileId;
-
-      final settings = LockScreenSetting(
-        profileId: pId,
-        showName: setRow.showName ?? true,
-        showAge: setRow.showAge ?? true,
-        showBloodType: setRow.showBloodType ?? true,
-        showOrganDonor: setRow.showOrganDonor ?? true,
-        showChronicConditions: setRow.showChronicConditions ?? true,
-        showAllergies: setRow.showAllergies ?? true,
-        showMedications: setRow.showMedications ?? true,
-        showContacts: setRow.showContacts ?? true,
-        isEnabled: true,
-      );
-
-      final p = await (db.select(db.profiles)..where((tbl) => tbl.id.equals(pId))).getSingleOrNull();
-      if (p == null) continue;
-
-      final chronicConditionsStr = p.chronicConditions ?? '';
-      final chronicConditions = chronicConditionsStr
-          .split(',')
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
-
-      final profile = Profile(
-        id: p.id,
-        name: p.name,
-        middleNames: p.middleNames,
-        surname: p.surname,
-        dateOfBirth: p.dateOfBirth,
-        gender: p.gender == 'male' ? Gender.male : Gender.female,
-        bloodType: p.bloodType,
-        isOrganDonor: p.isOrganDonor,
-        chronicConditions: chronicConditions,
-      );
-
-      final allergiesData = await (db.select(db.allergy)..where((tbl) => tbl.profileId.equals(pId))).get();
-      final allergies = allergiesData
-          .map((row) => Allergy(
-                id: row.id,
-                profileId: row.profileId,
-                name: row.name,
-                note: row.note,
-              ))
-          .toList();
-
-      final medsData = await (db.select(db.medications)..where((tbl) => tbl.profileId.equals(pId) & tbl.isActive.equals(true))).get();
-      final medications = medsData
-          .map((row) => Medication(
-                id: row.id,
-                profileId: row.profileId,
-                name: row.name,
-                dosage: row.dosage,
-                type: row.type ?? 'Other',
-                isActive: row.isActive ?? true,
-                notificationEnabled: row.notificationEnabled ?? false,
-                alarmEnabled: row.alarmEnabled ?? false,
-              ))
-          .toList();
-
-      final contactsData = await (db.select(db.emergencyContacts)..where((tbl) => tbl.profileId.equals(pId))).get();
-      final contacts = contactsData
-          .map((row) => EmergencyContact(
-                id: row.id,
-                profileId: row.profileId,
-                name: row.name,
-                relationship: row.relationship,
-                phoneNumber: row.phoneNumber,
-              ))
-          .toList();
-
-      final imagePath = await fileService.getProfileImagePath(pId);
-
-      results.add({
-        'settings': settings,
-        'profile': profile,
-        'allergies': allergies,
-        'medications': medications,
-        'contacts': contacts,
-        'imagePath': imagePath,
-      });
-    }
-
-    final primaryId = await db.getPrimaryProfileId();
-    if (primaryId != null) {
-      results.sort((a, b) {
-        final aId = (a['settings'] as LockScreenSetting).profileId;
-        final bId = (b['settings'] as LockScreenSetting).profileId;
-        if (aId == primaryId) return -1;
-        if (bId == primaryId) return 1;
-        return 0;
-      });
-    }
-
-    return results;
   }
 }

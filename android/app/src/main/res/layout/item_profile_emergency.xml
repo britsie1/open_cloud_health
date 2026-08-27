@@ -164,6 +164,33 @@
             android:orientation="vertical" />
     </LinearLayout>
 
+    <!-- Health Insurance / Medical Aid Card -->
+    <LinearLayout
+        android:id="@+id/insuranceCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/card_background"
+        android:padding="16dp"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="HEALTH INSURANCE / MEDICAL AID"
+            android:textColor="#B0BEC5"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"
+            android:letterSpacing="0.08" />
+
+        <LinearLayout
+            android:id="@+id/insuranceContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </LinearLayout>
+
     <!-- Visual divider between profiles -->
     <View
         android:id="@+id/profileDivider"

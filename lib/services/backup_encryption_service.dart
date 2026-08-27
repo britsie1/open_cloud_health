@@ -159,6 +159,7 @@ class BackupEncryptionService {
     required File dbFile,
     Directory? profileImagesDir,
     Directory? attachmentsDir,
+    Directory? insuranceCardsDir,
     String? databaseEncryptionKey,
   }) {
     final archive = Archive();
@@ -193,7 +194,19 @@ class BackupEncryptionService {
       }
     }
 
-    // 4. Add Database Encryption Key
+    // 4. Add Insurance Cards
+    if (insuranceCardsDir != null && insuranceCardsDir.existsSync()) {
+      final files = insuranceCardsDir.listSync(recursive: true);
+      for (var f in files) {
+        if (f is File) {
+          final relativePath = path.relative(f.path, from: insuranceCardsDir.path);
+          final bytes = f.readAsBytesSync();
+          archive.addFile(ArchiveFile('insuranceCards/$relativePath', bytes.length, bytes));
+        }
+      }
+    }
+
+    // 5. Add Database Encryption Key
     if (databaseEncryptionKey != null && databaseEncryptionKey.isNotEmpty) {
       final keyBytes = utf8.encode(databaseEncryptionKey);
       archive.addFile(ArchiveFile('db_key.txt', keyBytes.length, keyBytes));
@@ -253,6 +266,7 @@ class BackupEncryptionService {
     required String targetFilePath,
     Directory? profileImagesDir,
     Directory? attachmentsDir,
+    Directory? insuranceCardsDir,
     required String encryptionPasswordOrKey,
     String? databaseEncryptionKey,
   }) async {
@@ -260,6 +274,7 @@ class BackupEncryptionService {
       dbFile: dbFile,
       profileImagesDir: profileImagesDir,
       attachmentsDir: attachmentsDir,
+      insuranceCardsDir: insuranceCardsDir,
       databaseEncryptionKey: databaseEncryptionKey,
     );
 

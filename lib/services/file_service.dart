@@ -9,6 +9,7 @@ class FileService {
   final Directory? baseDirectory;
   static const String profileImagesSubdir = 'profileImages';
   static const String attachmentsSubdir = 'attachments';
+  static const String insuranceCardsSubdir = 'insuranceCards';
 
   Future<String> get localPath async {
     if (baseDirectory != null) {
@@ -28,6 +29,10 @@ class FileService {
 
   Future<Directory> getAttachmentsDirectory() async {
     return _getDirectory(attachmentsSubdir);
+  }
+
+  Future<Directory> getInsuranceCardsDirectory() async {
+    return _getDirectory(insuranceCardsSubdir);
   }
 
   Future<Directory> _getDirectory(String subdir, {String? nestedSubdir}) async {
@@ -74,6 +79,35 @@ class FileService {
     }
   }
 
+  Future<String> getInsuranceCardPath(String profileId, String side) async {
+    final dir = await _getDirectory(insuranceCardsSubdir);
+    final filePath = path.join(dir.path, '${profileId}_$side.jpg');
+    final file = File(filePath);
+    if (await file.exists() && await file.length() > 0) {
+      return filePath;
+    }
+    return '';
+  }
+
+  Future<String> saveInsuranceCardImage(String profileId, String side, File imageFile) async {
+    final dir = await _getDirectory(insuranceCardsSubdir);
+    final filePath = path.join(dir.path, '${profileId}_$side.jpg');
+    final file = File(filePath);
+    if (await file.exists()) {
+      await file.delete();
+    }
+    await file.writeAsBytes(await imageFile.readAsBytes());
+    return filePath;
+  }
+
+  Future<void> deleteInsuranceCardImages(String profileId) async {
+    final dir = await _getDirectory(insuranceCardsSubdir);
+    final front = File(path.join(dir.path, '${profileId}_front.jpg'));
+    if (await front.exists()) await front.delete();
+    final back = File(path.join(dir.path, '${profileId}_back.jpg'));
+    if (await back.exists()) await back.delete();
+  }
+
   Future<String> saveAttachment(String historyId, File file, String originalFileName) async {
     final dir = await _getDirectory(attachmentsSubdir, nestedSubdir: historyId);
     final filePath = path.join(dir.path, originalFileName);
@@ -104,6 +138,7 @@ class FileService {
 
   Future<void> deleteProfileFiles(String profileId, List<String> historyIds) async {
     await deleteProfileImage(profileId);
+    await deleteInsuranceCardImages(profileId);
     for (final historyId in historyIds) {
       await deleteHistoryAttachmentsDirectory(historyId);
     }
@@ -120,6 +155,12 @@ class FileService {
       final attachmentsDir = await getAttachmentsDirectory();
       if (await attachmentsDir.exists()) {
         await attachmentsDir.delete(recursive: true);
+      }
+    } catch (_) {}
+    try {
+      final insuranceDir = await getInsuranceCardsDirectory();
+      if (await insuranceDir.exists()) {
+        await insuranceDir.delete(recursive: true);
       }
     } catch (_) {}
   }
