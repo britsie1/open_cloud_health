@@ -31,6 +31,8 @@ import 'package:open_cloud_health/services/backup_service.dart';
 import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
+import 'package:open_cloud_health/theme/app_theme_mode.dart';
+import 'package:open_cloud_health/theme/app_theme_preset.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class MockBackupService extends Mock implements BackupService {}
@@ -84,6 +86,7 @@ Future<OverflowTestContext> setupOverflowTestContext() async {
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
   registerFallbackValue(BackupFrequency.daily);
+  registerFallbackValue(AppThemeMode.system);
 
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
@@ -114,6 +117,10 @@ Future<OverflowTestContext> setupOverflowTestContext() async {
   when(() => secureStorage.setBackupWifiOnly(any())).thenAnswer((_) async {});
   when(() => secureStorage.isStrictBiometricsOnly()).thenAnswer((_) async => false);
   when(() => secureStorage.setStrictBiometricsOnly(any())).thenAnswer((_) async {});
+  when(() => secureStorage.getThemeMode()).thenAnswer((_) async => AppThemeMode.system);
+  when(() => secureStorage.setThemeMode(any())).thenAnswer((_) async {});
+  when(() => secureStorage.getThemePreset()).thenAnswer((_) async => AppThemePresets.defaultPresetId);
+  when(() => secureStorage.setThemePreset(any())).thenAnswer((_) async {});
 
   when(() => backupService.getConnectedUser()).thenAnswer((_) async => null);
   when(() => backupService.getGoogleStorageInfo(interactive: any(named: 'interactive'))).thenAnswer((_) async => null);

@@ -16,6 +16,8 @@ import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
+import 'package:open_cloud_health/theme/app_theme_mode.dart';
+import 'package:open_cloud_health/theme/app_theme_preset.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 
 class MockBackupService extends Mock implements BackupService {}
@@ -37,6 +39,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(BackupFrequency.daily);
+    registerFallbackValue(AppThemeMode.system);
   });
 
   setUp(() {
@@ -84,6 +87,14 @@ void main() {
     when(() => mockSecureStorage.getAutoLockGraceSeconds())
         .thenAnswer((_) async => 30);
     when(() => mockSecureStorage.setAutoLockGraceSeconds(any()))
+        .thenAnswer((_) async {});
+    when(() => mockSecureStorage.getThemeMode())
+        .thenAnswer((_) async => AppThemeMode.system);
+    when(() => mockSecureStorage.setThemeMode(any()))
+        .thenAnswer((_) async {});
+    when(() => mockSecureStorage.getThemePreset())
+        .thenAnswer((_) async => AppThemePresets.defaultPresetId);
+    when(() => mockSecureStorage.setThemePreset(any()))
         .thenAnswer((_) async {});
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -359,7 +370,11 @@ void main() {
 
     // Find and tap "Reset Database"
     final resetFinder = find.text('Reset Database');
-    await tester.scrollUntilVisible(resetFinder, 500);
+    await tester.scrollUntilVisible(
+      resetFinder,
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(resetFinder, findsOneWidget);
     await tester.tap(resetFinder);
     await tester.pumpAndSettle();
@@ -379,4 +394,49 @@ void main() {
     verify(() => mockSecureStorage.clear()).called(1);
     expect(find.text('Welcome Screen'), findsOneWidget);
   });
+
+  testWidgets('SettingsScreen displays Appearance & Theme section with mode and palette options',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    when(() => mockBackupService.getConnectedUser()).thenAnswer((_) async => null);
+    when(() => mockProfilesRepository.fetchProfiles()).thenAnswer((_) async => []);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          backupServiceProvider.overrideWithValue(mockBackupService),
+          appDatabaseProvider.overrideWithValue(mockAppDatabase),
+          secureStorageProvider.overrideWithValue(mockSecureStorage),
+          profilesRepositoryProvider.overrideWithValue(mockProfilesRepository),
+        ],
+        child: const MaterialApp(
+          home: SettingsScreen(),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Appearance & Theme'), findsOneWidget);
+    expect(find.text('System Default'), findsOneWidget);
+    expect(find.text('Light'), findsOneWidget);
+    expect(find.text('Dark'), findsOneWidget);
+    expect(find.text('Color Theme'), findsOneWidget);
+    expect(find.text('Ocean Blue'), findsWidgets);
+    expect(find.text('Emerald Green'), findsOneWidget);
+
+    // Tap Dark mode
+    await tester.tap(find.text('Dark'));
+    await tester.pumpAndSettle();
+    verify(() => mockSecureStorage.setThemeMode(AppThemeMode.dark)).called(1);
+
+    // Tap Emerald Green preset
+    await tester.tap(find.text('Emerald Green'));
+    await tester.pumpAndSettle();
+    verify(() => mockSecureStorage.setThemePreset('emerald_green')).called(1);
+  });
 }
+

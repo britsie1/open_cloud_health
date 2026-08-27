@@ -5,6 +5,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:open_cloud_health/models/backup_frequency.dart';
 import 'package:open_cloud_health/models/profile_share_config.dart';
+import 'package:open_cloud_health/theme/app_theme_mode.dart';
+import 'package:open_cloud_health/theme/app_theme_preset.dart';
 
 class SecureStorage {
   final storage = const FlutterSecureStorage();
@@ -21,6 +23,8 @@ class SecureStorage {
   static const _shareSyncFrequencyKey = 'share_sync_frequency';
   static const _shareSyncWifiOnlyKey = 'share_sync_wifi_only';
   static const _activeSharePrefix = 'active_share_config_';
+  static const _themeModeKey = 'app_theme_mode';
+  static const _themePresetKey = 'app_theme_preset';
 
   //Save Credentials
   Future saveCredentials(AccessToken token, String refreshToken) async {
@@ -324,6 +328,25 @@ class SecureStorage {
 
   Future<void> setAutoLockGraceSeconds(int seconds) async {
     await storage.write(key: _autoLockGraceSecondsKey, value: seconds.toString());
+  }
+
+  // Theme & Appearance Settings
+  Future<AppThemeMode> getThemeMode() async {
+    final value = await storage.read(key: _themeModeKey);
+    return AppThemeMode.fromString(value);
+  }
+
+  Future<void> setThemeMode(AppThemeMode mode) async {
+    await storage.write(key: _themeModeKey, value: mode.name);
+  }
+
+  Future<String> getThemePreset() async {
+    final value = await storage.read(key: _themePresetKey);
+    return value ?? AppThemePresets.defaultPresetId;
+  }
+
+  Future<void> setThemePreset(String presetId) async {
+    await storage.write(key: _themePresetKey, value: presetId);
   }
 }
 

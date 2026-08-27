@@ -14,11 +14,14 @@ import 'package:open_cloud_health/providers/history_provider.dart';
 import 'package:open_cloud_health/providers/medications_provider.dart';
 import 'package:open_cloud_health/providers/period_provider.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
+import 'package:open_cloud_health/providers/theme_provider.dart';
 import 'package:open_cloud_health/providers/vitals_provider.dart';
 import 'package:open_cloud_health/services/backup_service.dart';
 import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
+import 'package:open_cloud_health/theme/app_theme_mode.dart';
+import 'package:open_cloud_health/theme/app_theme_preset.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/utils/format_utils.dart';
 import 'package:path/path.dart' as p;
@@ -288,7 +291,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       isScrollControlled: true,
       isDismissible: true,
       enableDrag: true,
-      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -563,6 +565,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         children: [
+          _buildAppearanceSection(),
+          const SizedBox(height: 20),
           _buildGoogleBackupSection(),
           const SizedBox(height: 20),
           _buildSecuritySection(),
@@ -576,16 +580,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildGoogleBackupSection() {
+  Widget _buildAppearanceSection() {
     final theme = Theme.of(context);
+    final themeSettings = ref.watch(themeSettingsProvider);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
+        side: BorderSide(
+          color: isDark ? const Color(0xFF2C2C2C) : Colors.grey.shade200,
+        ),
       ),
-      color: Colors.grey.shade50,
+      color: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade50,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -596,10 +604,227 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: theme.colorScheme.primary.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.cloud_sync_outlined, color: Colors.blue),
+                  child: Icon(
+                    Icons.palette_outlined,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Appearance & Theme',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${themeSettings.themeMode.displayName} • ${themeSettings.preset.name}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Theme Mode Selector (System, Light, Dark)
+            Row(
+              children: AppThemeMode.values.map((mode) {
+                final isSelected = themeSettings.themeMode == mode;
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 3.0),
+                    child: InkWell(
+                      onTap: () {
+                        ref.read(themeNotifierProvider.notifier).setThemeMode(mode);
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? theme.colorScheme.primary.withOpacity(0.12)
+                              : (isDark ? const Color(0xFF2A2A2A) : Colors.white),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSelected
+                                ? theme.colorScheme.primary
+                                : (isDark ? const Color(0xFF383838) : Colors.grey.shade300),
+                            width: isSelected ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              mode.icon,
+                              size: 20,
+                              color: isSelected
+                                  ? theme.colorScheme.primary
+                                  : (isDark ? Colors.grey.shade400 : Colors.grey.shade700),
+                            ),
+                            const SizedBox(height: 4),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                mode.displayName,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight:
+                                      isSelected ? FontWeight.bold : FontWeight.w500,
+                                  color: isSelected
+                                      ? theme.colorScheme.primary
+                                      : (isDark ? Colors.grey.shade300 : Colors.grey.shade800),
+                                ),
+                                maxLines: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+            // Theme Palette Header & Swatches
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    'Color Theme',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    themeSettings.preset.name,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 48,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: AppThemePresets.all.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final preset = AppThemePresets.all[index];
+                  final isSelected = themeSettings.presetId == preset.id;
+                  return InkWell(
+                    onTap: () {
+                      ref.read(themeNotifierProvider.notifier).setThemePreset(preset.id);
+                    },
+                    borderRadius: BorderRadius.circular(22),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? preset.primaryColor.withOpacity(0.15)
+                            : (isDark ? const Color(0xFF282828) : Colors.white),
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: isSelected
+                              ? preset.primaryColor
+                              : (isDark ? const Color(0xFF3A3A3A) : Colors.grey.shade300),
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: preset.primaryColor,
+                              shape: BoxShape.circle,
+                            ),
+                            child: isSelected
+                                ? const Icon(
+                                    Icons.check,
+                                    size: 12,
+                                    color: Colors.white,
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            preset.name,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight:
+                                  isSelected ? FontWeight.bold : FontWeight.w500,
+                              color: isSelected
+                                  ? (isDark ? Colors.white : preset.primaryColor)
+                                  : (isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGoogleBackupSection() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDark ? const Color(0xFF2C2C2C) : Colors.grey.shade200,
+        ),
+      ),
+      color: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.cloud_sync_outlined, color: theme.colorScheme.primary),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1086,12 +1311,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildSecuritySection() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
+        side: BorderSide(
+          color: isDark ? const Color(0xFF2C2C2C) : Colors.grey.shade200,
+        ),
       ),
+      color: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade50,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1471,12 +1702,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildLocalStorageSection() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
+        side: BorderSide(
+          color: isDark ? const Color(0xFF2C2C2C) : Colors.grey.shade200,
+        ),
       ),
+      color: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade50,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1543,12 +1780,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildAboutSection() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
+        side: BorderSide(
+          color: isDark ? const Color(0xFF2C2C2C) : Colors.grey.shade200,
+        ),
       ),
+      color: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade50,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

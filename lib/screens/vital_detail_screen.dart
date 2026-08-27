@@ -255,7 +255,6 @@ class _WeightOverviewTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final borderColor = theme.colorScheme.outlineVariant.withOpacity(0.6);
 
     if (logs.isEmpty) {
       return Center(
