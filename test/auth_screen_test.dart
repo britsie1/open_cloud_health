@@ -168,9 +168,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('OpenCloudHealth'), findsOneWidget);
+    expect(find.text('Open Cloud Health'), findsOneWidget);
     expect(find.text('Login'), findsOneWidget);
-    expect(find.text('Emergency Medical ID'), findsOneWidget);
+    expect(find.text('Show Emergency Medical ID'), findsOneWidget);
     expect(find.text('Enter Master Password / PIN'), findsNothing);
   });
 

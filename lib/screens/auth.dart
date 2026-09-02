@@ -383,7 +383,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               ),
             ),
             Text(
-              'OpenCloudHealth',
+              'Open Cloud Health',
               style: Theme.of(context).textTheme.headlineMedium!.copyWith(
                   color: Theme.of(context).colorScheme.secondary,
                   fontWeight: FontWeight.bold),
@@ -445,7 +445,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               onPressed: _showEmergencyCard,
               icon: const Icon(Icons.emergency, color: Colors.red),
               label: const Text(
-                'Emergency Medical ID',
+                'Show Emergency Medical ID',
                 style: TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.bold,
