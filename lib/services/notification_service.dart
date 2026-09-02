@@ -143,13 +143,15 @@ void notificationTapBackground(NotificationResponse response) async {
       categoryIdentifier: 'medication_category',
     );
 
+    final scheduleMode = await notificationService.resolveScheduleMode(notificationService.flutterLocalNotificationsPlugin);
+
     await notificationService.flutterLocalNotificationsPlugin.zonedSchedule(
         snoozeId,
         'Snoozed: $medName',
         'Time to take your medication $medName.',
         scheduledDate,
         const NotificationDetails(android: androidDetails, iOS: iosDetails),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: scheduleMode,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: medicationId);
@@ -202,6 +204,39 @@ class NotificationService {
     if (customDb != null) return true;
     if (_ref != null) return true;
     return false;
+  }
+
+  /// Dynamically checks whether the app is permitted to schedule exact alarms (Android 14+ / API 34+).
+  /// Gracefully falls back to inexact scheduling to prevent SecurityException crashes.
+  Future<AndroidScheduleMode> resolveScheduleMode([FlutterLocalNotificationsPlugin? plugin]) async {
+    final targetPlugin = plugin ?? flutterLocalNotificationsPlugin;
+    if (Platform.isAndroid) {
+      try {
+        final androidImpl = targetPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        final canExact = await androidImpl?.canScheduleExactNotifications();
+        if (canExact == true) {
+          return AndroidScheduleMode.exactAllowWhileIdle;
+        }
+      } catch (e) {
+        debugPrint('Error resolving exact alarm permission: $e');
+      }
+      return AndroidScheduleMode.inexactAllowWhileIdle;
+    }
+    return AndroidScheduleMode.exactAllowWhileIdle;
+  }
+
+  /// Requests permission from the user to schedule exact alarms on Android 13/14+.
+  Future<bool> requestExactAlarmsPermission() async {
+    if (Platform.isAndroid) {
+      try {
+        final androidImpl = flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        return await androidImpl?.requestExactAlarmsPermission() ?? false;
+      } catch (e) {
+        debugPrint('Error requesting exact alarm permission: $e');
+        return false;
+      }
+    }
+    return true;
   }
 
   Future<void> markMedicationTaken(String medicationId, [AppDatabase? database]) async {
@@ -281,13 +316,15 @@ class NotificationService {
       categoryIdentifier: 'medication_category',
     );
 
+    final scheduleMode = await resolveScheduleMode();
+
     await flutterLocalNotificationsPlugin.zonedSchedule(
         snoozeId,
         'Snoozed: $medName',
         'Time to take your medication $medName.',
         scheduledDate,
         const NotificationDetails(android: androidDetails, iOS: iosDetails),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: scheduleMode,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: medicationId);
@@ -384,13 +421,15 @@ class NotificationService {
       categoryIdentifier: 'medication_category',
     );
 
+    final scheduleMode = await resolveScheduleMode();
+
     await flutterLocalNotificationsPlugin.zonedSchedule(
         id,
         title,
         body,
         scheduledDate,
         const NotificationDetails(android: androidDetails, iOS: iosDetails),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: scheduleMode,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time,
@@ -434,13 +473,15 @@ class NotificationService {
       categoryIdentifier: 'medication_category',
     );
 
+    final scheduleMode = await resolveScheduleMode();
+
     await flutterLocalNotificationsPlugin.zonedSchedule(
         id,
         title,
         body,
         scheduledDate,
         const NotificationDetails(android: androidDetails, iOS: iosDetails),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: scheduleMode,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,

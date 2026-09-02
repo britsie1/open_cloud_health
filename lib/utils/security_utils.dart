@@ -13,4 +13,11 @@ class SecurityUtils {
       return false;
     }
   }
+
+  /// Sets window flags to block screenshots and mask the recent apps switcher snapshot.
+  static Future<void> setSecureScreen(bool enabled) async {
+    try {
+      await _channel.invokeMethod('setSecureScreen', {'enabled': enabled});
+    } catch (_) {}
+  }
 }

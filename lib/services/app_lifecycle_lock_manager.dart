@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:open_cloud_health/database/app_database.dart';
 import 'package:open_cloud_health/services/backup_encryption_service.dart';
+import 'package:open_cloud_health/services/backup_scheduler_service.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/utils/security_utils.dart';
@@ -19,6 +20,17 @@ class AppLifecycleLockManager with WidgetsBindingObserver {
 
   void initialize() {
     WidgetsBinding.instance.addObserver(this);
+    _applyInitialSecurity();
+  }
+
+  Future<void> _applyInitialSecurity() async {
+    try {
+      final isAuthEnabled = await _ref.read(appDatabaseProvider).isLocalAuthEnabled();
+      final isDeviceSecure = await SecurityUtils.isDeviceSecure();
+      if (isAuthEnabled && isDeviceSecure) {
+        await SecurityUtils.setSecureScreen(true);
+      }
+    } catch (_) {}
   }
 
   void dispose() {
@@ -35,6 +47,11 @@ class AppLifecycleLockManager with WidgetsBindingObserver {
   }
 
   Future<void> _handleAppResume() async {
+    // 1. Opportunistically execute scheduled backups and share syncs if overdue
+    try {
+      _ref.read(backupSchedulerServiceProvider).onAppResume();
+    } catch (_) {}
+
     final pausedTime = _pausedAt;
     _pausedAt = null;
 
@@ -42,6 +59,9 @@ class AppLifecycleLockManager with WidgetsBindingObserver {
 
     final isAuthEnabled = await _ref.read(appDatabaseProvider).isLocalAuthEnabled();
     final isDeviceSecure = await SecurityUtils.isDeviceSecure();
+
+    // Sync FLAG_SECURE / screen privacy
+    await SecurityUtils.setSecureScreen(isAuthEnabled && isDeviceSecure);
 
     if (!isAuthEnabled || !isDeviceSecure) {
       return;

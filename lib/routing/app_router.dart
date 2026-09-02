@@ -26,7 +26,9 @@ import 'package:open_cloud_health/screens/emergency_settings.dart';
 import 'package:open_cloud_health/screens/share_profile_screen.dart';
 import 'package:open_cloud_health/screens/qr_scanner_screen.dart';
 import 'package:open_cloud_health/models/pdf_export_options.dart';
+import 'package:open_cloud_health/models/profile_share_models.dart';
 import 'package:open_cloud_health/screens/pdf_preview_screen.dart';
+import 'package:open_cloud_health/screens/share_import_screen.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/widgets/scaffold_with_nav_bar.dart';
 import 'package:open_cloud_health/widgets/shell_route_redirector.dart';
@@ -234,6 +236,13 @@ final appRouter = GoRouter(
           final profile = state.extra as Profile;
           return PdfPreviewScreen(profile: profile);
         }
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.share,
+      builder: (context, state) {
+        final payload = ShareLinkPayload.parse(state.uri.toString());
+        return ShareImportScreen(payload: payload);
       },
     ),
   ],

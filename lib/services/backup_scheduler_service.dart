@@ -11,19 +11,24 @@ class BackupSchedulerService {
   BackupSchedulerService(this._ref);
 
   /// Initializes the background backup scheduler.
-  /// Runs a due check immediately and starts a periodic heartbeat check.
+  /// Runs an opportunistic due check on startup and starts a periodic heartbeat check.
   void initialize() {
     _periodicTimer?.cancel();
 
-    // Run initial check after a short delay so app startup is fast
-    Future.delayed(const Duration(seconds: 3), () {
-      checkAndRunDueBackup();
+    // Run opportunistic check after a short delay so app startup is fast
+    Future.delayed(const Duration(seconds: 5), () {
+      checkAndRunDueBackup(enforceIdleHours: false);
     });
 
     // Check periodically every hour
     _periodicTimer = Timer.periodic(const Duration(hours: 1), (_) {
       checkAndRunDueBackup();
     });
+  }
+
+  /// Called when the app resumes to foreground: opportunistically runs any overdue backups/syncs.
+  void onAppResume() {
+    checkAndRunDueBackup(enforceIdleHours: false);
   }
 
   /// Evaluates and runs scheduled backup and share syncs if due.

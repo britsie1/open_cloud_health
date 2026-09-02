@@ -15,6 +15,16 @@ import 'package:sqlite3/open.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('Global Flutter Error: ${details.exceptionAsString()}');
+  };
+
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    debugPrint('Global Platform Error: $error\n$stack');
+    return true;
+  };
+
   if (Platform.isAndroid) {
     open.overrideFor(OperatingSystem.android, () => DynamicLibrary.open('libsqlcipher.so'));
   }

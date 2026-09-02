@@ -211,7 +211,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                                 width: 80,
                               ),
                             ),
-                            const SizedBox(height: 36),
+                            const SizedBox(height: 24),
                             
                             // Welcome Text
                             Text(
@@ -223,7 +223,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                                 height: 1.2,
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
                             
                             // Description Text
                             Text(
@@ -231,13 +231,41 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                               textAlign: TextAlign.center,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.onBackground.withOpacity(0.6),
-                                height: 1.5,
+                                height: 1.35,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Medical Disclaimer Note
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50.withOpacity(0.6),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.blue.shade100),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.info_outline, size: 14, color: Colors.blue.shade800),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      'Informational tracking tool • Not a medical device',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.blue.shade900,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             
                             const Spacer(),
-                            const SizedBox(height: 24),
-                            
+                            const SizedBox(height: 16),
+
                             // Primary action: Create New Profile
                             SizedBox(
                               width: double.infinity,

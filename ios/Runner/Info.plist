@@ -57,5 +57,20 @@
 		<string>Open Cloud Health requires photo library access to let you upload profile pictures and add medical attachments.</string>
 		<key>NSMicrophoneUsageDescription</key>
 		<string>Open Cloud Health requires microphone access for video selection fallback support.</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLName</key>
+				<string>com.opencloudhealth.app</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>opencloudhealth</string>
+					<!-- Replace with your Google OAuth iOS Reversed Client ID from GoogleService-Info.plist if using Google Sign-In on iOS -->
+					<!-- e.g. com.googleusercontent.apps.123456789-abcdef -->
+				</array>
+			</dict>
+		</array>
 	</dict>
 </plist>

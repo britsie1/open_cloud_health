@@ -138,6 +138,8 @@ void main() {
         .thenAnswer((_) async {});
     when(() => mockMedicationsRepository.watchMedications(any()))
         .thenAnswer((_) => const Stream.empty());
+    when(() => mockMedicationsRepository.fetchMedications(any()))
+        .thenAnswer((_) async => []);
     when(() => mockMedicationsRepository.watchLogsForDate(any(), any()))
         .thenAnswer((_) => const Stream.empty());
     when(() => mockMedicationsRepository.watchAllLogs(any()))

@@ -9,12 +9,12 @@ import 'package:open_cloud_health/models/profile_share_models.dart';
 import 'package:open_cloud_health/providers/allergies_provider.dart';
 import 'package:open_cloud_health/repositories/allergies_repository.dart';
 import 'package:open_cloud_health/repositories/history_repository.dart';
+import 'package:open_cloud_health/repositories/medications_repository.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
 import 'package:open_cloud_health/repositories/shared_profiles_repository.dart';
 import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
 import 'package:open_cloud_health/services/profile_sharing_service.dart';
-import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:open_cloud_health/utils/result.dart';
 
 export 'package:open_cloud_health/providers/active_shares_provider.dart';
@@ -541,6 +541,17 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
 
   Future<Result<void, Exception>> deleteProfilePermanently(String id) async {
     try {
+      // 0. Cancel all scheduled notifications for medications belonging to this profile
+      try {
+        final meds = await ref.read(medicationsRepositoryProvider).fetchMedications(id);
+        final notifService = ref.read(notificationServiceProvider);
+        for (final med in meds) {
+          await notifService.cancelMedicationNotifications(med.id);
+        }
+      } catch (e) {
+        debugPrint('Error canceling medication notifications for deleted profile $id: $e');
+      }
+
       // 1. Fetch all history events for profile to clean up attachments on disk
       final events = await _historyRepo.fetchEvents(id);
       final historyIds = events.map((e) => e.id).toList();
@@ -568,6 +579,15 @@ class ProfilesNotifier extends AsyncNotifier<List<Profile>> {
         if (profile.isArchived && profile.archivedAt != null) {
           final difference = now.difference(profile.archivedAt!);
           if (difference.inDays >= 30) {
+            try {
+              final meds = await ref.read(medicationsRepositoryProvider).fetchMedications(profile.id);
+              final notifService = ref.read(notificationServiceProvider);
+              for (final med in meds) {
+                await notifService.cancelMedicationNotifications(med.id);
+              }
+            } catch (e) {
+              debugPrint('Error canceling notifications for expired profile ${profile.id}: $e');
+            }
             final events = await _historyRepo.fetchEvents(profile.id);
             final historyIds = events.map((e) => e.id).toList();
             await _fileService.deleteProfileFiles(profile.id, historyIds);

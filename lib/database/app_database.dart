@@ -40,6 +40,16 @@ class AppDatabase extends _$AppDatabase {
     return MigrationStrategy(
       beforeOpen: (details) async {
         await customStatement('PRAGMA foreign_keys = ON;');
+        await customStatement('CREATE INDEX IF NOT EXISTS idx_medications_profileId ON medications(profileId);');
+        await customStatement('CREATE INDEX IF NOT EXISTS idx_medication_logs_medId_ts ON medication_logs(medicationId, timestamp);');
+        await customStatement('CREATE INDEX IF NOT EXISTS idx_vital_logs_profileId_date ON vital_logs(profileId, date);');
+        await customStatement('CREATE INDEX IF NOT EXISTS idx_history_profileId_date ON history(profileId, date);');
+        await customStatement('CREATE INDEX IF NOT EXISTS idx_period_cycles_profileId ON period_cycles(profileId);');
+        await customStatement('CREATE INDEX IF NOT EXISTS idx_period_logs_cycleId_date ON period_logs(cycleId, date);');
+        await customStatement('CREATE INDEX IF NOT EXISTS idx_allergy_profileId ON allergy(profileId);');
+        await customStatement('CREATE INDEX IF NOT EXISTS idx_attachments_historyId ON attachments(historyId);');
+        await customStatement('CREATE INDEX IF NOT EXISTS idx_emergency_contacts_profileId ON emergency_contacts(profileId);');
+        await customStatement('CREATE INDEX IF NOT EXISTS idx_insurance_profileId ON insurance(profileId);');
       },
       onCreate: (Migrator m) async {
         await m.createAll();
