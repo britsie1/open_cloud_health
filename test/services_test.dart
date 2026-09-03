@@ -7,7 +7,10 @@ import 'package:open_cloud_health/models/backup_frequency.dart';
 import 'package:open_cloud_health/services/backup_service.dart';
 import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
+import 'package:flutter/services.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
+import 'package:open_cloud_health/utils/result.dart';
+import 'package:open_cloud_health/utils/security_utils.dart';
 import 'package:path/path.dart' as path;
 
 class MockFileService extends Mock implements FileService {}
@@ -224,6 +227,81 @@ void main() {
     test('openAutoStartSettings completes without throwing on test runner', () async {
       final service = NotificationService();
       expect(service.openAutoStartSettings(), completes);
+    });
+  });
+
+  group('SecurityUtils Tests', () {
+    tearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('com.opencloudhealth.app/security'),
+        null,
+      );
+    });
+
+    test('isDeviceSecure returns true when channel returns true', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('com.opencloudhealth.app/security'),
+        (call) async => true,
+      );
+
+      final isSecure = await SecurityUtils.isDeviceSecure();
+      expect(isSecure, isTrue);
+    });
+
+    test('isDeviceSecure returns false when channel returns false', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('com.opencloudhealth.app/security'),
+        (call) async => false,
+      );
+
+      final isSecure = await SecurityUtils.isDeviceSecure();
+      expect(isSecure, isFalse);
+    });
+
+    test('isDeviceSecure falls back to false on platform exception', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('com.opencloudhealth.app/security'),
+        (call) async => throw PlatformException(code: 'UNAVAILABLE'),
+      );
+
+      final isSecure = await SecurityUtils.isDeviceSecure();
+      expect(isSecure, isFalse);
+    });
+
+    test('setSecureScreen handles channel call safely', () async {
+      bool channelCalled = false;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('com.opencloudhealth.app/security'),
+        (call) async {
+          if (call.method == 'setSecureScreen') {
+            channelCalled = true;
+          }
+          return null;
+        },
+      );
+
+      await SecurityUtils.setSecureScreen(true);
+      expect(channelCalled, isTrue);
+    });
+  });
+
+  group('Result Utility Tests', () {
+    test('Success holds value and matches type', () {
+      const result = Success<int, Exception>(42);
+      expect(result.value, 42);
+      expect(result, isA<Result<int, Exception>>());
+    });
+
+    test('Failure holds exception and matches type', () {
+      final exc = Exception('Clinical error');
+      final result = Failure<String, Exception>(exc);
+      expect(result.exception, exc);
+      expect(result, isA<Result<String, Exception>>());
     });
   });
 }

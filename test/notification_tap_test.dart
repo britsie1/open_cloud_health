@@ -1,3 +1,4 @@
+import 'package:drift/native.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:open_cloud_health/database/app_database.dart';
@@ -18,7 +19,8 @@ void main() {
 
   test('loadLogsForDate loads inserted logs', () async {
     WidgetsFlutterBinding.ensureInitialized();
-    final db = AppDatabase();
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
     
     final profileId = 'test_profile_${DateTime.now().millisecondsSinceEpoch}';
     final profilesRepo = ProfilesRepository(db);
@@ -54,7 +56,7 @@ void main() {
     );
 
     // Call the tap directly
-    await NotificationService().markMedicationTaken(response.payload!);
+    await NotificationService().markMedicationTaken(response.payload!, db);
 
     final logs = await medsRepo.loadLogsForDate(DateTime.now(), profileId);
 

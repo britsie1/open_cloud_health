@@ -25,8 +25,16 @@ import 'package:open_cloud_health/repositories/period_repository.dart';
 import 'package:open_cloud_health/repositories/profiles_repository.dart';
 import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
+import 'package:open_cloud_health/models/attachment.dart';
+import 'package:open_cloud_health/models/insurance_policy.dart';
+import 'package:open_cloud_health/models/profile_share_config.dart';
+import 'package:open_cloud_health/models/profile_share_models.dart';
+import 'package:open_cloud_health/providers/attachment_provider.dart';
 import 'package:open_cloud_health/providers/emergency_provider.dart';
+import 'package:open_cloud_health/providers/insurance_provider.dart';
 import 'package:open_cloud_health/repositories/emergency_repository.dart';
+import 'package:open_cloud_health/repositories/insurance_repository.dart';
+import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:open_cloud_health/utils/result.dart';
 
 class MockProfilesRepository extends Mock implements ProfilesRepository {}
@@ -51,6 +59,8 @@ class FakeAllergy extends Fake implements Allergy {}
 
 class MockAttachmentRepository extends Mock implements AttachmentRepository {}
 
+class FakeAttachment extends Fake implements Attachment {}
+
 class MockFileService extends Mock implements FileService {}
 
 class MockPeriodRepository extends Mock implements PeriodRepository {}
@@ -58,6 +68,12 @@ class MockPeriodRepository extends Mock implements PeriodRepository {}
 class MockCheckupsRepository extends Mock implements CheckupsRepository {}
 
 class MockEmergencyRepository extends Mock implements EmergencyRepository {}
+
+class MockInsuranceRepository extends Mock implements InsuranceRepository {}
+
+class FakeInsurancePolicy extends Fake implements InsurancePolicy {}
+
+class MockSecureStorage extends Mock implements SecureStorage {}
 
 class FakePeriodCycle extends Fake implements PeriodCycle {}
 
@@ -74,6 +90,8 @@ void main() {
   late MockPeriodRepository mockPeriodRepository;
   late MockCheckupsRepository mockCheckupsRepository;
   late MockEmergencyRepository mockEmergencyRepository;
+  late MockInsuranceRepository mockInsuranceRepository;
+  late MockSecureStorage mockSecureStorage;
   late ProviderContainer container;
 
   setUpAll(() {
@@ -82,9 +100,13 @@ void main() {
     registerFallbackValue(FakeMedication());
     registerFallbackValue(FakeMedicationLog());
     registerFallbackValue(FakeAllergy());
+    registerFallbackValue(FakeAttachment());
+    registerFallbackValue(FakeInsurancePolicy());
     registerFallbackValue(FakePeriodCycle());
     registerFallbackValue(FakePeriodLog());
     registerFallbackValue(const TimeOfDay(hour: 0, minute: 0));
+    registerFallbackValue(File(''));
+    registerFallbackValue(<String>[]);
   });
 
   setUp(() {
@@ -98,6 +120,15 @@ void main() {
     mockPeriodRepository = MockPeriodRepository();
     mockCheckupsRepository = MockCheckupsRepository();
     mockEmergencyRepository = MockEmergencyRepository();
+    mockInsuranceRepository = MockInsuranceRepository();
+    mockSecureStorage = MockSecureStorage();
+
+    when(() => mockInsuranceRepository.watchInsurance(any()))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockInsuranceRepository.getInsurance(any()))
+        .thenAnswer((_) async => null);
+    when(() => mockSecureStorage.getAllActiveShareConfigs())
+        .thenAnswer((_) async => []);
 
     when(() => mockNotificationService.cancelNotification(any()))
         .thenAnswer((_) async => {});
@@ -172,6 +203,8 @@ void main() {
         periodRepositoryProvider.overrideWithValue(mockPeriodRepository),
         checkupsRepositoryProvider.overrideWithValue(mockCheckupsRepository),
         emergencyRepositoryProvider.overrideWithValue(mockEmergencyRepository),
+        insuranceRepositoryProvider.overrideWithValue(mockInsuranceRepository),
+        secureStorageProvider.overrideWithValue(mockSecureStorage),
       ],
     );
   });
@@ -1292,6 +1325,148 @@ void main() {
       final savedLog = captured.first as PeriodLog;
       expect(savedLog.cycleId, 'c-july');
       expect(savedLog.physicalSymptoms, [PhysicalSymptom.headache]);
+    });
+  });
+
+  group('InsuranceProvider Tests', () {
+    test('saveInsurance persists policy and triggers emergency notification sync', () async {
+      final policy = InsurancePolicy(
+        id: 'ins-101',
+        profileId: 'p1',
+        provider: 'UnitedHealthcare',
+        policyNumber: 'UHC-12345',
+      );
+
+      when(() => mockInsuranceRepository.saveInsurance(any()))
+          .thenAnswer((_) async {});
+      when(() => mockInsuranceRepository.getInsurance('p1'))
+          .thenAnswer((_) async => policy);
+
+      final notifier = container.read(insuranceProvider('p1').notifier);
+      final result = await notifier.saveInsurance(policy);
+
+      expect(result, isA<Success<void, Exception>>());
+      verify(() => mockInsuranceRepository.saveInsurance(policy)).called(1);
+      verify(() => mockNotificationService.syncEmergencyNotification('p1')).called(1);
+    });
+
+    test('deleteInsurance removes policy and clears card images', () async {
+      when(() => mockInsuranceRepository.deleteInsurance('ins-101'))
+          .thenAnswer((_) async {});
+      when(() => mockFileService.deleteInsuranceCardImages('p1'))
+          .thenAnswer((_) async {});
+      when(() => mockInsuranceRepository.getInsurance('p1'))
+          .thenAnswer((_) async => null);
+
+      final notifier = container.read(insuranceProvider('p1').notifier);
+      final result = await notifier.deleteInsurance('ins-101');
+
+      expect(result, isA<Success<void, Exception>>());
+      verify(() => mockInsuranceRepository.deleteInsurance('ins-101')).called(1);
+      verify(() => mockFileService.deleteInsuranceCardImages('p1')).called(1);
+      verify(() => mockNotificationService.syncEmergencyNotification('p1')).called(1);
+    });
+  });
+
+  group('AttachmentProvider Tests', () {
+    test('addAttachments inserts into repository and saves files', () async {
+      final attachment = Attachment(
+        id: 'att-1',
+        historyId: 'h-1',
+        filename: 'scan.pdf',
+        uploadDate: DateTime.now(),
+        byteLength: 2048,
+        tempPath: 'temp/scan.pdf',
+      );
+
+      when(() => mockAttachmentRepository.insertAttachment(any()))
+          .thenAnswer((_) async {});
+      when(() => mockFileService.saveAttachment(any(), any(), any()))
+          .thenAnswer((_) async => '/path/to/scan.pdf');
+
+      final notifier = container.read(attachmentProvider.notifier);
+      final result = await notifier.addAttachments([attachment]);
+
+      expect(result, isA<Success<void, Exception>>());
+      verify(() => mockAttachmentRepository.insertAttachment(attachment)).called(1);
+      verify(() => mockFileService.saveAttachment('h-1', any(), 'scan.pdf')).called(1);
+    });
+
+    test('removeAttachments deletes from repository and deletes files from fileService', () async {
+      final attachment = Attachment(
+        id: 'att-1',
+        historyId: 'h-1',
+        filename: 'scan.pdf',
+        uploadDate: DateTime.now(),
+        byteLength: 2048,
+      );
+
+      when(() => mockAttachmentRepository.deleteAttachments(any()))
+          .thenAnswer((_) async {});
+      when(() => mockFileService.deleteAttachment(any(), any()))
+          .thenAnswer((_) async {});
+
+      final notifier = container.read(attachmentProvider.notifier);
+      final result = await notifier.removeAttachments([attachment]);
+
+      expect(result, isA<Success<void, Exception>>());
+      verify(() => mockAttachmentRepository.deleteAttachments(['att-1'])).called(1);
+      verify(() => mockFileService.deleteAttachment('h-1', 'scan.pdf')).called(1);
+    });
+
+    test('getAttachments queries repository for history attachments', () async {
+      final attachments = <Attachment>[
+        Attachment(
+          id: 'att-1',
+          historyId: 'h-1',
+          filename: 'doc.pdf',
+          uploadDate: DateTime.now(),
+          byteLength: 100,
+        ),
+      ];
+
+      when(() => mockAttachmentRepository.getAttachments('h-1'))
+          .thenAnswer((_) async => attachments);
+
+      final notifier = container.read(attachmentProvider.notifier);
+      final result = await notifier.getAttachments('h-1');
+
+      expect(result.length, 1);
+      expect(result.first.filename, 'doc.pdf');
+    });
+  });
+
+  group('ActiveSharesProvider Tests', () {
+    test('activeShareConfigsProvider maps active share configs by profileId', () async {
+      final config1 = ActiveShareConfig(
+        profileId: 'p-share-1',
+        driveFileId: 'drive-1',
+        encryptionKey: 'key-1',
+        options: const ShareModuleOptions(),
+        createdAt: DateTime(2026, 1, 1),
+        lastSyncedAt: DateTime(2026, 1, 1),
+        sharedBy: 'User 1',
+        profileName: 'Patient One',
+      );
+      final config2 = ActiveShareConfig(
+        profileId: 'p-share-2',
+        driveFileId: 'drive-2',
+        encryptionKey: 'key-2',
+        options: const ShareModuleOptions(),
+        createdAt: DateTime(2026, 1, 2),
+        lastSyncedAt: DateTime(2026, 1, 2),
+        sharedBy: 'User 2',
+        profileName: 'Patient Two',
+      );
+
+      when(() => mockSecureStorage.getAllActiveShareConfigs())
+          .thenAnswer((_) async => [config1, config2]);
+
+      final configMap = await container.read(activeShareConfigsProvider.future);
+
+      expect(configMap.length, 2);
+      expect(configMap['p-share-1']?.driveFileId, 'drive-1');
+      expect(configMap['p-share-2']?.driveFileId, 'drive-2');
     });
   });
 }

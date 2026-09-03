@@ -10,6 +10,9 @@ import 'package:open_cloud_health/models/emergency_contact.dart';
 import 'package:open_cloud_health/models/insurance_policy.dart';
 import 'package:open_cloud_health/models/lock_screen_setting.dart';
 import 'package:open_cloud_health/models/storage_info.dart';
+import 'package:open_cloud_health/models/checkup.dart';
+import 'package:open_cloud_health/models/checkup_log.dart';
+import 'package:open_cloud_health/models/vital_log.dart';
 import 'package:open_cloud_health/utils/format_utils.dart';
 import 'package:open_cloud_health/utils/icon_utils.dart';
 import 'package:healthicons_flutter/healthicons_flutter.dart';
@@ -519,6 +522,117 @@ void main() {
 
       final modified = setting.copyWith(showInsurance: false);
       expect(modified.showInsurance, isFalse);
+    });
+  });
+
+  group('Checkup & CheckupLog Model Tests', () {
+    test('Checkup generates unique UUID when none provided and defaults attributes', () {
+      final checkup = Checkup(
+        profileId: 'prof-1',
+        name: 'Annual Dental',
+        frequencyInMonths: 6,
+      );
+
+      expect(checkup.id, isNotEmpty);
+      expect(checkup.profileId, 'prof-1');
+      expect(checkup.name, 'Annual Dental');
+      expect(checkup.frequencyInMonths, 6);
+      expect(checkup.isCustomInterval, isFalse);
+      expect(checkup.isActive, isTrue);
+      expect(checkup.iconName, isNull);
+    });
+
+    test('Checkup copyWith preserves and modifies fields', () {
+      final checkup = Checkup(
+        id: 'c-1',
+        profileId: 'prof-1',
+        name: 'Eye Exam',
+        frequencyInMonths: 24,
+        iconName: 'eye',
+        isCustomInterval: true,
+      );
+
+      final updated = checkup.copyWith(
+        name: 'Senior Eye Exam',
+        frequencyInMonths: 12,
+        isActive: false,
+      );
+
+      expect(updated.id, 'c-1');
+      expect(updated.name, 'Senior Eye Exam');
+      expect(updated.frequencyInMonths, 12);
+      expect(updated.iconName, 'eye');
+      expect(updated.isCustomInterval, isTrue);
+      expect(updated.isActive, isFalse);
+    });
+
+    test('CheckupLog initializes with default UUID and optional details', () {
+      final now = DateTime(2026, 3, 1, 14, 0);
+      final log = CheckupLog(
+        checkupId: 'c-1',
+        dateCompleted: now,
+        doctorName: 'Dr. House',
+        location: 'Clinic A',
+        notes: 'Everything within normal range.',
+      );
+
+      expect(log.id, isNotEmpty);
+      expect(log.checkupId, 'c-1');
+      expect(log.dateCompleted, now);
+      expect(log.doctorName, 'Dr. House');
+      expect(log.location, 'Clinic A');
+      expect(log.notes, 'Everything within normal range.');
+    });
+  });
+
+  group('VitalLog Model Tests', () {
+    test('VitalLog generates unique UUID and supports blood pressure systolic and diastolic', () {
+      final now = DateTime(2026, 3, 1, 8, 30);
+      final log = VitalLog(
+        profileId: 'prof-1',
+        type: VitalType.bloodPressure,
+        date: now,
+        value1: 120.0,
+        value2: 80.0,
+        unit: 'mmHg',
+        note: 'Resting BP',
+      );
+
+      expect(log.id, isNotEmpty);
+      expect(log.profileId, 'prof-1');
+      expect(log.type, VitalType.bloodPressure);
+      expect(log.date, now);
+      expect(log.value1, 120.0);
+      expect(log.value2, 80.0);
+      expect(log.unit, 'mmHg');
+      expect(log.note, 'Resting BP');
+    });
+
+    test('VitalLog handles single-value vitals like weight and blood sugar', () {
+      final weightLog = VitalLog(
+        profileId: 'prof-1',
+        type: VitalType.weight,
+        date: DateTime.now(),
+        value1: 72.5,
+        unit: 'kg',
+      );
+
+      expect(weightLog.type, VitalType.weight);
+      expect(weightLog.value1, 72.5);
+      expect(weightLog.value2, isNull);
+      expect(weightLog.unit, 'kg');
+
+      final sugarLog = VitalLog(
+        profileId: 'prof-1',
+        type: VitalType.bloodSugar,
+        date: DateTime.now(),
+        value1: 95.0,
+        unit: 'mg/dL',
+      );
+
+      expect(sugarLog.type, VitalType.bloodSugar);
+      expect(sugarLog.value1, 95.0);
+      expect(sugarLog.value2, isNull);
     });
   });
 }
