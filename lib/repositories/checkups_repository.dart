@@ -127,14 +127,6 @@ class CheckupsRepository {
     return rows.map((r) => _mapLog(r.readTable(_db.checkupLogs))).toList();
   }
 
-  Stream<List<CheckupLog>> watchAllLogsForProfile(String profileId) {
-    final query = _db.select(_db.checkupLogs).join([
-      innerJoin(_db.checkups, _db.checkups.id.equalsExp(_db.checkupLogs.checkupId)),
-    ])..where(_db.checkups.profileId.equals(profileId));
-
-    return query.watch().map((rows) => rows.map((r) => _mapLog(r.readTable(_db.checkupLogs))).toList());
-  }
-
   Future<List<CheckupLog>> loadLogsForCheckup(String checkupId) async {
     if (_sharedRepo != null) {
       final sharedLogs = await _sharedRepo.getCheckupLogs(checkupId);
@@ -149,14 +141,6 @@ class CheckupsRepository {
   }
 
   Future<List<CheckupLog>> fetchCheckupLogs(String checkupId) => loadLogsForCheckup(checkupId);
-
-  Stream<List<CheckupLog>> watchLogsForCheckup(String checkupId) {
-    final query = _db.select(_db.checkupLogs)
-      ..where((tbl) => tbl.checkupId.equals(checkupId))
-      ..orderBy([(tbl) => OrderingTerm.desc(tbl.dateCompleted)]);
-
-    return query.watch().map((rows) => rows.map(_mapLog).toList());
-  }
 
   Future<void> deleteCheckupLog(String logId) async {
     await (_db.delete(_db.checkupLogs)..where((tbl) => tbl.id.equals(logId))).go();

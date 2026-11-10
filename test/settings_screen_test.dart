@@ -104,7 +104,7 @@ void main() {
     );
   });
 
-  testWidgets('SettingsScreen displays disconnected Google Drive backup state',
+  testWidgets('SettingsScreen displays clean navigation list and navigates to sub-screens',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 2000);
     tester.view.devicePixelRatio = 1.0;
@@ -141,16 +141,31 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Appearance & Theme'), findsOneWidget);
     expect(find.text('Google Drive Backup'), findsOneWidget);
-    expect(find.text('Connect to Google Drive'), findsOneWidget);
     expect(find.text('App Lock & Security'), findsOneWidget);
     expect(find.text('Emergency Lock Screen Info'), findsOneWidget);
+    expect(find.text('Local Storage & Backup'), findsOneWidget);
+    expect(find.text('About & Privacy'), findsOneWidget);
+
+    // Navigate to Google Drive Backup sub-screen
+    await tester.tap(find.text('Google Drive Backup'));
+    await tester.pumpAndSettle();
+    expect(find.text('Connect to Google Drive'), findsOneWidget);
+
+    // Pop back to Settings
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    // Navigate to Local Storage & Backup sub-screen
+    await tester.tap(find.text('Local Storage & Backup'));
+    await tester.pumpAndSettle();
     expect(find.text('Export Local Backup (.ochbackup)'), findsOneWidget);
     expect(find.text('Import Local Backup'), findsOneWidget);
     expect(find.text('Reset Database'), findsOneWidget);
   });
 
-  testWidgets('SettingsScreen displays connected WhatsApp-style Google Storage metrics & Auto-Backup settings',
+  testWidgets('CloudBackupSettingsScreen displays connected Google Storage metrics & Auto-Backup settings',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 2000);
     tester.view.devicePixelRatio = 1.0;
@@ -191,6 +206,10 @@ void main() {
       ),
     );
 
+    await tester.pumpAndSettle();
+
+    // Tap Google Drive Backup to enter sub-screen
+    await tester.tap(find.text('Google Drive Backup'));
     await tester.pumpAndSettle();
 
     expect(find.text('Jane Doe'), findsOneWidget);
@@ -327,7 +346,7 @@ void main() {
     expect(find.text('App Lock & Security'), findsOneWidget);
   });
 
-  testWidgets('SettingsScreen Reset All Data triggers full teardown and wipe',
+  testWidgets('LocalStorageSettingsScreen Reset All Data triggers full teardown and wipe',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 2000);
     tester.view.devicePixelRatio = 1.0;
@@ -368,13 +387,12 @@ void main() {
 
     await tester.pumpAndSettle();
 
+    // Navigate to Local Storage & Backup sub-screen
+    await tester.tap(find.text('Local Storage & Backup'));
+    await tester.pumpAndSettle();
+
     // Find and tap "Reset Database"
     final resetFinder = find.text('Reset Database');
-    await tester.scrollUntilVisible(
-      resetFinder,
-      500,
-      scrollable: find.byType(Scrollable).first,
-    );
     expect(resetFinder, findsOneWidget);
     await tester.tap(resetFinder);
     await tester.pumpAndSettle();
@@ -395,7 +413,7 @@ void main() {
     expect(find.text('Welcome Screen'), findsOneWidget);
   });
 
-  testWidgets('SettingsScreen displays Appearance & Theme section with mode and palette options',
+  testWidgets('AppearanceSettingsScreen displays mode and palette options and updates theme',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 2000);
     tester.view.devicePixelRatio = 1.0;
@@ -420,7 +438,11 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Appearance & Theme'), findsOneWidget);
+    // Navigate to Appearance & Theme sub-screen
+    await tester.tap(find.text('Appearance & Theme'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Theme Mode'), findsOneWidget);
     expect(find.text('System Default'), findsOneWidget);
     expect(find.text('Light'), findsOneWidget);
     expect(find.text('Dark'), findsOneWidget);
@@ -439,4 +461,3 @@ void main() {
     verify(() => mockSecureStorage.setThemePreset('emerald_green')).called(1);
   });
 }
-

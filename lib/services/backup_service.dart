@@ -341,50 +341,6 @@ class BackupService {
     }
   }
 
-  Future<String> getLastBackupDateTime() async {
-    final driveApi = await _getDriveApi(interactive: true);
-    if (driveApi == null) {
-      return '';
-    }
-
-    try {
-      final fileList = await driveApi.files.list(
-        spaces: 'appDataFolder',
-        $fields: 'files(id, name, modifiedTime)',
-      );
-
-      if (fileList.files == null || fileList.files!.isEmpty) {
-        return 'Never';
-      }
-
-      // Check encrypted first, then unencrypted db
-      final encFile = fileList.files!.firstWhere(
-        (f) => f.name == 'opencloudhealth_encrypted_backup.enc',
-        orElse: () => drive.File(),
-      );
-
-      if (encFile.modifiedTime != null) {
-        return DateFormat('yyyy-MM-dd HH:mm')
-            .format(encFile.modifiedTime!.toLocal());
-      }
-
-      final dbFile = fileList.files!.firstWhere(
-        (f) => f.name == 'opencloudhealth.db',
-        orElse: () => drive.File(),
-      );
-
-      if (dbFile.modifiedTime != null) {
-        return DateFormat('yyyy-MM-dd HH:mm')
-            .format(dbFile.modifiedTime!.toLocal());
-      }
-
-      return 'Never';
-    } catch (e) {
-      debugPrint('Error getting last backup date: $e');
-      return 'Error';
-    }
-  }
-
   Future<void> _downloadFile(String fileId, String fileName, String restorePath,
       drive.DriveApi driveApi) async {
     try {

@@ -311,11 +311,6 @@ final periodProvider =
     AsyncNotifierProvider.family<PeriodNotifier, PeriodState, String>(
         PeriodNotifier.new);
 
-final cycleLogsProvider = FutureProvider.family<List<PeriodLog>, String>((ref, cycleId) async {
-  final repository = ref.read(periodRepositoryProvider);
-  return repository.getLogsForCycle(cycleId);
-});
-
 final allPeriodLogsProvider = FutureProvider.family<List<PeriodLog>, String>((ref, profileId) async {
   final repository = ref.read(periodRepositoryProvider);
   final cycles = await repository.getCycles(profileId);

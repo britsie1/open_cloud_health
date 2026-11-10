@@ -87,6 +87,30 @@ void main() {
         ctx: ctx,
         screenBuilder: (c) => const SettingsScreen(),
       );
+      await testScreenAcrossMatrix(
+        tester,
+        screenName: 'AppearanceSettingsScreen',
+        ctx: ctx,
+        screenBuilder: (c) => const AppearanceSettingsScreen(),
+      );
+      await testScreenAcrossMatrix(
+        tester,
+        screenName: 'CloudBackupSettingsScreen',
+        ctx: ctx,
+        screenBuilder: (c) => const CloudBackupSettingsScreen(),
+      );
+      await testScreenAcrossMatrix(
+        tester,
+        screenName: 'LocalStorageSettingsScreen',
+        ctx: ctx,
+        screenBuilder: (c) => const LocalStorageSettingsScreen(),
+      );
+      await testScreenAcrossMatrix(
+        tester,
+        screenName: 'AboutSettingsScreen',
+        ctx: ctx,
+        screenBuilder: (c) => const AboutSettingsScreen(),
+      );
     });
 
     testWidgets('SecuritySetupScreen layout across device & text scale matrix', (tester) async {

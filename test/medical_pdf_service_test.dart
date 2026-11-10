@@ -11,7 +11,8 @@ import 'package:open_cloud_health/models/period_cycle.dart';
 import 'package:open_cloud_health/models/period_log.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/models/vital_log.dart';
-import 'package:open_cloud_health/providers/medical_pdf_provider.dart';
+import 'package:open_cloud_health/models/pdf_export_options.dart';
+import 'package:open_cloud_health/services/medical_pdf_service.dart';
 
 void main() {
   group('MedicalPdfExportOptions & Date Filters Tests', () {
@@ -55,25 +56,6 @@ void main() {
       expect(modified.includeMedications, isFalse);
       expect(modified.includeVitals, isTrue);
       expect(modified.dateRange, PdfDateRangeFilter.last90Days);
-    });
-
-    test('PdfExportParams equality and hashing test', () {
-      const params1 = PdfExportParams(
-        profileId: 'p-1',
-        options: MedicalPdfExportOptions(includeAllergies: true),
-      );
-      const params2 = PdfExportParams(
-        profileId: 'p-1',
-        options: MedicalPdfExportOptions(includeAllergies: true),
-      );
-      const params3 = PdfExportParams(
-        profileId: 'p-2',
-        options: MedicalPdfExportOptions(includeAllergies: true),
-      );
-
-      expect(params1, equals(params2));
-      expect(params1.hashCode, equals(params2.hashCode));
-      expect(params1, isNot(equals(params3)));
     });
   });
 

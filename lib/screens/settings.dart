@@ -16,6 +16,8 @@ import 'package:open_cloud_health/providers/period_provider.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/providers/theme_provider.dart';
 import 'package:open_cloud_health/providers/vitals_provider.dart';
+import 'package:open_cloud_health/screens/emergency_settings.dart';
+import 'package:open_cloud_health/screens/security_setup.dart';
 import 'package:open_cloud_health/services/backup_service.dart';
 import 'package:open_cloud_health/services/file_service.dart';
 import 'package:open_cloud_health/services/notification_service.dart';
@@ -29,6 +31,83 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// Shared helper for HomeScreen-inspired rounded surface containers.
+BoxDecoration _buildSurfaceCardDecoration(BuildContext context) {
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
+  return BoxDecoration(
+    color: theme.cardTheme.color ?? theme.colorScheme.surface,
+    borderRadius: BorderRadius.circular(24),
+    border: isDark ? Border.all(color: const Color(0xFF2C2C2C)) : null,
+    boxShadow: isDark
+        ? null
+        : [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+  );
+}
+
+/// Shared monotone icon badge used across Settings and its sub-screens.
+Widget _buildMonotoneIconBadge(
+  BuildContext context,
+  IconData icon, {
+  double size = 22,
+  double padding = 11,
+}) {
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
+  return Container(
+    padding: EdgeInsets.all(padding),
+    decoration: BoxDecoration(
+      color: theme.colorScheme.onSurface.withOpacity(isDark ? 0.08 : 0.05),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Icon(
+      icon,
+      size: size,
+      color: theme.colorScheme.onSurface,
+    ),
+  );
+}
+
+/// Shared HomeScreen-style section header with monotone icon and bold title.
+Widget _buildSectionHeader(
+  BuildContext context, {
+  required IconData icon,
+  required String title,
+  Widget? trailing,
+}) {
+  final onSurface = Theme.of(context).colorScheme.onSurface;
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Expanded(
+        child: Row(
+          children: [
+            Icon(icon, color: onSurface, size: 20),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+      if (trailing != null) trailing,
+    ],
+  );
+}
+
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
@@ -37,6 +116,418 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  double _databaseSizeKb = 0;
+  double _documentsFileSizeKb = 0;
+  bool _isConnectedToGoogle = false;
+  String? _connectedEmail;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSummaries();
+  }
+
+  Future<void> _loadSummaries() async {
+    ref.read(appDatabaseProvider).getDatabaseSize().then((value) {
+      if (mounted) {
+        setState(() => _databaseSizeKb = value / 1024);
+      }
+    });
+
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final files = appDir.listSync(recursive: true);
+      var size = 0;
+      if (files.isNotEmpty) {
+        size = files
+            .where((file) => p.basename(file.path) != 'opencloudhealth.db')
+            .map((file) => file is File ? File(file.path).lengthSync() : 0)
+            .fold(0, (prev, elem) => prev + elem);
+      }
+      if (mounted) {
+        setState(() => _documentsFileSizeKb = size / 1024);
+      }
+    } catch (e) {
+      debugPrint('Error calculating local document size: $e');
+    }
+
+    try {
+      final user = await ref.read(backupServiceProvider).getConnectedUser();
+      if (mounted) {
+        setState(() {
+          _isConnectedToGoogle = user != null;
+          _connectedEmail = user?.email;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking Google connection: $e');
+    }
+  }
+
+  Future<void> _openScreen(Widget screen) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => screen),
+    );
+    if (mounted) {
+      _loadSummaries();
+    }
+  }
+
+  Future<void> _openSecuritySetup() async {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      await context.push(AppRoutes.securitySetup);
+    } else {
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const SecuritySetupScreen()),
+      );
+    }
+    if (mounted) {
+      _loadSummaries();
+    }
+  }
+
+  Future<void> _openEmergencySettings() async {
+    final lastProfileId =
+        await ref.read(secureStorageProvider).getLastProfileId();
+    if (!mounted) return;
+    final profiles = ref.read(profilesProvider).value ?? [];
+    if (profiles.isNotEmpty) {
+      final activeProfileId = lastProfileId ?? profiles.first.id;
+      if (!mounted) return;
+      final router = GoRouter.maybeOf(context);
+      if (router != null) {
+        await context.push('${AppRoutes.emergencySettings}/$activeProfileId');
+      } else {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) =>
+                EmergencySettingsScreen(profileId: activeProfileId),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please create a profile first.'),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeSettings = ref.watch(themeSettingsProvider);
+    final totalLocalKb =
+        (_databaseSizeKb + _documentsFileSizeKb).toStringAsFixed(1);
+    final googleSubtitle = _isConnectedToGoogle
+        ? (_connectedEmail != null && _connectedEmail!.isNotEmpty
+            ? 'Connected • $_connectedEmail'
+            : 'Connected to Google Drive')
+        : 'Not connected • Cloud sync';
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Settings'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              decoration: _buildSurfaceCardDecoration(context),
+              child: Column(
+                children: [
+                  _SettingsNavTile(
+                    icon: Icons.palette_outlined,
+                    title: 'Appearance & Theme',
+                    subtitle:
+                        '${themeSettings.themeMode.displayName} • ${themeSettings.preset.name}',
+                    onTap: () => _openScreen(const AppearanceSettingsScreen()),
+                  ),
+                  const Divider(height: 1, indent: 72, endIndent: 16),
+                  _SettingsNavTile(
+                    icon: Icons.cloud_outlined,
+                    title: 'Google Drive Backup',
+                    subtitle: googleSubtitle,
+                    onTap: () => _openScreen(const CloudBackupSettingsScreen()),
+                  ),
+                  const Divider(height: 1, indent: 72, endIndent: 16),
+                  _SettingsNavTile(
+                    icon: Icons.lock_outline,
+                    title: 'App Lock & Security',
+                    subtitle: 'Biometrics, PIN & encryption',
+                    onTap: _openSecuritySetup,
+                  ),
+                  const Divider(height: 1, indent: 72, endIndent: 16),
+                  _SettingsNavTile(
+                    icon: Icons.medical_information_outlined,
+                    title: 'Emergency Lock Screen Info',
+                    subtitle: 'Contacts, allergies & conditions',
+                    onTap: _openEmergencySettings,
+                  ),
+                  const Divider(height: 1, indent: 72, endIndent: 16),
+                  _SettingsNavTile(
+                    icon: Icons.folder_outlined,
+                    title: 'Local Storage & Backup',
+                    subtitle: '$totalLocalKb KB • Export, import & reset',
+                    onTap: () =>
+                        _openScreen(const LocalStorageSettingsScreen()),
+                  ),
+                  const Divider(height: 1, indent: 72, endIndent: 16),
+                  _SettingsNavTile(
+                    icon: Icons.info_outline,
+                    title: 'About & Privacy',
+                    subtitle: 'Privacy policy & disclaimer',
+                    onTap: () => _openScreen(const AboutSettingsScreen()),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsNavTile extends StatelessWidget {
+  const _SettingsNavTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      horizontalTitleGap: 14,
+      leading: _buildMonotoneIconBadge(context, icon),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: theme.colorScheme.onSurface,
+        ),
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 3.0),
+        child: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 13,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      trailing: Icon(
+        Icons.chevron_right,
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+      onTap: onTap,
+    );
+  }
+}
+
+// =============================================================================
+// 1. APPEARANCE & THEME SUB-SCREEN
+// =============================================================================
+
+class AppearanceSettingsScreen extends ConsumerWidget {
+  const AppearanceSettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final themeSettings = ref.watch(themeSettingsProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Appearance & Theme'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader(
+              context,
+              icon: Icons.brightness_6_outlined,
+              title: 'Theme Mode',
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: _buildSurfaceCardDecoration(context),
+              child: Column(
+                children: [
+                  for (var i = 0; i < AppThemeMode.values.length; i++) ...[
+                    if (i > 0)
+                      const Divider(height: 1, indent: 76, endIndent: 20),
+                    Builder(
+                      builder: (context) {
+                        final mode = AppThemeMode.values[i];
+                        final isSelected = themeSettings.themeMode == mode;
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 6,
+                          ),
+                          leading: _buildMonotoneIconBadge(context, mode.icon),
+                          title: Text(
+                            mode.displayName,
+                            style: TextStyle(
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          subtitle: Text(
+                            mode.description,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          trailing: isSelected
+                              ? Icon(
+                                  Icons.check_circle,
+                                  color: theme.colorScheme.onSurface,
+                                )
+                              : Icon(
+                                  Icons.circle_outlined,
+                                  color: theme.colorScheme.onSurfaceVariant
+                                      .withOpacity(0.5),
+                                ),
+                          onTap: () {
+                            ref
+                                .read(themeNotifierProvider.notifier)
+                                .setThemeMode(mode);
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Divider(height: 1),
+            const SizedBox(height: 24),
+            _buildSectionHeader(
+              context,
+              icon: Icons.palette_outlined,
+              title: 'Color Theme',
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: _buildSurfaceCardDecoration(context),
+              child: Column(
+                children: [
+                  for (var i = 0; i < AppThemePresets.all.length; i++) ...[
+                    if (i > 0)
+                      const Divider(height: 1, indent: 76, endIndent: 20),
+                    Builder(
+                      builder: (context) {
+                        final preset = AppThemePresets.all[i];
+                        final isSelected = themeSettings.presetId == preset.id;
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 6,
+                          ),
+                          leading: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.onSurface
+                                  .withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Center(
+                              child: Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: preset.primaryColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            preset.name,
+                            style: TextStyle(
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          subtitle: Text(
+                            preset.description,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          trailing: isSelected
+                              ? Icon(
+                                  Icons.check_circle,
+                                  color: theme.colorScheme.onSurface,
+                                )
+                              : Icon(
+                                  Icons.circle_outlined,
+                                  color: theme.colorScheme.onSurfaceVariant
+                                      .withOpacity(0.5),
+                                ),
+                          onTap: () {
+                            ref
+                                .read(themeNotifierProvider.notifier)
+                                .setThemePreset(preset.id);
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// 2. GOOGLE DRIVE BACKUP SUB-SCREEN
+// =============================================================================
+
+class CloudBackupSettingsScreen extends ConsumerStatefulWidget {
+  const CloudBackupSettingsScreen({super.key});
+
+  @override
+  ConsumerState<CloudBackupSettingsScreen> createState() =>
+      _CloudBackupSettingsScreenState();
+}
+
+class _CloudBackupSettingsScreenState
+    extends ConsumerState<CloudBackupSettingsScreen> {
   double _databaseSizeKb = 0;
   double _documentsFileSizeKb = 0;
   bool _isLoadingStorage = true;
@@ -64,24 +555,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     try {
       final appDir = await getApplicationDocumentsDirectory();
-      var files = appDir.listSync(recursive: true);
+      final files = appDir.listSync(recursive: true);
       var size = 0;
-
       if (files.isNotEmpty) {
         size = files
             .where((file) => p.basename(file.path) != 'opencloudhealth.db')
-            .map((file) {
-          if (file is File) {
-            return File(file.path).lengthSync();
-          }
-          return 0;
-        }).fold(0, (previousValue, element) => previousValue + element);
+            .map((file) => file is File ? File(file.path).lengthSync() : 0)
+            .fold(0, (prev, elem) => prev + elem);
       }
-
       if (mounted) {
-        setState(() {
-          _documentsFileSizeKb = size / 1024;
-        });
+        setState(() => _documentsFileSizeKb = size / 1024);
       }
     } catch (e) {
       debugPrint('Error calculating local document size: $e');
@@ -148,7 +631,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Connected to Google Drive successfully'),
-              backgroundColor: Colors.green,
             ),
           );
         }
@@ -189,7 +671,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Disconnect'),
           ),
         ],
@@ -236,10 +717,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             SnackBar(
               content: Text(
                 _isE2eEnabled
-                    ? 'Medical data encrypted & backed up to Google Drive 🔒'
+                    ? 'Medical data encrypted & backed up to Google Drive'
                     : 'Medical data backed up to Google Drive',
               ),
-              backgroundColor: Colors.green,
             ),
           );
         }
@@ -282,7 +762,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Future<void> _toggleBackupWifiOnly(bool val) async {
+    await ref.read(secureStorageProvider).setBackupWifiOnly(val);
+    setState(() => _isBackupWifiOnly = val);
+  }
+
+  String _getFrequencySubtitle(BackupFrequency frequency) {
+    switch (frequency) {
+      case BackupFrequency.daily:
+        return 'Daily • Idle hours (2:00 AM – 5:00 AM)';
+      case BackupFrequency.weekly:
+        return 'Weekly • Idle hours (2:00 AM – 5:00 AM)';
+      case BackupFrequency.monthly:
+        return 'Monthly • Idle hours (2:00 AM – 5:00 AM)';
+      case BackupFrequency.manual:
+        return 'Only when I tap "Back up"';
+      case BackupFrequency.never:
+        return 'Never';
+    }
+  }
+
   void _showBackupFrequencyDialog() {
+    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
@@ -292,7 +793,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       isDismissible: true,
       enableDrag: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => SafeArea(
@@ -302,8 +803,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             child: SingleChildScrollView(
               padding: EdgeInsets.only(
-                left: 20.0,
-                right: 20.0,
+                left: 24.0,
+                right: 24.0,
                 top: 8.0,
                 bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
               ),
@@ -313,20 +814,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.schedule, color: Colors.blue.shade700, size: 22),
-                      ),
+                      _buildMonotoneIconBadge(context, Icons.schedule_outlined),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
+                            const Text(
                               'Back up to Google Drive',
                               style: TextStyle(
                                 fontSize: 17,
@@ -335,7 +829,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ),
                             Text(
                               'Idle Hours Auto-Backup',
-                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
                             ),
                           ],
                         ),
@@ -347,27 +844,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue.shade100),
+                      color: theme.colorScheme.onSurface.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.nightlight_round,
-                            size: 18, color: Colors.blue.shade800),
+                        Icon(
+                          Icons.nightlight_outlined,
+                          size: 18,
+                          color: theme.colorScheme.onSurface,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             'Automated backups run overnight during idle hours (2:00 AM – 5:00 AM) when your device is charging and connected.',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.blue.shade900,
+                              color: theme.colorScheme.onSurfaceVariant,
                               height: 1.35,
                             ),
                           ),
@@ -389,23 +888,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           Navigator.of(ctx).pop();
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Backup frequency set to ${freq.displayName}'),
+                              content: Text(
+                                  'Backup frequency set to ${freq.displayName}'),
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
                         }
                       },
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 8.0, horizontal: 4.0),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Radio<BackupFrequency>(
                               value: freq,
                               groupValue: _frequency,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              activeColor: Colors.blue.shade700,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              activeColor: theme.colorScheme.onSurface,
                               onChanged: (BackupFrequency? val) async {
                                 if (val != null) {
                                   await ref
@@ -417,7 +919,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                     Navigator.of(ctx).pop();
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text('Backup frequency set to ${val.displayName}'),
+                                        content: Text(
+                                            'Backup frequency set to ${val.displayName}'),
                                         behavior: SnackBarBehavior.floating,
                                       ),
                                     );
@@ -433,9 +936,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   Text(
                                     freq.displayName,
                                     style: TextStyle(
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.w600,
                                       fontSize: 14,
-                                      color: isSelected ? Colors.blue.shade900 : Colors.black87,
+                                      color: theme.colorScheme.onSurface,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
@@ -443,7 +948,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                     freq.description,
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: isSelected ? Colors.blue.shade800 : Colors.grey.shade600,
+                                      color: theme.colorScheme.onSurfaceVariant,
                                       height: 1.25,
                                     ),
                                   ),
@@ -464,920 +969,537 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Future<void> _toggleBackupWifiOnly(bool val) async {
-    await ref.read(secureStorageProvider).setBackupWifiOnly(val);
-    setState(() => _isBackupWifiOnly = val);
-  }
-
-  Future<void> _resetDB() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.red),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Reset All Data',
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        content: const Text(
-          'This will permanently delete all local patient profiles, history logs, medication schedules, and attachments. This action cannot be undone.\n\nAre you sure you want to proceed?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Reset Everything'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    // 1. Cancel all notifications & alarms
-    await ref.read(notificationServiceProvider).cancelAllNotifications();
-
-    // 2. Delete all physical documents, photos, and local files
-    await ref.read(fileServiceProvider).deleteAllLocalFiles();
-
-    // 3. Wipe and close SQLite database files
-    await ref.read(appDatabaseProvider).resetDatabase();
-
-    // 4. Clear all secure storage credentials, keys, and cached state
-    await ref.read(secureStorageProvider).clear();
-
-    // 6. Invalidate database and all Riverpod state providers
-    ref.invalidate(appDatabaseProvider);
-    ref.invalidate(profilesProvider);
-    ref.invalidate(historyProvider);
-    ref.invalidate(allergiesProvider);
-    ref.invalidate(medicationsProvider);
-    ref.invalidate(medicationLogsProvider);
-    ref.invalidate(checkupsProvider);
-    ref.invalidate(periodProvider);
-    ref.invalidate(vitalsProvider);
-    ref.invalidate(emergencyContactsProvider);
-    ref.invalidate(lockScreenSettingsProvider);
-    ref.invalidate(primaryProfileIdProvider);
-
-    // 7. Route directly to Welcome screen
-    if (!mounted) return;
-    context.go(AppRoutes.welcome);
-  }
-
-  Color _getStorageProgressColor(double fraction) {
-    if (fraction >= 0.95) return Colors.red;
-    if (fraction >= 0.80) return Colors.amber.shade800;
-    return Theme.of(context).colorScheme.primary;
-  }
-
-  String _getFrequencySubtitle(BackupFrequency frequency) {
-    switch (frequency) {
-      case BackupFrequency.daily:
-        return 'Daily • Idle hours (2:00 AM – 5:00 AM)';
-      case BackupFrequency.weekly:
-        return 'Weekly • Idle hours (2:00 AM – 5:00 AM)';
-      case BackupFrequency.monthly:
-        return 'Monthly • Idle hours (2:00 AM – 5:00 AM)';
-      case BackupFrequency.manual:
-        return 'Only when I tap "Back up"';
-      case BackupFrequency.never:
-        return 'Never';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        children: [
-          _buildAppearanceSection(),
-          const SizedBox(height: 20),
-          _buildGoogleBackupSection(),
-          const SizedBox(height: 20),
-          _buildSecuritySection(),
-          const SizedBox(height: 20),
-          _buildLocalStorageSection(),
-          const SizedBox(height: 20),
-          _buildAboutSection(),
-          const SizedBox(height: 24),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAppearanceSection() {
     final theme = Theme.of(context);
-    final themeSettings = ref.watch(themeSettingsProvider);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: isDark ? const Color(0xFF2C2C2C) : Colors.grey.shade200,
-        ),
-      ),
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.palette_outlined,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Appearance & Theme',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '${themeSettings.themeMode.displayName} • ${themeSettings.preset.name}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Theme Mode Selector (System, Light, Dark)
-            Row(
-              children: AppThemeMode.values.map((mode) {
-                final isSelected = themeSettings.themeMode == mode;
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3.0),
-                    child: InkWell(
-                      onTap: () {
-                        ref.read(themeNotifierProvider.notifier).setThemeMode(mode);
-                      },
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? theme.colorScheme.primary.withOpacity(0.12)
-                              : (isDark ? const Color(0xFF2A2A2A) : Colors.white),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isSelected
-                                ? theme.colorScheme.primary
-                                : (isDark ? const Color(0xFF383838) : Colors.grey.shade300),
-                            width: isSelected ? 1.5 : 1,
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              mode.icon,
-                              size: 20,
-                              color: isSelected
-                                  ? theme.colorScheme.primary
-                                  : (isDark ? Colors.grey.shade400 : Colors.grey.shade700),
-                            ),
-                            const SizedBox(height: 4),
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                mode.displayName,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight:
-                                      isSelected ? FontWeight.bold : FontWeight.w500,
-                                  color: isSelected
-                                      ? theme.colorScheme.primary
-                                      : (isDark ? Colors.grey.shade300 : Colors.grey.shade800),
-                                ),
-                                maxLines: 1,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
-            // Theme Palette Header & Swatches
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Text(
-                    'Color Theme',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    themeSettings.preset.name,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 48,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: AppThemePresets.all.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final preset = AppThemePresets.all[index];
-                  final isSelected = themeSettings.presetId == preset.id;
-                  return InkWell(
-                    onTap: () {
-                      ref.read(themeNotifierProvider.notifier).setThemePreset(preset.id);
-                    },
-                    borderRadius: BorderRadius.circular(22),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? preset.primaryColor.withOpacity(0.15)
-                            : (isDark ? const Color(0xFF282828) : Colors.white),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(
-                          color: isSelected
-                              ? preset.primaryColor
-                              : (isDark ? const Color(0xFF3A3A3A) : Colors.grey.shade300),
-                          width: isSelected ? 2 : 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 18,
-                            height: 18,
-                            decoration: BoxDecoration(
-                              color: preset.primaryColor,
-                              shape: BoxShape.circle,
-                            ),
-                            child: isSelected
-                                ? const Icon(
-                                    Icons.check,
-                                    size: 12,
-                                    color: Colors.white,
-                                  )
-                                : null,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            preset.name,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight:
-                                  isSelected ? FontWeight.bold : FontWeight.w500,
-                              color: isSelected
-                                  ? (isDark ? Colors.white : preset.primaryColor)
-                                  : (isDark ? Colors.grey.shade300 : Colors.grey.shade700),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGoogleBackupSection() {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: isDark ? const Color(0xFF2C2C2C) : Colors.grey.shade200,
-        ),
-      ),
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.cloud_sync_outlined, color: theme.colorScheme.primary),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              'Google Drive Backup',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (_isE2eEnabled) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade100,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.lock,
-                                      size: 10, color: Colors.green.shade900),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    'E2E',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green.shade900,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      Text(
-                        _isConnectedToGoogle
-                            ? (_isE2eEnabled
-                                ? 'Encrypted cloud backup active 🔒'
-                                : 'Cloud backup active')
-                            : 'Backup medical data to your Drive',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (_isConnectedToGoogle)
-                  IconButton(
-                    icon: const Icon(Icons.refresh, size: 20),
-                    tooltip: 'Refresh Storage Info',
-                    onPressed: _checkGoogleConnection,
-                  ),
-              ],
-            ),
-            const Divider(height: 24),
-            if (_isLoadingStorage)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: CircularProgressIndicator(),
-                ),
-              )
-            else if (!_isConnectedToGoogle) ...[
-              Text(
-                'Connect your Google Account to back up all patient histories, medication schedules, and attachments securely into your personal Google Drive App Data folder.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey.shade700,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _connectToGoogle,
-                  icon: const Icon(Icons.add_to_drive),
-                  label: const Text('Connect to Google Drive'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
-            ] else ...[
-              // Account Tile
-              _buildAccountRow(),
-              const SizedBox(height: 16),
-
-              // Storage Usage Bar
-              _buildStorageMeter(),
-              const SizedBox(height: 16),
-
-              // Medical Backup stats
-              _buildBackupStats(),
-              const SizedBox(height: 16),
-
-              // Auto-Backup Settings Card (WhatsApp style)
-              _buildAutoBackupSettingsCard(),
-              const SizedBox(height: 16),
-
-              // Action Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _isBackingUp ? null : _uploadBackup,
-                      icon: _isBackingUp
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.cloud_upload_outlined),
-                      label:
-                          Text(_isBackingUp ? 'Backing up...' : 'Back Up Now'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // Manage Google Storage link & Disconnect option
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  TextButton.icon(
-                    onPressed: _openManageGoogleStorage,
-                    icon: const Icon(Icons.open_in_new, size: 16),
-                    label: const Text('Manage Google Storage'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: theme.colorScheme.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: _disconnectGoogle,
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.red.shade700,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                    ),
-                    child: const Text('Disconnect'),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAccountRow() {
-    final info = _storageInfo;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: Colors.blue.shade100,
-            backgroundImage:
-                (info?.photoUrl != null && info!.photoUrl!.isNotEmpty)
-                    ? NetworkImage(info.photoUrl!)
-                    : null,
-            child: (info?.photoUrl == null || info!.photoUrl!.isEmpty)
-                ? Text(
-                    (info?.displayName?.isNotEmpty == true)
-                        ? info!.displayName![0].toUpperCase()
-                        : (info?.userEmail?.isNotEmpty == true
-                            ? info!.userEmail![0].toUpperCase()
-                            : 'G'),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue,
-                    ),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  info?.displayName ?? 'Google Account',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (info?.userEmail != null)
-                  Text(
-                    info!.userEmail!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStorageMeter() {
-    final info = _storageInfo;
-    if (info == null) return const SizedBox.shrink();
-
-    final fraction = info.usageFraction;
-    final progressColor = _getStorageProgressColor(fraction);
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.pie_chart_outline, size: 16, color: Colors.grey),
-                  SizedBox(width: 6),
-                  Text(
-                    'Google Storage',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-              if (!info.isUnlimited)
-                Text(
-                  FormatUtils.formatPercentage(fraction),
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    color: progressColor,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: info.isUnlimited ? null : fraction,
-              minHeight: 8,
-              backgroundColor: Colors.grey.shade200,
-              valueColor: AlwaysStoppedAnimation<Color>(progressColor),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '${info.formattedUsed} of ${info.formattedTotal} used',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-              Text(
-                '${info.formattedAvailable} available',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade800,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBackupStats() {
     final info = _storageInfo;
     final backupSize = (info != null && info.appBackupBytes > 0)
         ? info.formattedAppBackup
         : '${(_databaseSizeKb + _documentsFileSizeKb).toStringAsFixed(1)} KB (local)';
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Icon(
-                      _isE2eEnabled
-                          ? Icons.lock_outline
-                          : Icons.folder_zip_outlined,
-                      size: 16,
-                      color: _isE2eEnabled
-                          ? Colors.green.shade700
-                          : Colors.blue.shade700,
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        _isE2eEnabled
-                            ? 'Encrypted Backup Size'
-                            : 'Medical Data Backup Size',
-                        style: const TextStyle(fontSize: 13),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                backupSize,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-          const Divider(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Icon(Icons.schedule, size: 16, color: Colors.grey.shade600),
-                    const SizedBox(width: 8),
-                    const Flexible(
-                      child: Text(
-                        'Last Cloud Backup',
-                        style: TextStyle(fontSize: 13),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _lastBackupDateTime,
-                style: TextStyle(
-                  color: Colors.grey.shade700,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Google Drive Backup'),
+        actions: [
+          if (_isConnectedToGoogle)
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Refresh Storage Info',
+              onPressed: _checkGoogleConnection,
+            ),
         ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: _isLoadingStorage
+            ? const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 48),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            : !_isConnectedToGoogle
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionHeader(
+                        context,
+                        icon: Icons.cloud_outlined,
+                        title: 'Cloud Connection',
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: _buildSurfaceCardDecoration(context),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                _buildMonotoneIconBadge(
+                                    context, Icons.cloud_sync_outlined),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Google Drive Backup',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: theme.colorScheme.onSurface,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Backup medical data to your Drive',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: theme
+                                              .colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Connect your Google Account to back up all patient histories, medication schedules, and attachments securely into your personal Google Drive App Data folder.',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: theme.colorScheme.onSurfaceVariant,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton.icon(
+                                onPressed: _connectToGoogle,
+                                icon: const Icon(Icons.add_to_drive),
+                                label: const Text('Connect to Google Drive'),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: theme.colorScheme.onSurface,
+                                  foregroundColor: theme.colorScheme.surface,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionHeader(
+                        context,
+                        icon: Icons.person_outline,
+                        title: 'Connected Account',
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: _buildSurfaceCardDecoration(context),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 22,
+                                  backgroundColor: theme.colorScheme.onSurface
+                                      .withOpacity(0.08),
+                                  backgroundImage: (info?.photoUrl != null &&
+                                          info!.photoUrl!.isNotEmpty)
+                                      ? NetworkImage(info.photoUrl!)
+                                      : null,
+                                  child: (info?.photoUrl == null ||
+                                          info!.photoUrl!.isEmpty)
+                                      ? Text(
+                                          (info?.displayName?.isNotEmpty ==
+                                                  true)
+                                              ? info!.displayName![0]
+                                                  .toUpperCase()
+                                              : (info?.userEmail?.isNotEmpty ==
+                                                      true
+                                                  ? info!.userEmail![0]
+                                                      .toUpperCase()
+                                                  : 'G'),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: theme.colorScheme.onSurface,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        info?.displayName ?? 'Google Account',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: theme.colorScheme.onSurface,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      if (info?.userEmail != null) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          info!.userEmail!,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: theme
+                                                .colorScheme.onSurfaceVariant,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton.icon(
+                                onPressed: _isBackingUp ? null : _uploadBackup,
+                                icon: _isBackingUp
+                                    ? SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: theme.colorScheme.surface,
+                                        ),
+                                      )
+                                    : const Icon(Icons.cloud_upload_outlined),
+                                label: Text(
+                                  _isBackingUp
+                                      ? 'Backing up...'
+                                      : 'Back Up Now',
+                                ),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: theme.colorScheme.onSurface,
+                                  foregroundColor: theme.colorScheme.surface,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const Divider(height: 1),
+                      const SizedBox(height: 24),
+                      _buildSectionHeader(
+                        context,
+                        icon: Icons.pie_chart_outline,
+                        title: 'Google Storage',
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: _buildSurfaceCardDecoration(context),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (info != null) ...[
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '${info.formattedUsed} of ${info.formattedTotal} used',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  if (!info.isUnlimited)
+                                    Text(
+                                      FormatUtils.formatPercentage(
+                                          info.usageFraction),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                        color: theme
+                                            .colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: LinearProgressIndicator(
+                                  value: info.isUnlimited
+                                      ? null
+                                      : info.usageFraction,
+                                  minHeight: 8,
+                                  backgroundColor: theme.colorScheme.onSurface
+                                      .withOpacity(0.1),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '${info.formattedAvailable} available',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Divider(height: 1),
+                              ),
+                            ],
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        _isE2eEnabled
+                                            ? Icons.lock_outline
+                                            : Icons.folder_zip_outlined,
+                                        size: 18,
+                                        color: theme.colorScheme.onSurface,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Flexible(
+                                        child: Text(
+                                          _isE2eEnabled
+                                              ? 'Encrypted Backup Size'
+                                              : 'Medical Data Backup Size',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: theme.colorScheme.onSurface,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  backupSize,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.schedule_outlined,
+                                        size: 18,
+                                        color: theme.colorScheme.onSurface,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Flexible(
+                                        child: Text(
+                                          'Last Cloud Backup',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: theme.colorScheme.onSurface,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _lastBackupDateTime,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const Divider(height: 1),
+                      const SizedBox(height: 24),
+                      _buildSectionHeader(
+                        context,
+                        icon: Icons.schedule_outlined,
+                        title: 'Auto-Backup Schedule',
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        decoration: _buildSurfaceCardDecoration(context),
+                        child: Column(
+                          children: [
+                            ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 6),
+                              leading: _buildMonotoneIconBadge(
+                                  context, Icons.schedule_outlined),
+                              title: Text(
+                                'Back up to Google Drive',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 3.0),
+                                child: Text(
+                                  _getFrequencySubtitle(_frequency),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                              trailing: Icon(
+                                Icons.chevron_right,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              onTap: _showBackupFrequencyDialog,
+                            ),
+                            const Divider(height: 1, indent: 76, endIndent: 20),
+                            SwitchListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 4),
+                              secondary: _buildMonotoneIconBadge(
+                                  context, Icons.wifi_outlined),
+                              title: Text(
+                                'Back up over Wi-Fi only',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 2.0),
+                                child: Text(
+                                  _isBackupWifiOnly
+                                      ? 'Avoid cellular data usage'
+                                      : 'Back up over Wi-Fi or cellular data',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                              value: _isBackupWifiOnly,
+                              onChanged: _toggleBackupWifiOnly,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          TextButton.icon(
+                            onPressed: _openManageGoogleStorage,
+                            icon: Icon(
+                              Icons.open_in_new,
+                              size: 16,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                            label: Text(
+                              'Manage Google Storage',
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _disconnectGoogle,
+                            child: Text(
+                              'Disconnect',
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
       ),
     );
   }
+}
 
-  Widget _buildAutoBackupSettingsCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        children: [
-          ListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.schedule_outlined,
-                  color: Colors.blue.shade700, size: 20),
-            ),
-            title: const Text(
-              'Back up to Google Drive',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-            ),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 3.0),
-              child: Text(
-                _getFrequencySubtitle(_frequency),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: _frequency.isAutomated
-                      ? Colors.blue.shade800
-                      : Colors.grey.shade700,
-                  fontWeight: _frequency.isAutomated
-                      ? FontWeight.w500
-                      : FontWeight.normal,
-                ),
-              ),
-            ),
-            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-            onTap: _showBackupFrequencyDialog,
-          ),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          SwitchListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-            secondary: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.wifi, color: Colors.blue.shade700, size: 20),
-            ),
-            title: const Text(
-              'Back up over Wi-Fi only',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-            ),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 2.0),
-              child: Text(
-                _isBackupWifiOnly
-                    ? 'Avoid cellular data usage'
-                    : 'Back up over Wi-Fi or cellular data',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ),
-            value: _isBackupWifiOnly,
-            onChanged: _toggleBackupWifiOnly,
-          ),
-        ],
-      ),
-    );
+// =============================================================================
+// 3. LOCAL STORAGE & BACKUP SUB-SCREEN
+// =============================================================================
+
+class LocalStorageSettingsScreen extends ConsumerStatefulWidget {
+  const LocalStorageSettingsScreen({super.key});
+
+  @override
+  ConsumerState<LocalStorageSettingsScreen> createState() =>
+      _LocalStorageSettingsScreenState();
+}
+
+class _LocalStorageSettingsScreenState
+    extends ConsumerState<LocalStorageSettingsScreen> {
+  double _databaseSizeKb = 0;
+  double _documentsFileSizeKb = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocalSizes();
   }
 
-  Widget _buildSecuritySection() {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+  Future<void> _loadLocalSizes() async {
+    ref.read(appDatabaseProvider).getDatabaseSize().then((value) {
+      if (mounted) {
+        setState(() => _databaseSizeKb = value / 1024);
+      }
+    });
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: isDark ? const Color(0xFF2C2C2C) : Colors.grey.shade200,
-        ),
-      ),
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade50,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              'Security & Emergency',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.security, color: Colors.blue),
-            title: const Text('App Lock & Security'),
-            subtitle: const Text('Biometrics, passcodes & E2E encrypted backup'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () async {
-              await context.push(AppRoutes.securitySetup);
-              _checkGoogleConnection();
-            },
-          ),
-          const Divider(height: 1, indent: 56),
-          ListTile(
-            leading: const Icon(Icons.emergency, color: Colors.red),
-            title: const Text('Emergency Lock Screen Info'),
-            subtitle: const Text('Contacts, allergies & medical conditions'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () async {
-              final lastProfileId =
-                  await ref.read(secureStorageProvider).getLastProfileId();
-              if (!mounted) return;
-              final profiles = ref.read(profilesProvider).value ?? [];
-              if (profiles.isNotEmpty) {
-                final activeProfileId = lastProfileId ?? profiles.first.id;
-                if (mounted) {
-                  context.push(
-                      '${AppRoutes.emergencySettings}/$activeProfileId');
-                }
-              } else {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please create a profile first.'),
-                    ),
-                  );
-                }
-              }
-            },
-          ),
-        ],
-      ),
-    );
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final files = appDir.listSync(recursive: true);
+      var size = 0;
+
+      if (files.isNotEmpty) {
+        size = files
+            .where((file) => p.basename(file.path) != 'opencloudhealth.db')
+            .map((file) => file is File ? File(file.path).lengthSync() : 0)
+            .fold(0, (previousValue, element) => previousValue + element);
+      }
+
+      if (mounted) {
+        setState(() {
+          _documentsFileSizeKb = size / 1024;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error calculating local document size: $e');
+    }
   }
 
   Future<void> _exportLocalBackup() async {
@@ -1385,18 +1507,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final confirmPasswordController = TextEditingController();
     bool isPasswordProtected = false;
     String? errorMessage;
+    final theme = Theme.of(context);
 
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
             children: [
-              Icon(Icons.file_upload_outlined, color: Colors.teal),
-              SizedBox(width: 8),
-              Expanded(
+              Icon(Icons.file_upload_outlined,
+                  color: theme.colorScheme.onSurface),
+              const SizedBox(width: 8),
+              const Expanded(
                 child: Text(
                   'Export Local Backup',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -1418,19 +1542,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.grey.shade300),
+                    color: theme.colorScheme.onSurface.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         isPasswordProtected
-                            ? Icons.lock
+                            ? Icons.lock_outline
                             : Icons.shield_outlined,
-                        color: isPasswordProtected
-                            ? Colors.teal
-                            : Colors.grey.shade700,
+                        color: theme.colorScheme.onSurface,
                         size: 20,
                       ),
                       const SizedBox(width: 10),
@@ -1445,7 +1566,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       Switch(
                         value: isPasswordProtected,
-                        activeColor: Colors.teal,
                         onChanged: (val) {
                           setDialogState(() {
                             isPasswordProtected = val;
@@ -1458,9 +1578,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 if (isPasswordProtected) ...[
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'Set a password to protect this backup file when sharing via WhatsApp, email, or AirDrop:',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   TextField(
@@ -1489,7 +1612,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: 8),
                   Text(
                     errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontSize: 12),
+                    style: TextStyle(
+                      color: theme.colorScheme.error,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ],
@@ -1500,11 +1626,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               onPressed: () => Navigator.of(ctx).pop(),
               child: const Text('Cancel'),
             ),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
-                foregroundColor: Colors.white,
-              ),
+            FilledButton.icon(
               icon: const Icon(Icons.share, size: 16),
               label: const Text('Export & Share'),
               onPressed: () async {
@@ -1562,6 +1684,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _importLocalBackup() async {
+    final theme = Theme.of(context);
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.any,
@@ -1594,13 +1717,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         context: context,
         builder: (ctx) => StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            title: const Row(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
               children: [
-                Icon(Icons.file_download_outlined, color: Colors.blue),
-                SizedBox(width: 8),
-                Expanded(
+                Icon(Icons.file_download_outlined,
+                    color: theme.colorScheme.onSurface),
+                const SizedBox(width: 8),
+                const Expanded(
                   child: Text(
                     'Import Local Backup',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -1631,8 +1755,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       labelText: 'Password (Optional)',
                       hintText: 'Leave empty if no password was set',
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     ),
                   ),
                 ],
@@ -1643,11 +1767,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 onPressed: () => Navigator.of(ctx).pop(false),
                 child: const Text('Cancel'),
               ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                ),
+              FilledButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
                 child: const Text('Restore Backup'),
               ),
@@ -1680,7 +1800,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SnackBar(
               content: Text(
                   'Backup restored successfully! All profiles and attachments loaded.'),
-              backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -1693,7 +1812,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           SnackBar(
             content: Text(
                 'Failed to restore backup: ${e is FormatException ? e.message : e}'),
-            backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1701,175 +1819,396 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  Widget _buildLocalStorageSection() {
+  Future<void> _resetDB() async {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: isDark ? const Color(0xFF2C2C2C) : Colors.grey.shade200,
-        ),
-      ),
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade50,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              'Local Storage & Diagnostics',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.storage, color: Colors.teal),
-            title: const Text('Local Database'),
-            trailing: Text(
-              '${_databaseSizeKb.toStringAsFixed(1)} KB',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-          const Divider(height: 1, indent: 56),
-          ListTile(
-            leading: const Icon(Icons.attach_file, color: Colors.indigo),
-            title: const Text('Attachments & Documents'),
-            trailing: Text(
-              '${_documentsFileSizeKb.toStringAsFixed(1)} KB',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-          const Divider(height: 1, indent: 56),
-          ListTile(
-            leading:
-                const Icon(Icons.file_upload_outlined, color: Colors.teal),
-            title: const Text('Export Local Backup (.ochbackup)'),
-            subtitle: const Text(
-                'Bundle DB, photos & PDFs to share via WhatsApp or Files'),
-            trailing: const Icon(Icons.share, size: 20),
-            onTap: _exportLocalBackup,
-          ),
-          const Divider(height: 1, indent: 56),
-          ListTile(
-            leading:
-                const Icon(Icons.file_download_outlined, color: Colors.blue),
-            title: const Text('Import Local Backup'),
-            subtitle: const Text('Restore from a .ochbackup or encrypted file'),
-            trailing: const Icon(Icons.folder_open, size: 20),
-            onTap: _importLocalBackup,
-          ),
-          const Divider(height: 1, indent: 56),
-          ListTile(
-            leading: const Icon(Icons.delete_forever, color: Colors.red),
-            title: const Text(
-              'Reset Database',
-              style: TextStyle(color: Colors.red),
-            ),
-            subtitle: const Text('Erase all local health logs and data'),
-            onTap: _resetDB,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAboutSection() {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: isDark ? const Color(0xFF2C2C2C) : Colors.grey.shade200,
-        ),
-      ),
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade50,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              'About & Privacy',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.privacy_tip_outlined, color: Colors.blue),
-            title: const Text('Privacy Policy & Disclaimers'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: _showPrivacyDisclaimerDialog,
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPrivacyDisclaimerDialog() {
-    showDialog(
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.privacy_tip_outlined, color: Colors.blue),
-            SizedBox(width: 8),
-            Expanded(
+            Icon(Icons.warning_amber_rounded,
+                color: theme.colorScheme.onSurface),
+            const SizedBox(width: 8),
+            const Expanded(
               child: Text(
-                'Privacy & Disclaimer',
+                'Reset All Data',
                 overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
-        content: const SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Medical Disclaimer',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Open Cloud Health is an informational logbook application for tracking personal medical histories, medication times, checkup schedules, and cycles. It does not provide professional medical advice, diagnosis, or treatment. Always consult a qualified physician or healthcare provider with any questions you have regarding a medical condition or treatment.',
-                style: TextStyle(fontSize: 14),
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Privacy Policy',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              SizedBox(height: 8),
-              Text(
-                '• Local Storage: All medical histories, symptoms, medication logs, and biometrics are stored strictly on your local device. The developer has zero access to your information.\n\n'
-                '• Cloud Backup: If you manually connect Google Drive, the database and attachments are stored directly in your personal Google Drive\'s secure App Data folder. With End-to-End Encryption enabled, your backups are client-side encrypted with AES-256 before upload.',
-                style: TextStyle(fontSize: 14),
-              ),
-            ],
-          ),
+        content: const Text(
+          'This will permanently delete all local patient profiles, history logs, medication schedules, and attachments. This action cannot be undone.\n\nAre you sure you want to proceed?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Close'),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.error,
+              foregroundColor: theme.colorScheme.onError,
+            ),
+            child: const Text('Reset Everything'),
           ),
         ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    await ref.read(notificationServiceProvider).cancelAllNotifications();
+    await ref.read(fileServiceProvider).deleteAllLocalFiles();
+    await ref.read(appDatabaseProvider).resetDatabase();
+    await ref.read(secureStorageProvider).clear();
+
+    ref.invalidate(appDatabaseProvider);
+    ref.invalidate(profilesProvider);
+    ref.invalidate(historyProvider);
+    ref.invalidate(allergiesProvider);
+    ref.invalidate(medicationsProvider);
+    ref.invalidate(medicationLogsProvider);
+    ref.invalidate(checkupsProvider);
+    ref.invalidate(periodProvider);
+    ref.invalidate(vitalsProvider);
+    ref.invalidate(emergencyContactsProvider);
+    ref.invalidate(lockScreenSettingsProvider);
+    ref.invalidate(primaryProfileIdProvider);
+
+    if (!mounted) return;
+    context.go(AppRoutes.welcome);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Local Storage & Backup'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader(
+              context,
+              icon: Icons.storage_outlined,
+              title: 'On-Device Storage',
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: _buildSurfaceCardDecoration(context),
+              child: Column(
+                children: [
+                  ListTile(
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                    leading:
+                        _buildMonotoneIconBadge(context, Icons.storage_outlined),
+                    title: Text(
+                      'Local Database',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Encrypted SQLite medical records',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    trailing: Text(
+                      '${_databaseSizeKb.toStringAsFixed(1)} KB',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 1, indent: 76, endIndent: 20),
+                  ListTile(
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                    leading: _buildMonotoneIconBadge(
+                        context, Icons.attach_file_outlined),
+                    title: Text(
+                      'Attachments & Documents',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Profile photos, lab PDFs & images',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    trailing: Text(
+                      '${_documentsFileSizeKb.toStringAsFixed(1)} KB',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Divider(height: 1),
+            const SizedBox(height: 24),
+            _buildSectionHeader(
+              context,
+              icon: Icons.folder_outlined,
+              title: 'Local Backup Files',
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: _buildSurfaceCardDecoration(context),
+              child: Column(
+                children: [
+                  ListTile(
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    leading: _buildMonotoneIconBadge(
+                        context, Icons.file_upload_outlined),
+                    title: Text(
+                      'Export Local Backup (.ochbackup)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 3.0),
+                      child: Text(
+                        'Bundle DB, photos & PDFs to share via WhatsApp or Files',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    trailing: Icon(
+                      Icons.chevron_right,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    onTap: _exportLocalBackup,
+                  ),
+                  const Divider(height: 1, indent: 76, endIndent: 20),
+                  ListTile(
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    leading: _buildMonotoneIconBadge(
+                        context, Icons.file_download_outlined),
+                    title: Text(
+                      'Import Local Backup',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 3.0),
+                      child: Text(
+                        'Restore from a .ochbackup or encrypted file',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    trailing: Icon(
+                      Icons.chevron_right,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    onTap: _importLocalBackup,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Divider(height: 1),
+            const SizedBox(height: 24),
+            _buildSectionHeader(
+              context,
+              icon: Icons.delete_outline,
+              title: 'Data Reset',
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: _buildSurfaceCardDecoration(context),
+              child: ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                leading:
+                    _buildMonotoneIconBadge(context, Icons.delete_outline),
+                title: Text(
+                  'Reset Database',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 3.0),
+                  child: Text(
+                    'Erase all local health logs and data',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                trailing: Icon(
+                  Icons.chevron_right,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                onTap: _resetDB,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// 4. ABOUT & PRIVACY SUB-SCREEN
+// =============================================================================
+
+class AboutSettingsScreen extends StatelessWidget {
+  const AboutSettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('About & Privacy'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader(
+              context,
+              icon: Icons.health_and_safety_outlined,
+              title: 'Medical Disclaimer',
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: _buildSurfaceCardDecoration(context),
+              child: Text(
+                'Open Cloud Health is an informational logbook application for tracking personal medical histories, medication times, checkup schedules, and cycles. It does not provide professional medical advice, diagnosis, or treatment. Always consult a qualified physician or healthcare provider with any questions you have regarding a medical condition or treatment.',
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Divider(height: 1),
+            const SizedBox(height: 24),
+            _buildSectionHeader(
+              context,
+              icon: Icons.privacy_tip_outlined,
+              title: 'Privacy Policy',
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: _buildSurfaceCardDecoration(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildMonotoneIconBadge(
+                          context, Icons.phone_android_outlined),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Local-First Storage',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'All medical histories, symptoms, medication logs, and biometrics are stored strictly on your local device. The developer has zero access to your information.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                height: 1.45,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Divider(height: 1),
+                  ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildMonotoneIconBadge(context, Icons.lock_outline),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Zero-Knowledge Cloud Backup',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'If you manually connect Google Drive, the database and attachments are stored directly in your personal Google Drive\'s secure App Data folder. With End-to-End Encryption enabled, your backups are client-side encrypted with AES-256 before upload.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                height: 1.45,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

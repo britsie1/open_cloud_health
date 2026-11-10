@@ -290,11 +290,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         ? 'Your device does not have a screen passcode. In the event of theft or loss, all of your highly sensitive medical logs will be completely exposed.'
         : 'If you proceed without enabling App Lock, anyone who accesses your unlocked device can view your complete medical history, timelines, and vitals.';
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bannerColor = isDark ? Colors.orange.shade300 : Colors.orange.shade900;
+    final iconColor = isDark ? Colors.orange.shade400 : Colors.orange.shade800;
+
     return Container(
       margin: const EdgeInsets.fromLTRB(0, 0, 0, 24),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.08),
+        color: Colors.orange.withOpacity(isDark ? 0.12 : 0.08),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.orange.withOpacity(0.3)),
       ),
@@ -303,7 +307,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         children: [
           Icon(
             isDeviceSecure ? Icons.lock_outline : Icons.gpp_maybe_outlined,
-            color: Colors.orange.shade800,
+            color: iconColor,
             size: 24,
           ),
           const SizedBox(width: 12),
@@ -317,7 +321,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     height: 1.4,
-                    color: Colors.orange.shade900,
+                    color: bannerColor,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -600,7 +604,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         _getGreeting(),
                         style: TextStyle(
                           fontSize: 16,
-                          color: Colors.grey.shade600,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -636,7 +640,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                           ),
                           child: CircleAvatar(
                             radius: 35,
-                            backgroundColor: Colors.grey.shade200,
+                            backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
                             backgroundImage: snapshot.data,
                             child: snapshot.connectionState == ConnectionState.waiting
                                 ? const CircularProgressIndicator()
@@ -657,11 +661,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.analytics_outlined, color: Colors.black, size: 20),
-                    SizedBox(width: 8),
-                    Expanded(
+                    Icon(
+                      Icons.analytics_outlined,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
                       child: Text(
                         'Quick Vitals',
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -686,12 +694,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Expanded(
+                Expanded(
                   child: Row(
                     children: [
-                      Icon(Icons.event_available_outlined, color: Colors.black, size: 20),
-                      SizedBox(width: 8),
-                      Flexible(
+                      Icon(
+                        Icons.event_available_outlined,
+                        color: Theme.of(context).colorScheme.onSurface,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      const Flexible(
                         child: Text(
                           'Medical Checkups',
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -714,6 +726,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             Consumer(
               builder: (context, ref, child) {
                 final checkupsAsync = ref.watch(checkupsProvider(activeProfile.id));
+                final theme = Theme.of(context);
+                final isDark = theme.brightness == Brightness.dark;
                 
                 return checkupsAsync.when(
                   data: (checkups) {
@@ -729,7 +743,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                     final nextUp = checkups.first;
                     final overdueCount = checkups.where((c) => c.isOverdue).length;
                     final isOverdue = nextUp.isOverdue;
-                    final color = isOverdue ? Colors.red : Colors.blue;
+                    final color = isOverdue ? Colors.red : theme.colorScheme.primary;
                     final iconWidget = getCheckupIconWidget(nextUp.checkup.iconName, checkupName: nextUp.checkup.name, color: color, size: 28);
 
                     return Semantics(
@@ -752,15 +766,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                           width: double.infinity,
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: theme.cardTheme.color ?? theme.colorScheme.surface,
                             borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 20,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
+                            border: isDark
+                                ? Border.all(color: const Color(0xFF2C2C2C))
+                                : null,
+                            boxShadow: isDark
+                                ? null
+                                : [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -782,9 +801,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                                       children: [
                                         Text(
                                           nextUp.checkup.name,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
+                                            color: theme.colorScheme.onSurface,
                                           ),
                                         ),
                                         const SizedBox(height: 4),
@@ -793,7 +813,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                                               ? 'Overdue now' 
                                               : 'Due on ${nextUp.nextDueDate != null ? DateFormat.yMMMd().format(nextUp.nextDueDate!) : 'TBD'}',
                                           style: TextStyle(
-                                            color: isOverdue ? Colors.red : Colors.grey.shade600,
+                                            color: isOverdue
+                                                ? Colors.red
+                                                : theme.colorScheme.onSurfaceVariant,
                                             fontSize: 14,
                                             fontWeight: isOverdue ? FontWeight.w600 : FontWeight.normal,
                                           ),
@@ -811,13 +833,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    Icon(Icons.warning_amber_rounded, size: 16, color: Colors.orange.shade800),
+                                    Icon(
+                                      Icons.warning_amber_rounded,
+                                      size: 16,
+                                      color: isDark ? Colors.orange.shade400 : Colors.orange.shade800,
+                                    ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         'You have $overdueCount total checkups overdue',
                                         style: TextStyle(
-                                          color: Colors.orange.shade900,
+                                          color: isDark ? Colors.orange.shade300 : Colors.orange.shade900,
                                           fontSize: 13,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -887,6 +913,9 @@ class _MedicationSummarySection extends ConsumerWidget {
 
         final profile = ref.watch(profilesProvider).value?.where((p) => p.id == profileId).firstOrNull;
         final isReadOnly = profile?.isReadOnly ?? false;
+        final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+        final cardColor = theme.cardTheme.color ?? theme.colorScheme.surface;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -897,13 +926,16 @@ class _MedicationSummarySection extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Expanded(
+                Expanded(
                   child: Row(
                     children: [
-                      Icon(Icons.medication_outlined,
-                          color: Colors.black, size: 20),
-                      SizedBox(width: 8),
-                      Flexible(
+                      Icon(
+                        Icons.medication_outlined,
+                        color: theme.colorScheme.onSurface,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      const Flexible(
                         child: Text(
                           'Today\'s Medication',
                           style:
@@ -944,7 +976,7 @@ class _MedicationSummarySection extends ConsumerWidget {
                                   'Daily Adherence',
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.grey.shade600,
+                                    color: theme.colorScheme.onSurfaceVariant,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -979,12 +1011,12 @@ class _MedicationSummarySection extends ConsumerWidget {
             ),
             
             if (tasks.isNotEmpty) ...[
-              const Text(
+              Text(
                 'Scheduled Tasks',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 8),
@@ -992,15 +1024,20 @@ class _MedicationSummarySection extends ConsumerWidget {
                 data: (logs) {
                   return Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
+                      border: isDark
+                          ? Border.all(color: const Color(0xFF2C2C2C))
+                          : null,
+                      boxShadow: isDark
+                          ? null
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
                     ),
                     child: Column(
                       children: tasks.map((task) {
@@ -1025,26 +1062,31 @@ class _MedicationSummarySection extends ConsumerWidget {
             ],
 
             if (prnMedications.isNotEmpty) ...[
-              const Text(
+              Text(
                 'As-Needed & Tracked',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 8),
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: cardColor,
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
+                  border: isDark
+                      ? Border.all(color: const Color(0xFF2C2C2C))
+                      : null,
+                  boxShadow: isDark
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
                 ),
                 child: Column(
                   children: prnMedications.map((med) {
@@ -1101,7 +1143,7 @@ class _MedicationSummaryItem extends ConsumerWidget {
             med.name,
             style: TextStyle(
               decoration: isTaken ? TextDecoration.lineThrough : null,
-              color: isTaken ? Colors.grey : Colors.black,
+              color: isTaken ? Colors.grey : theme.colorScheme.onSurface,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1214,9 +1256,9 @@ class _PRNMedicationSummaryItem extends ConsumerWidget {
         children: [
           Text(
             medication.name,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w600,
-              color: Colors.black,
+              color: theme.colorScheme.onSurface,
             ),
           ),
           if (isLowStock)
@@ -1356,7 +1398,7 @@ class _VitalItem extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade700,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ],

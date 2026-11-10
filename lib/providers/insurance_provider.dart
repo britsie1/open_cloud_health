@@ -55,10 +55,6 @@ class InsuranceNotifier extends FamilyAsyncNotifier<InsurancePolicy?, String> {
     return path;
   }
 
-  Future<String> getCardImagePath(String side) async {
-    return _fileService.getInsuranceCardPath(arg, side);
-  }
-
   Future<void> refreshInsurance() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => _repository.getInsurance(arg));

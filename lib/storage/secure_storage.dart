@@ -1,8 +1,6 @@
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:googleapis_auth/auth_io.dart';
 import 'package:open_cloud_health/models/backup_frequency.dart';
 import 'package:open_cloud_health/models/profile_share_config.dart';
 import 'package:open_cloud_health/theme/app_theme_mode.dart';
@@ -25,22 +23,6 @@ class SecureStorage {
   static const _activeSharePrefix = 'active_share_config_';
   static const _themeModeKey = 'app_theme_mode';
   static const _themePresetKey = 'app_theme_preset';
-
-  //Save Credentials
-  Future saveCredentials(AccessToken token, String refreshToken) async {
-    debugPrint(token.expiry.toIso8601String());
-    await storage.write(key: "type", value: token.type);
-    await storage.write(key: "data", value: token.data);
-    await storage.write(key: "expiry", value: token.expiry.toString());
-    await storage.write(key: "refreshToken", value: refreshToken);
-  }
-
-  //Get Saved Credentials
-  Future<Map<String, dynamic>?> getCredentials() async {
-    var result = await storage.readAll();
-    if (result.isEmpty) return null;
-    return result;
-  }
 
   //Clear Saved Credentials
   Future clear() {

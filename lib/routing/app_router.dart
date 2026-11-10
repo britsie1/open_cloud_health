@@ -35,10 +35,22 @@ import 'package:open_cloud_health/widgets/shell_route_redirector.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
-final appRouter = GoRouter(
-  initialLocation: AppRoutes.auth,
-  navigatorKey: _rootNavigatorKey,
-  routes: [
+GoRouter createAppRouter({
+  String initialLocation = AppRoutes.auth,
+  Object? initialExtra,
+  GlobalKey<NavigatorState>? navigatorKey,
+}) {
+  return GoRouter(
+    initialLocation: initialLocation,
+    initialExtra: initialExtra,
+    navigatorKey: navigatorKey ?? GlobalKey<NavigatorState>(),
+    routes: _buildAppRoutes(),
+  );
+}
+
+final appRouter = createAppRouter(navigatorKey: _rootNavigatorKey);
+
+List<RouteBase> _buildAppRoutes() => [
     GoRoute(
       path: AppRoutes.auth,
       builder: (context, state) => const AuthScreen(),
@@ -176,7 +188,11 @@ final appRouter = GoRouter(
         final profileId = state.pathParameters['profileId']!;
         final vitalTypeString = state.pathParameters['vitalType']!;
         final vitalType = VitalType.values.byName(vitalTypeString);
-        return VitalDetailScreen(profileId: profileId, vitalType: vitalType);
+        return VitalDetailScreen(
+          key: ValueKey('vital_${profileId}_${vitalType.name}'),
+          profileId: profileId,
+          vitalType: vitalType,
+        );
       },
     ),
     GoRoute(
@@ -245,5 +261,4 @@ final appRouter = GoRouter(
         return ShareImportScreen(payload: payload);
       },
     ),
-  ],
-);
+  ];
