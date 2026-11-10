@@ -51,6 +51,7 @@ class _MedicationLogTabState extends ConsumerState<MedicationLogTab> {
           data: (medications) {
             return ListView.builder(
               controller: _scrollController,
+              padding: const EdgeInsets.only(bottom: 96),
               itemCount: logs.length + (hasMore ? 1 : 0),
               itemBuilder: (context, index) {
                 if (index == logs.length) {

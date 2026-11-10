@@ -56,6 +56,13 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
     {'day': 7, 'label': 'S'},
   ];
 
+  static String _formatCleanNumber(double value) {
+    if (value == value.roundToDouble()) {
+      return value.toInt().toString();
+    }
+    return value.toString();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -63,8 +70,12 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
     _dosageController = TextEditingController(text: widget.medication?.dosage ?? '');
     _isAsNeeded = widget.medication?.isAsNeeded ?? false;
     _trackInventory = widget.medication?.trackInventory ?? false;
-    _stockQuantityController = TextEditingController(text: widget.medication?.stockQuantity.toString() ?? '0.0');
-    _lowStockThresholdController = TextEditingController(text: widget.medication?.lowStockThreshold.toString() ?? '0.0');
+    _stockQuantityController = TextEditingController(
+      text: widget.medication != null ? _formatCleanNumber(widget.medication!.stockQuantity) : '30',
+    );
+    _lowStockThresholdController = TextEditingController(
+      text: widget.medication != null ? _formatCleanNumber(widget.medication!.lowStockThreshold) : '5',
+    );
     
     _selectedTimes = widget.medication?.timesOfDay != null 
         ? List<TimeOfDay>.from(widget.medication!.timesOfDay) 
@@ -248,6 +259,13 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
       appBar: AppBar(
         title: Text(isNew ? 'New Medication' : 'Edit Medication'),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.check),
+            tooltip: isNew ? 'Add Medication' : 'Save Changes',
+            onPressed: _submit,
+          ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -317,8 +335,8 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
                         ),
                         const Divider(height: 32),
                         SwitchListTile(
-                          title: const Text('Track As-Needed (PRN)'),
-                          subtitle: const Text('For ad-hoc medications like insulin logged dynamically without a scheduled time'),
+                          title: const Text('Take As-Needed (PRN)'),
+                          subtitle: const Text('No fixed schedule — log doses only when taken'),
                           contentPadding: EdgeInsets.zero,
                           value: _isAsNeeded,
                           onChanged: (val) {
@@ -707,31 +725,34 @@ class _MedicationEditorScreenState extends ConsumerState<MedicationEditorScreen>
                     ),
                   ),
                 ],
-                const SizedBox(height: 32),
-
-                // Save button
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: theme.colorScheme.onPrimary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 3,
-                    ),
-                    child: Text(
-                      isNew ? 'Add Medication' : 'Save Changes',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onPrimary,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
               ],
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+          child: SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: _submit,
+              icon: const Icon(Icons.check),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 2,
+              ),
+              label: Text(
+                isNew ? 'Add Medication' : 'Save Changes',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onPrimary,
+                ),
+              ),
             ),
           ),
         ),

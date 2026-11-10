@@ -38,6 +38,10 @@ class SecureStorage {
     return await storage.read(key: _lastProfileIdKey);
   }
 
+  Future<void> clearLastProfileId() async {
+    await storage.delete(key: _lastProfileIdKey);
+  }
+
   // End-to-End Encryption Settings
   Future<bool> isE2eBackupEnabled() async {
     final value = await storage.read(key: _e2eEnabledKey);

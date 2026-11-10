@@ -65,7 +65,7 @@ void main() {
     expect(find.textContaining('Blood Type: O+'), findsOneWidget);
     expect(find.text('Choose Export Format'), findsOneWidget);
     expect(find.text('Medical Practitioner PDF'), findsOneWidget);
-    expect(find.text('Export as JSON Backup Data'), findsOneWidget);
+    expect(find.text('Encrypted Device Backup'), findsOneWidget);
     expect(find.text('Data Privacy Guaranteed'), findsOneWidget);
   });
 
@@ -101,28 +101,5 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Customize Medical Summary'), findsNothing);
-  });
-
-  testWidgets('Tapping JSON export opens explanatory dialog', (tester) async {
-    tester.view.physicalSize = const Size(800, 2000);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-
-    await tester.pumpWidget(buildTestWidget());
-    await tester.pumpAndSettle();
-
-    // Tap JSON export card
-    await tester.tap(find.text('Export as JSON Backup Data'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 1300));
-    await tester.pumpAndSettle();
-
-    expect(find.text('JSON Profile Export'), findsOneWidget);
-    expect(find.text('Understood'), findsOneWidget);
-
-    await tester.tap(find.text('Understood'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('JSON Profile Export'), findsNothing);
   });
 }

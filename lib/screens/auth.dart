@@ -11,7 +11,6 @@ import 'package:open_cloud_health/services/notification_service.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/utils/security_utils.dart';
-import 'package:open_cloud_health/widgets/emergency_card_view.dart';
 
 enum _SupportState {
   unknown,
@@ -477,14 +476,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
     if (!mounted) return;
 
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Emergency Card',
-      transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (context, animation, secondaryAnimation) {
-        return const EmergencyCardView();
-      },
-    );
+    await ref.read(notificationServiceProvider).openEmergencyScreen();
   }
 }

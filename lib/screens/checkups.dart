@@ -51,7 +51,7 @@ class CheckupsScreen extends ConsumerWidget {
           }
 
           return ListView(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.fromLTRB(0, 8, 0, 96),
             children: [
               if (activeCount == 0)
                 Padding(

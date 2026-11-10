@@ -12,6 +12,9 @@ import 'package:open_cloud_health/models/vital_log.dart';
 import 'package:open_cloud_health/providers/checkups_provider.dart';
 import 'package:open_cloud_health/providers/medications_provider.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
+import 'package:open_cloud_health/providers/vitals_provider.dart';
+import 'package:open_cloud_health/providers/weight_preferences_provider.dart';
+import 'package:open_cloud_health/utils/bmi_calculator.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/utils/icon_utils.dart';
 import 'package:open_cloud_health/utils/result.dart';
@@ -283,12 +286,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     }
 
     final String bannerText = !isDeviceSecure
-        ? 'Unsecured Device. No passcode is set up on this device. Your private medical history is vulnerable to physical theft.'
-        : 'Enable App Lock. Your health data is unprotected. Tap to secure this app with Face ID, Touch ID, or PIN.';
-
-    final String riskExplanation = !isDeviceSecure
-        ? 'Your device does not have a screen passcode. In the event of theft or loss, all of your highly sensitive medical logs will be completely exposed.'
-        : 'If you proceed without enabling App Lock, anyone who accesses your unlocked device can view your complete medical history, timelines, and vitals.';
+        ? 'No device lock detected. Set a screen passcode to protect your medical records.'
+        : 'App Lock is off. Secure your health records with biometrics or a PIN.';
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bannerColor = isDark ? Colors.orange.shade300 : Colors.orange.shade900;
@@ -354,87 +353,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           ),
           const SizedBox(width: 8),
           Semantics(
-            label: 'Security banner options',
+            label: 'Dismiss security banner',
             button: true,
             child: SizedBox(
-              width: 48,
-              height: 48,
+              width: 44,
+              height: 44,
               child: IconButton(
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      title: Row(
-                        children: [
-                          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
-                          const SizedBox(width: 8),
-                          const Text('Security Warning'),
-                        ],
-                      ),
-                      content: Text(
-                        riskExplanation,
-                        style: const TextStyle(fontSize: 14, height: 1.4),
-                      ),
-                      actions: [
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.of(ctx).pop();
-                                context.push(AppRoutes.securitySetup).then((_) {
-                                  _checkSecurityStatus();
-                                });
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orange.shade800,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: const Text(
-                                'Enable Secure Lock',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextButton(
-                              onPressed: () async {
-                                Navigator.of(ctx).pop();
-                                await ref.read(appDatabaseProvider).setSecurityBannerDismissed(true);
-                                if (mounted) {
-                                  setState(() {
-                                    _isBannerDismissed = true;
-                                  });
-                                }
-                              },
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                              ),
-                              child: Text(
-                                'Proceed Without Protection',
-                                style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
+                onPressed: () async {
+                  await ref.read(appDatabaseProvider).setSecurityBannerDismissed(true);
+                  if (mounted) {
+                    setState(() {
+                      _isBannerDismissed = true;
+                    });
+                  }
                 },
                 icon: Icon(
                   Icons.close,
                   size: 20,
                   color: Colors.orange.shade700,
                 ),
-                tooltip: 'Security warning options',
+                tooltip: 'Dismiss',
               ),
             ),
           ),
@@ -614,6 +552,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         style: const TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      InkWell(
+                        onTap: () => context.go(AppRoutes.profiles),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.swap_horiz,
+                                size: 15,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  'Switch Profile',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -1173,8 +1145,8 @@ class _MedicationSummaryItem extends ConsumerWidget {
         ],
       ),
       subtitle: Text(
-        med.trackInventory
-            ? '${med.dosage} at $timeFormatted • Stock: ${med.stockQuantityFormatted} left'
+        (med.trackInventory && !isLowStock)
+            ? '${med.dosage} at $timeFormatted • Stock: ${med.stockQuantityFormatted}'
             : '${med.dosage} at $timeFormatted',
       ),
       value: isTaken,
@@ -1287,8 +1259,8 @@ class _PRNMedicationSummaryItem extends ConsumerWidget {
         ],
       ),
       subtitle: Text(
-        medication.trackInventory
-            ? '${medication.dosage} • Stock: ${medication.stockQuantityFormatted} left'
+        (medication.trackInventory && !isLowStock)
+            ? '${medication.dosage} • Stock: ${medication.stockQuantityFormatted}'
             : medication.dosage,
       ),
       trailing: isReadOnly
@@ -1310,50 +1282,164 @@ class _PRNMedicationSummaryItem extends ConsumerWidget {
   }
 }
 
-class _VitalsSection extends StatelessWidget {
+class _VitalsSection extends ConsumerWidget {
   const _VitalsSection({required this.profile});
 
   final Profile profile;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final showPeriodTracker =
         profile.gender == Gender.female && profile.age >= 10;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          if (showPeriodTracker)
-            _VitalItem(
-              icon: getVitalIcon('Period', color: Colors.redAccent, size: 28),
-              color: Colors.redAccent,
-              label: 'Period',
-              onTap: () => context.push('${AppRoutes.periodTracker}/${profile.id}'),
+    final bpLogsAsync = ref.watch(
+      vitalsProvider((profileId: profile.id, type: VitalType.bloodPressure)),
+    );
+    final weightLogsAsync = ref.watch(
+      vitalsProvider((profileId: profile.id, type: VitalType.weight)),
+    );
+    final sugarLogsAsync = ref.watch(
+      vitalsProvider((profileId: profile.id, type: VitalType.bloodSugar)),
+    );
+    final weightPrefs = ref.watch(weightPreferencesProvider(profile.id)).valueOrNull ??
+        const WeightPreferences();
+
+    String bpValue = '—';
+    String bpSubtitle = 'Tap to log';
+    final bpLogs = bpLogsAsync.valueOrNull;
+    if (bpLogs != null && bpLogs.isNotEmpty) {
+      final latest = bpLogs.last;
+      bpValue = '${latest.value1.toInt()}/${latest.value2?.toInt() ?? 0}';
+      bpSubtitle = 'mmHg';
+    }
+
+    String weightValue = '—';
+    String weightSubtitle = 'Tap to log';
+    final weightLogs = weightLogsAsync.valueOrNull;
+    if (weightLogs != null && weightLogs.isNotEmpty) {
+      final latest = weightLogs.last;
+      final displayVal = (latest.unit == weightPrefs.unit)
+          ? latest.value1
+          : (weightPrefs.unit == 'lbs'
+              ? BmiCalculator.kgToLbs(latest.value1)
+              : BmiCalculator.lbsToKg(latest.value1));
+      weightValue = displayVal.toStringAsFixed(1);
+      weightSubtitle = weightPrefs.unit;
+    }
+
+    String sugarValue = '—';
+    String sugarSubtitle = 'Tap to log';
+    final sugarLogs = sugarLogsAsync.valueOrNull;
+    if (sugarLogs != null && sugarLogs.isNotEmpty) {
+      final latest = sugarLogs.last;
+      sugarValue = latest.value1.toInt().toString();
+      sugarSubtitle = latest.unit;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _VitalItem(
+                icon: getVitalIcon('BP', color: Colors.deepPurple, size: 22),
+                color: Colors.deepPurple,
+                label: 'BP',
+                value: bpValue,
+                subtitle: bpSubtitle,
+                onTap: () => context.push(
+                    '${AppRoutes.vitalTracker}/${profile.id}/${VitalType.bloodPressure.name}'),
+              ),
             ),
-          _VitalItem(
-            icon: getVitalIcon('BP', color: Colors.deepPurple, size: 28),
-            color: Colors.deepPurple,
-            label: 'BP',
-            onTap: () => context.push(
-                '${AppRoutes.vitalTracker}/${profile.id}/${VitalType.bloodPressure.name}'),
-          ),
-          _VitalItem(
-            icon: getVitalIcon('Weight', color: Colors.blue, size: 28),
-            color: Colors.blue,
-            label: 'Weight',
-            onTap: () => context.push(
-                '${AppRoutes.vitalTracker}/${profile.id}/${VitalType.weight.name}'),
-          ),
-          _VitalItem(
-            icon: getVitalIcon('Sugar', color: Colors.orange, size: 28),
-            color: Colors.orange,
-            label: 'Sugar',
-            onTap: () => context.push(
-                '${AppRoutes.vitalTracker}/${profile.id}/${VitalType.bloodSugar.name}'),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _VitalItem(
+                icon: getVitalIcon('Weight', color: Colors.blue, size: 22),
+                color: Colors.blue,
+                label: 'Weight',
+                value: weightValue,
+                subtitle: weightSubtitle,
+                onTap: () => context.push(
+                    '${AppRoutes.vitalTracker}/${profile.id}/${VitalType.weight.name}'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _VitalItem(
+                icon: getVitalIcon('Sugar', color: Colors.orange.shade800, size: 22),
+                color: Colors.orange.shade800,
+                label: 'Sugar',
+                value: sugarValue,
+                subtitle: sugarSubtitle,
+                onTap: () => context.push(
+                    '${AppRoutes.vitalTracker}/${profile.id}/${VitalType.bloodSugar.name}'),
+              ),
+            ),
+          ],
+        ),
+        if (showPeriodTracker) ...[
+          const SizedBox(height: 10),
+          Semantics(
+            label: 'Period tracker',
+            button: true,
+            child: InkWell(
+              onTap: () => context.push('${AppRoutes.periodTracker}/${profile.id}'),
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.redAccent.withOpacity(0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withOpacity(0.14),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Center(
+                        child: getVitalIcon('Period', color: Colors.redAccent, size: 20),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Cycle & Period Tracker',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            'Log flow, symptoms & cycle history',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, size: 20, color: Colors.redAccent),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -1363,43 +1449,88 @@ class _VitalItem extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.label,
+    required this.value,
+    required this.subtitle,
     required this.onTap,
   });
 
   final Widget icon;
   final Color color;
   final String label;
+  final String value;
+  final String subtitle;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Semantics(
       label: '$label tracker',
       button: true,
-      child: GestureDetector(
+      child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
         child: Container(
-          margin: const EdgeInsets.only(right: 16),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isDark ? color.withOpacity(0.12) : color.withOpacity(0.07),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withOpacity(0.22), width: 1),
+          ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: color.withOpacity(0.2), width: 1),
-                ),
-                child: Center(child: icon),
+              Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(child: icon),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+              const SizedBox(height: 10),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.onSurface,
+                  ),
                 ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

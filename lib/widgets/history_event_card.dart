@@ -10,18 +10,10 @@ class HistoryEventCard extends StatelessWidget {
   final HistoryEvent historyEvent;
 
   void _openEventDetail(BuildContext context) {
-    if (historyEvent.eventType != EventType.period &&
-        historyEvent.eventType != EventType.checkup) {
-      context.push(
-        '${AppRoutes.historyDetail}/${historyEvent.profileId}',
-        extra: historyEvent,
-      );
-    } else {
-      context.push(
-        AppRoutes.historyReadonlyDetail,
-        extra: historyEvent,
-      );
-    }
+    context.push(
+      AppRoutes.historyReadonlyDetail,
+      extra: historyEvent,
+    );
   }
 
   @override

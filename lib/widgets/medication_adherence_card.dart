@@ -147,6 +147,13 @@ class MedicationAdherenceCard extends ConsumerWidget {
                                 shape: BoxShape.circle,
                                 color: Colors.green.withOpacity(0.15),
                               );
+                            } else if (isToday) {
+                              iconColor = theme.colorScheme.primary;
+                              iconData = Icons.schedule;
+                              decoration = BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: theme.colorScheme.primary.withOpacity(0.15),
+                              );
                             } else {
                               iconColor = theme.colorScheme.error;
                               iconData = Icons.close;

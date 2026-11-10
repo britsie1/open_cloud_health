@@ -482,38 +482,69 @@ class _ProfilesListState extends ConsumerState<ProfilesList> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(bottom: 24, left: 16, right: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          padding: const EdgeInsets.only(bottom: 24, left: 16, right: 16, top: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    context.push(AppRoutes.profileDetail);
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('Create'),
+              ElevatedButton.icon(
+                onPressed: () {
+                  context.push(AppRoutes.profileDetail);
+                },
+                icon: const Icon(Icons.person_add_alt_1),
+                label: const Text(
+                  'Create New Profile',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    context.push(AppRoutes.qrScanner);
-                  },
-                  icon: const Icon(Icons.qr_code_scanner, color: Colors.teal),
-                  label: const Text('Scan QR'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    context.push(AppRoutes.importProfile);
-                  },
-                  icon: const Icon(Icons.download),
-                  label: const Text('Import'),
-                ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        context.push(AppRoutes.qrScanner);
+                      },
+                      icon: const Icon(Icons.qr_code_scanner, size: 18, color: Colors.teal),
+                      label: const Text(
+                        'Scan QR',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        context.push(AppRoutes.importProfile);
+                      },
+                      icon: const Icon(Icons.file_open_outlined, size: 18),
+                      label: const Text(
+                        'Import File',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

@@ -57,6 +57,10 @@ class MainActivity: FlutterFragmentActivity() {
             } else if (call.method == "openAutoStartSettings") {
                 openAutoStartSettings()
                 result.success(null)
+            } else if (call.method == "openEmergencyScreen") {
+                val intent = Intent(this, EmergencyActivity::class.java)
+                startActivity(intent)
+                result.success(null)
             } else {
                 result.notImplemented()
             }

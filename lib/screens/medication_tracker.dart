@@ -35,7 +35,7 @@ class _MedicationTrackerScreenState
             indicatorColor: Colors.white,
             tabs: [
               Tab(icon: Icon(Icons.today), text: 'Today'),
-              Tab(icon: Icon(Icons.list), text: 'All Medications'),
+              Tab(icon: Icon(Icons.medication_outlined), text: 'Medications'),
               Tab(icon: Icon(Icons.history), text: 'Log'),
             ],
           ),

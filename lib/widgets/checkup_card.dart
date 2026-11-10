@@ -36,13 +36,20 @@ class CheckupCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final checkup = checkupWithStatus.checkup;
     final isOverdue = checkupWithStatus.isOverdue;
     final isActive = checkup.isActive;
+    final hasBeenLogged = checkupWithStatus.latestLog != null;
+    final isTrulyOverdue = isActive && isOverdue && hasBeenLogged;
+    final isUnlogged = isActive && !hasBeenLogged;
 
     final color = !isActive
         ? Colors.grey.shade400
-        : (isOverdue ? Colors.red : Colors.blue);
+        : (isTrulyOverdue
+            ? Colors.red
+            : (isUnlogged ? theme.colorScheme.primary : Colors.teal));
 
     final iconWidget = getCheckupIconWidget(
       checkup.iconName,
@@ -50,6 +57,13 @@ class CheckupCard extends ConsumerWidget {
       color: color,
       size: 28,
     );
+
+    final cardBgColor = !isActive
+        ? (isDark ? const Color(0xFF181818) : Colors.grey.shade50)
+        : (isDark ? const Color(0xFF1E1E1E) : Colors.white);
+    final cardBorderColor = isTrulyOverdue
+        ? Colors.red.withOpacity(0.35)
+        : (isDark ? const Color(0xFF2E2E2E) : Colors.grey.shade200);
 
     return GestureDetector(
       onTap: isActive ? onLogPressed : null,
@@ -59,15 +73,15 @@ class CheckupCard extends ConsumerWidget {
           margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: !isActive ? Colors.grey.shade50 : Colors.white,
+            color: cardBgColor,
             borderRadius: BorderRadius.circular(20),
-            border: !isActive ? Border.all(color: Colors.grey.shade200) : null,
-            boxShadow: isActive
+            border: Border.all(color: cardBorderColor),
+            boxShadow: isActive && !isDark
                 ? [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
                     ),
                   ]
                 : null,
@@ -79,7 +93,7 @@ class CheckupCard extends ConsumerWidget {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Center(child: iconWidget),
@@ -97,42 +111,83 @@ class CheckupCard extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: !isActive ? Colors.grey.shade600 : Colors.black,
+                        color: !isActive
+                            ? Colors.grey.shade500
+                            : (isDark ? Colors.white : Colors.black87),
                         decoration: !isActive ? TextDecoration.lineThrough : null,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(Icons.schedule, size: 14, color: Colors.grey),
+                        Icon(
+                          Icons.schedule,
+                          size: 14,
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                        ),
                         const SizedBox(width: 4),
-                        Text(
-                          'Every ${checkup.frequencyInMonths} months',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 13,
+                        Flexible(
+                          child: Text(
+                            'Every ${checkup.frequencyInMonths} months',
+                            style: TextStyle(
+                              color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
 
-                    // Status
-                    Text(
-                      !isActive
-                          ? "INACTIVE"
-                          : (isOverdue
-                              ? "DUE NOW"
-                              : "UPCOMING${checkupWithStatus.nextDueDate != null ? ' - ${DateFormat.yMMMd().format(checkupWithStatus.nextDueDate!)}' : ''}"),
-                      style: TextStyle(
-                        color: !isActive
-                            ? Colors.grey.shade500
-                            : (isOverdue ? Colors.red : Colors.orange),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                        letterSpacing: 0.5,
+                    // Actionable status / next due info
+                    if (!isActive)
+                      Text(
+                        'Inactive',
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      )
+                    else if (isUnlogged)
+                      Row(
+                        children: [
+                          Icon(Icons.add_circle_outline, size: 14, color: theme.colorScheme.primary),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              'Tap to log last visit',
+                              style: TextStyle(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    else if (isTrulyOverdue)
+                      Text(
+                        checkupWithStatus.nextDueDate != null
+                            ? 'Due ${DateFormat.yMMMd().format(checkupWithStatus.nextDueDate!)} • Tap to log'
+                            : 'Due now • Tap to log',
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      )
+                    else
+                      Text(
+                        checkupWithStatus.nextDueDate != null
+                            ? 'Next due: ${DateFormat.yMMMd().format(checkupWithStatus.nextDueDate!)}'
+                            : 'Up to date',
+                        style: TextStyle(
+                          color: isDark ? Colors.teal.shade300 : Colors.teal.shade700,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -144,29 +199,70 @@ class CheckupCard extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (isActive && isOverdue)
+                  if (isTrulyOverdue)
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.warning_amber_rounded,
-                              size: 12, color: Colors.red),
+                          Icon(Icons.warning_amber_rounded, size: 12, color: Colors.red),
                           SizedBox(width: 4),
                           Flexible(
                             child: Text(
-                              "Overdue",
+                              'Overdue',
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: Colors.red,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                               ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (isUnlogged)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white10 : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'Not logged yet',
+                        style: TextStyle(
+                          color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    )
+                  else if (isActive)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle_outline,
+                            size: 12,
+                            color: isDark ? Colors.teal.shade300 : Colors.teal.shade700,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Up to date',
+                            style: TextStyle(
+                              color: isDark ? Colors.teal.shade300 : Colors.teal.shade700,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],

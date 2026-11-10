@@ -4,7 +4,6 @@ import 'package:open_cloud_health/models/vital_log.dart';
 import 'package:open_cloud_health/theme/app_theme_mode.dart';
 import 'package:open_cloud_health/theme/app_theme_preset.dart';
 import 'package:open_cloud_health/utils/constants.dart';
-import 'package:open_cloud_health/widgets/emergency_card_view.dart';
 
 import 'visual_navigator.dart';
 import 'visual_test_context.dart';
@@ -91,11 +90,11 @@ void main() {
         annotate: _kAnnotate,
       );
 
-      await nav.tapTab('All Medications');
+      await nav.tapTab('Medications');
       await nav.capture(
         '05_medication_all_tab',
         flow: '2. Medications',
-        description: 'Medication Tracker — All Medications tab with inventory stock badges and low-stock alert',
+        description: 'Medication Tracker — Medications tab with inventory stock badges and low-stock alert',
         annotate: _kAnnotate,
       );
 
@@ -127,7 +126,15 @@ void main() {
       await nav.capture(
         '08_vitals_blood_pressure',
         flow: '3. Vitals & Charts',
-        description: 'Blood Pressure detail screen with dual systolic/diastolic trend chart and readings list',
+        description: 'Blood Pressure — Overview tab with AHA classification gauge, 7/30-day averages, and AM/PM split',
+        annotate: _kAnnotate,
+      );
+
+      await nav.tapTab('Trends');
+      await nav.capture(
+        '08b_vitals_blood_pressure_trends',
+        flow: '3. Vitals & Charts',
+        description: 'Blood Pressure — Trends tab with dual systolic/diastolic trajectory chart and target lines',
         annotate: _kAnnotate,
       );
 
@@ -159,7 +166,15 @@ void main() {
       await nav.capture(
         '12_vitals_blood_sugar',
         flow: '3. Vitals & Charts',
-        description: 'Blood Sugar detail screen with glucose trend chart and log history',
+        description: 'Blood Sugar — Overview tab with Time in Range bar, Estimated A1C, and Fasting vs Post-Meal averages',
+        annotate: _kAnnotate,
+      );
+
+      await nav.tapTab('Trends');
+      await nav.capture(
+        '12b_vitals_blood_sugar_trends',
+        flow: '3. Vitals & Charts',
+        description: 'Blood Sugar — Trends tab with glucose trajectory chart and target threshold line',
         annotate: _kAnnotate,
       );
     }
@@ -381,18 +396,6 @@ void main() {
         annotate: _kAnnotate,
       );
       await nav.setAppLocked(false);
-
-      await nav.pushModalWidget(
-        const EmergencyCardView(),
-        routeLabel: '/emergency-card-view',
-      );
-      await nav.capture(
-        '32_emergency_card_view',
-        flow: '9. Onboarding & Auth',
-        description: 'High-contrast Emergency Medical ID card opened from the lock screen',
-        annotate: _kAnnotate,
-      );
-      await nav.pop();
     }
 
     // =========================================================================

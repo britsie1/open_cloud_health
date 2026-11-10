@@ -279,19 +279,51 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Emergency Lock Screen Info'),
+            title: const Text('Emergency ID'),
             actions: [
               if (profiles.length > 1)
                 Padding(
-                  padding: const EdgeInsets.only(right: 16.0),
+                  padding: const EdgeInsets.only(right: 12.0),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: _currentProfileId,
-                      icon: const Icon(Icons.swap_horiz, color: Colors.blue),
+                      dropdownColor: Theme.of(context).cardColor,
+                      icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+                      selectedItemBuilder: (context) {
+                        return profiles.map((p) {
+                          return Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.person_outline, size: 16, color: Colors.white),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '${p.name} ${p.surname}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList();
+                      },
                       items: profiles.map((p) {
                         return DropdownMenuItem(
                           value: p.id,
-                          child: Text('${p.name} ${p.surname}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          child: Text(
+                            '${p.name} ${p.surname}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
                         );
                       }).toList(),
                       onChanged: (val) {
@@ -414,42 +446,36 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                                   )
                                 else
                                   Card(
-                                    color: isDark ? const Color(0xFF1E1E1E) : Colors.blueGrey.shade50,
+                                    color: isDark ? const Color(0xFF1E1E1E) : Colors.green.shade50,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                      side: BorderSide(color: isDark ? const Color(0xFF2E2E2E) : Colors.blueGrey.shade100),
+                                      borderRadius: BorderRadius.circular(14),
+                                      side: BorderSide(color: isDark ? Colors.green.shade800 : Colors.green.shade200),
                                     ),
-                                    margin: const EdgeInsets.only(bottom: 20),
+                                    margin: const EdgeInsets.only(bottom: 16),
                                     child: Padding(
-                                      padding: const EdgeInsets.all(16.0),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+                                      child: Row(
                                         children: [
-                                          Row(
-                                            children: [
-                                              const Icon(Icons.check_circle, color: Colors.green),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Text(
-                                                  'Battery Optimization Disabled',
-                                                  style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.grey.shade900),
-                                                ),
+                                          const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              'Background & lock-screen delivery active',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 13,
+                                                color: isDark ? Colors.white : Colors.green.shade900,
                                               ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            'Battery optimization is turned off for this app. On devices like Xiaomi, Samsung, Huawei, Oppo, or Vivo, ensure "Auto-start" or "Allow background activity" is enabled in App Settings so your Medical ID stays active after rebooting.',
-                                            style: TextStyle(fontSize: 12, color: isDark ? Colors.grey.shade300 : Colors.black87),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Align(
-                                            alignment: Alignment.centerRight,
-                                            child: TextButton.icon(
-                                              onPressed: () => ref.read(notificationServiceProvider).openAutoStartSettings(),
-                                              icon: const Icon(Icons.settings_suggest, size: 18),
-                                              label: const Text('OEM Auto-Start / App Settings'),
                                             ),
+                                          ),
+                                          TextButton(
+                                            onPressed: () => ref.read(notificationServiceProvider).openAutoStartSettings(),
+                                            style: TextButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              minimumSize: Size.zero,
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            ),
+                                            child: const Text('OEM Settings', style: TextStyle(fontSize: 12)),
                                           ),
                                         ],
                                       ),
@@ -470,48 +496,52 @@ class _EmergencySettingsScreenState extends ConsumerState<EmergencySettingsScree
                                       : (isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade100),
                                   child: Padding(
                                     padding: const EdgeInsets.all(20.0),
-                                    child: Row(
+                                    child: Column(
                                       children: [
-                                        Icon(
-                                          Icons.emergency,
-                                          color: settings.isEnabled ? Colors.white : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
-                                          size: 32,
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'Lock Screen Medical ID',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: settings.isEnabled ? Colors.white : (isDark ? Colors.white : Colors.black),
-                                                ),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.emergency,
+                                              color: settings.isEnabled ? Colors.white : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                                              size: 32,
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'Lock Screen Medical ID',
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: settings.isEnabled ? Colors.white : (isDark ? Colors.white : Colors.black),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    settings.isEnabled
+                                                        ? 'Persistent lockscreen alert is active.'
+                                                        : 'Disabled. First responders will not see your details.',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: settings.isEnabled ? Colors.red.shade100 : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                settings.isEnabled
-                                                    ? 'Persistent lockscreen alert is active.'
-                                                    : 'Disabled. First responders will not see your details.',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: settings.isEnabled ? Colors.red.shade100 : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        Switch.adaptive(
-                                          value: settings.isEnabled,
-                                          activeTrackColor: Colors.red.shade400,
-                                          activeColor: Colors.white,
-                                          onChanged: (val) {
-                                            ref.read(lockScreenSettingsProvider(profile.id).notifier).updateSettings(
-                                              settings.copyWith(isEnabled: val),
-                                            );
-                                          },
+                                            ),
+                                            Switch.adaptive(
+                                              value: settings.isEnabled,
+                                              activeTrackColor: Colors.red.shade400,
+                                              activeColor: Colors.white,
+                                              onChanged: (val) {
+                                                ref.read(lockScreenSettingsProvider(profile.id).notifier).updateSettings(
+                                                  settings.copyWith(isEnabled: val),
+                                                );
+                                              },
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),

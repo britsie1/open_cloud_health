@@ -18,14 +18,17 @@ class ShellRouteRedirector extends ConsumerWidget {
       
       String? profileId;
       
-      // 1. Try last used profile
+      // 1. Try last used profile (only if it still exists in active profiles)
       profileId = await ref.read(secureStorageProvider).getLastProfileId();
-      
+      if (profileId != null && !profiles.any((p) => p.id == profileId)) {
+        profileId = null;
+      }
+
       // 2. Fallback to first profile if only one
       if (profileId == null && profiles.length == 1) {
         profileId = profiles[0].id;
       }
-      
+
       if (!context.mounted) return;
 
       if (profileId != null) {

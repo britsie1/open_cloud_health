@@ -49,7 +49,7 @@ class WeightHistoryList extends ConsumerWidget {
     final sortedLogs = List<VitalLog>.from(logs)..sort((a, b) => b.date.compareTo(a.date));
 
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
       itemCount: sortedLogs.length,
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (ctx, index) {

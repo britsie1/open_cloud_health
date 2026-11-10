@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/history_event.dart';
+import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/utils/icon_utils.dart';
 
 class HistoryEventReadonlyDetail extends StatelessWidget {
@@ -11,11 +13,26 @@ class HistoryEventReadonlyDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primaryColor = theme.primaryColor;
+    final canEdit = event.eventType != EventType.period &&
+        event.eventType != EventType.checkup;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Event Details'),
         elevation: 0,
+        actions: [
+          if (canEdit)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit Event',
+              onPressed: () {
+                context.pushReplacement(
+                  '${AppRoutes.historyDetail}/${event.profileId}',
+                  extra: event,
+                );
+              },
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(

@@ -84,6 +84,9 @@ class InMemorySecureStorage extends SecureStorage {
   Future<String?> getLastProfileId() async => _lastProfileId;
 
   @override
+  Future<void> clearLastProfileId() async => _lastProfileId = null;
+
+  @override
   Future<bool> isE2eBackupEnabled() async => _e2eEnabled;
 
   @override
@@ -320,6 +323,7 @@ Future<VisualTestContext> createVisualTestContext() async {
   when(() => notificationService.cancelMedicationNotifications(any())).thenAnswer((_) async {});
 
   when(() => fileService.getProfileImagePath(any())).thenAnswer((_) async => '');
+  when(() => fileService.getInsuranceCardPath(any(), any())).thenAnswer((_) async => '');
   when(() => fileService.localPath).thenAnswer((_) async => tempDocsDir.path);
 
   final now = DateTime.now();
@@ -584,6 +588,7 @@ Future<VisualTestContext> createVisualTestContext() async {
     title: 'Annual Cardiology & Echocardiogram Evaluation',
     description: 'Left ventricular ejection fraction 62%. Blood pressure well-controlled on current regimen.',
     date: now.subtract(const Duration(days: 12)),
+    hasTime: false,
     eventType: EventType.specialistConsultation,
     provider: 'Dr. Gregory House, MD',
     facility: 'Princeton-Plainsboro Teaching Hospital',
@@ -594,6 +599,7 @@ Future<VisualTestContext> createVisualTestContext() async {
     title: 'Comprehensive Lipid & HbA1c Lab Panel',
     description: 'Total Cholesterol: 178 mg/dL, LDL: 98 mg/dL, HDL: 54 mg/dL, Fasting Glucose: 98 mg/dL.',
     date: now.subtract(const Duration(days: 28)),
+    hasTime: false,
     eventType: EventType.labTest,
     provider: 'Dr. Allison Cameron, MD',
     facility: 'Metro Clinical Pathology Labs',
@@ -604,6 +610,7 @@ Future<VisualTestContext> createVisualTestContext() async {
     title: 'Seasonal Influenza & COVID-19 Booster',
     description: 'Administered quadrivalent flu vaccine in left deltoid without adverse reaction.',
     date: now.subtract(const Duration(days: 64)),
+    hasTime: false,
     eventType: EventType.vaccination,
     provider: 'Nurse Clara Oswald, RN',
     facility: 'Community Wellness Clinic',
@@ -702,13 +709,13 @@ Future<VisualTestContext> createVisualTestContext() async {
       id: 'cyc-past-$pid',
       profileId: pid,
       startDate: cycle1Start,
-      endDate: cycle1Start.add(const Duration(days: 4)),
+      endDate: cycle2Start.subtract(const Duration(days: 1)),
     ));
     await periodRepo.addCycle(PeriodCycle(
       id: 'cyc-curr-$pid',
       profileId: pid,
       startDate: cycle2Start,
-      endDate: cycle2Start.add(const Duration(days: 3)),
+      endDate: null,
     ));
 
     for (int d = 0; d < 3; d++) {

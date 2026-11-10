@@ -485,18 +485,27 @@ class BackupService {
         await _secureStorage.setDatabaseKey(restoredDbKey);
       }
 
+      // Ensure restored database (including legacy plaintext or older SQLCipher formats) is readable
+      final dbFile = File(path.join(dbPath, 'opencloudhealth.db'));
+      await AppDatabase.ensureDatabaseReadable(
+        dbFile,
+        explicitDbKey: restoredDbKey,
+        storage: _secureStorage,
+        extraCandidateKeys: [effectivePassword],
+      );
+
       // Re-initialize database provider with fresh connection and restored key
       _ref.invalidate(appDatabaseProvider);
     } else {
       debugPrint('Found standard legacy unencrypted backup. Restoring files...');
       await _ref.read(appDatabaseProvider).prepareForDatabaseReplacement();
 
+      final dbPath = await sql.getDatabasesPath();
       final localBaseDir = await _fileService.localPath;
 
       for (var file in fileList.files!) {
         debugPrint('Processing backup item: ${file.name} (${file.mimeType})');
         if (file.name == 'opencloudhealth.db') {
-          final dbPath = await sql.getDatabasesPath();
           await _downloadFile(file.id!, file.name!, dbPath, driveApi);
         } else if (file.name == 'profileImages' || file.name == 'attachments') {
           await _restoreFolder(
@@ -504,11 +513,16 @@ class BackupService {
         }
       }
 
+      final dbFile = File(path.join(dbPath, 'opencloudhealth.db'));
+      await AppDatabase.ensureDatabaseReadable(
+        dbFile,
+        storage: _secureStorage,
+      );
+
       _ref.invalidate(appDatabaseProvider);
     }
 
-    // Reload profiles after database restore
-    await _ref.read(profilesProvider.notifier).loadProfiles();
+    await _syncActiveProfileAfterRestore();
     debugPrint('Restore completed successfully.');
   }
 
@@ -580,11 +594,37 @@ class BackupService {
       await _secureStorage.setDatabaseKey(restoredDbKey);
     }
 
+    // Ensure restored database (including legacy plaintext or older SQLCipher formats) is readable
+    final dbFile = File(path.join(dbPath, 'opencloudhealth.db'));
+    await AppDatabase.ensureDatabaseReadable(
+      dbFile,
+      explicitDbKey: restoredDbKey,
+      storage: _secureStorage,
+      extraCandidateKeys: [effectiveKey, localMasterKey],
+    );
+
     // Re-initialize database provider with fresh connection and restored key
     _ref.invalidate(appDatabaseProvider);
 
     // Reload profiles and active state
+    await _syncActiveProfileAfterRestore();
+  }
+
+  Future<void> _syncActiveProfileAfterRestore() async {
+    _ref.invalidate(profilesProvider);
     await _ref.read(profilesProvider.notifier).loadProfiles();
+    final restoredProfiles = _ref.read(profilesProvider).value ?? [];
+    if (restoredProfiles.isEmpty) {
+      await _secureStorage.clearLastProfileId();
+      return;
+    }
+
+    final currentLastId = await _secureStorage.getLastProfileId();
+    final hasMatchingLast = currentLastId != null &&
+        restoredProfiles.any((p) => p.id == currentLastId);
+    if (!hasMatchingLast) {
+      await _secureStorage.saveLastProfileId(restoredProfiles.first.id);
+    }
   }
 }
 

@@ -882,6 +882,16 @@ class NotificationService {
       } catch (_) {}
     }
   }
+
+  Future<void> openEmergencyScreen() async {
+    if (Platform.isAndroid) {
+      try {
+        await _emergencyNotificationChannel.invokeMethod('openEmergencyScreen');
+      } catch (e) {
+        debugPrint('Error opening native Android emergency screen: $e');
+      }
+    }
+  }
 }
 
 final notificationServiceProvider = Provider<NotificationService>((ref) {

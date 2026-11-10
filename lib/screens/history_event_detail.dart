@@ -75,9 +75,9 @@ class _HistoryEventDetailScreenState
       });
     } else {
       _selectedEventType = history.EventType.other;
-      _hasTime = true;
+      _hasTime = false;
       _selectedDate = DateTime.now();
-      _selectedTime = TimeOfDay.now();
+      _selectedTime = null;
     }
   }
 
@@ -315,6 +315,8 @@ class _HistoryEventDetailScreenState
                         // Title
                         TextFormField(
                           initialValue: _enteredTitle,
+                          minLines: 1,
+                          maxLines: 2,
                           decoration: InputDecoration(
                             labelText: 'Title',
                             hintText: 'e.g. Annual Blood Panel, Knee Surgery',
@@ -452,6 +454,8 @@ class _HistoryEventDetailScreenState
                         // Facility / Clinic
                         TextFormField(
                           controller: _facilityController,
+                          minLines: 1,
+                          maxLines: 2,
                           decoration: InputDecoration(
                             labelText: 'Facility / Clinic',
                             hintText: 'e.g. City General Hospital, Dental Care',
@@ -567,6 +571,31 @@ class _HistoryEventDetailScreenState
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: saveEvent,
+              icon: const Icon(Icons.check),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 2,
+              ),
+              label: Text(
+                widget.historyEvent != null ? 'Save Changes' : 'Create Event',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ),

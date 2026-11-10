@@ -24,7 +24,7 @@ class HistoryScreen extends ConsumerStatefulWidget {
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   Profile? _activeProfile;
   String _searchQuery = '';
-  final Set<EventType> _selectedTypes = Set.from(EventType.values);
+  final Set<EventType> _selectedTypes = {};
 
   void _initializeProfile() {
     Profile? profile = widget.profile;
@@ -69,13 +69,22 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         title: const Text('Medical History'),
         actions: const [AccountAppBarActions()],
       ),
+      floatingActionButton: activeProfile.isReadOnly
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () {
+                context.push('${AppRoutes.historyDetail}/${activeProfile.id}');
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Event'),
+            ),
       body: historyAsync.when(
         data: (events) {
           final filteredEvents = events.where((event) {
             if (activeProfile.gender == Gender.male && event.eventType == EventType.period) {
               return false;
             }
-            if (!_selectedTypes.contains(event.eventType)) {
+            if (_selectedTypes.isNotEmpty && !_selectedTypes.contains(event.eventType)) {
               return false;
             }
             final query = _searchQuery.toLowerCase();
@@ -89,6 +98,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
           if (filteredEvents.isNotEmpty) {
             content = Timeline.tileBuilder(
+              padding: const EdgeInsets.only(bottom: 96, top: 4),
               theme: TimelineTheme.of(context).copyWith(
                 nodePosition: 0,
               ),
@@ -102,17 +112,34 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             );
           }
 
+          final availableTypes = EventType.values
+              .where((type) => !(activeProfile.gender == Gender.male && type == EventType.period))
+              .toList();
+          final isAllSelected = _selectedTypes.isEmpty;
+
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
                 child: TextField(
-                  decoration: const InputDecoration(
-                    labelText: 'Search',
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                  decoration: InputDecoration(
+                    hintText: 'Search events, notes, or doctors...',
+                    prefixIcon: const Icon(Icons.search),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    border: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(14)),
                     ),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () {
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                            },
+                          )
+                        : null,
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -122,60 +149,82 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: EventType.values
-                          .where((type) => !(activeProfile.gender == Gender.male && type == EventType.period))
-                          .map((type) {
-                        final isSelected = _selectedTypes.contains(type);
-                        return Padding(
+                      children: [
+                        Padding(
                           padding: const EdgeInsets.only(right: 8.0),
                           child: FilterChip(
-                            avatar: SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: getHistoryEventIcon(
-                                type,
-                                color: isSelected
-                                    ? theme.primaryColor
-                                    : Colors.grey.shade600,
+                            showCheckmark: false,
+                            avatar: Icon(
+                              Icons.filter_list,
+                              size: 16,
+                              color: isAllSelected
+                                  ? theme.colorScheme.onPrimaryContainer
+                                  : theme.colorScheme.onSurfaceVariant,
+                            ),
+                            label: Text(
+                              'All',
+                              style: TextStyle(
+                                fontWeight: isAllSelected ? FontWeight.bold : FontWeight.w500,
                               ),
                             ),
-                            label: Text(type.displayName),
-                            selected: isSelected,
-                            onSelected: (selected) {
+                            selected: isAllSelected,
+                            onSelected: (_) {
                               setState(() {
-                                if (selected) {
-                                  _selectedTypes.add(type);
-                                } else {
-                                  _selectedTypes.remove(type);
-                                }
+                                _selectedTypes.clear();
                               });
                             },
                           ),
-                        );
-                      }).toList(),
+                        ),
+                        ...availableTypes.map((type) {
+                          final isSelected = _selectedTypes.contains(type);
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: FilterChip(
+                              showCheckmark: false,
+                              avatar: SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: getHistoryEventIcon(
+                                  type,
+                                  color: isSelected
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              label: Text(
+                                type.displayName,
+                                style: TextStyle(
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                ),
+                              ),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setState(() {
+                                  if (selected) {
+                                    _selectedTypes.add(type);
+                                  } else {
+                                    _selectedTypes.remove(type);
+                                  }
+                                });
+                              },
+                            ),
+                          );
+                        }),
+                      ],
                     ),
                   ),
                 ),
               ),
               Expanded(
                 child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: content),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    context.push('${AppRoutes.historyDetail}/${activeProfile.id}');
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('Create event'),
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                  child: content,
                 ),
               ),
             ],

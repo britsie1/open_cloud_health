@@ -6,8 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_cloud_health/models/allergy.dart';
 import 'package:open_cloud_health/models/profile.dart';
+import 'package:open_cloud_health/providers/allergies_provider.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
 import 'package:open_cloud_health/repositories/allergies_repository.dart';
+import 'package:open_cloud_health/services/notification_service.dart';
 import 'package:open_cloud_health/storage/secure_storage.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 import 'package:open_cloud_health/utils/result.dart';
@@ -555,10 +557,19 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                         isReadOnly: isReadOnly,
                         onChanged: isReadOnly
                             ? (newAllergies) {}
-                            : (newAllergies) {
+                            : (newAllergies) async {
                                 setState(() {
                                   _selectedAllergies = newAllergies;
                                 });
+                                if (_isEditing && _activeProfile != null) {
+                                  await ref
+                                      .read(allergiesRepositoryProvider)
+                                      .setAllergies(_activeProfile!.id, newAllergies);
+                                  ref.invalidate(allergiesProvider(_activeProfile!.id));
+                                  await ref
+                                      .read(notificationServiceProvider)
+                                      .syncEmergencyNotification(_activeProfile!.id);
+                                }
                               },
                       ),
                       const SizedBox(height: 16),
@@ -568,10 +579,15 @@ class _CreateProfileScreenState extends ConsumerState<ProfileDetailScreen> {
                         gender: _selectedGender ?? Gender.male,
                         onChanged: isReadOnly
                             ? (newConditions) {}
-                            : (newConditions) {
+                            : (newConditions) async {
                                 setState(() {
                                   _selectedChronicConditions = newConditions;
                                 });
+                                if (_isEditing && _activeProfile != null) {
+                                  await ref
+                                      .read(profilesProvider.notifier)
+                                      .updateChronicConditions(_activeProfile!.id, newConditions);
+                                }
                               },
                       ),
                       const SizedBox(height: 16),

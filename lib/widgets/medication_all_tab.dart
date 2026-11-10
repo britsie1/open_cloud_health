@@ -40,12 +40,22 @@ class MedicationAllTab extends ConsumerWidget {
         }
 
         return ListView.builder(
+          padding: const EdgeInsets.only(bottom: 96),
           itemCount: medications.length,
           itemBuilder: (ctx, index) {
             final med = medications[index];
+            final showLowStock = med.trackInventory && med.stockQuantity <= med.lowStockThreshold;
             return ListTile(
+              onTap: () => context.push('${AppRoutes.medicationEditor}/$profileId', extra: med),
               leading: SizedBox(height: 32, width: 32, child: _getMedicationIcon(med.type)),
-              title: Text(med.name),
+              title: Text(
+                med.name,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: med.isActive ? null : Colors.grey,
+                  decoration: med.isActive ? null : TextDecoration.lineThrough,
+                ),
+              ),
               subtitle: Builder(
                 builder: (context) {
                   final List<String> parts = [];
@@ -57,10 +67,48 @@ class MedicationAllTab extends ConsumerWidget {
                   } else {
                     parts.add(med.timeFormatted);
                   }
-                  if (med.trackInventory) {
-                    parts.add('Stock: ${med.stockQuantityFormatted}');
-                  }
-                  return Text(parts.join(' • '));
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(parts.join(' • ')),
+                      if (med.trackInventory) ...[
+                        const SizedBox(height: 4),
+                        if (showLowStock)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.red.shade300),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.warning_amber_rounded, size: 12, color: Colors.red.shade900),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Low Stock: ${med.stockQuantityFormatted}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red.shade900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Text(
+                            'Stock: ${med.stockQuantityFormatted}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                      ],
+                    ],
+                  );
                 },
               ),
               trailing: Row(
@@ -69,6 +117,29 @@ class MedicationAllTab extends ConsumerWidget {
                   Switch(
                     value: med.isActive,
                     onChanged: (val) async {
+                      if (!val) {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (dialogCtx) => AlertDialog(
+                            title: Text('Pause ${med.name}?'),
+                            content: const Text(
+                              'Pausing this medication will turn off its daily schedule and reminders until you re-enable it.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(dialogCtx).pop(false),
+                                child: const Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.of(dialogCtx).pop(true),
+                                child: const Text('Pause'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm != true) return;
+                      }
+
                       final result = await ref
                           .read(medicationsProvider(profileId).notifier)
                           .toggleIsActive(med);

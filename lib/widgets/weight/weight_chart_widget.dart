@@ -76,21 +76,29 @@ class _WeightChartWidgetState extends State<WeightChartWidget> {
     final healthyRange = BmiCalculator.getHealthyWeightRange(widget.heightCm);
 
     return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 88.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Timeframe Selector Chips
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: ChartTimeframe.values.map((tf) {
-                  final isSelected = tf == _selectedTimeframe;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
+            child: Row(
+              children: ChartTimeframe.values.map((tf) {
+                final isSelected = tf == _selectedTimeframe;
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2.0),
                     child: ChoiceChip(
-                      label: Text(tf.label),
+                      showCheckmark: false,
+                      labelPadding: EdgeInsets.zero,
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      label: Center(
+                        child: Text(
+                          tf.label,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ),
                       selected: isSelected,
                       onSelected: (selected) {
                         if (selected) {
@@ -100,9 +108,9 @@ class _WeightChartWidgetState extends State<WeightChartWidget> {
                         }
                       },
                     ),
-                  );
-                }).toList(),
-              ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
 
@@ -409,6 +417,7 @@ class _WeightChartWidgetState extends State<WeightChartWidget> {
           LineChartBarData(
             spots: spots,
             isCurved: spots.length > 2,
+            preventCurveOverShooting: true,
             curveSmoothness: 0.25,
             color: theme.colorScheme.primary,
             barWidth: 3,
@@ -453,20 +462,25 @@ class _StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: isDark ? const Color(0xFF262626) : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: isDark ? const Color(0xFF363636) : Colors.grey.shade200),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               label,
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),

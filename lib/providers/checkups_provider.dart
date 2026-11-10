@@ -130,20 +130,22 @@ class CheckupsNotifier extends FamilyAsyncNotifier<List<CheckupWithStatus>, Stri
       ));
     }
     
-    // Sort: Due Now first, then by nextDueDate ascending
+    // Sort: Genuinely overdue (logged + dueNow) first, then upcoming by nextDueDate, then unlogged
     result.sort((a, b) {
-      if (a.status == CheckupStatus.dueNow && b.status == CheckupStatus.upcoming) {
-        return -1;
+      int rank(CheckupWithStatus c) {
+        if (c.status == CheckupStatus.dueNow && c.latestLog != null) return 0;
+        if (c.status == CheckupStatus.upcoming) return 1;
+        return 2; // Never logged yet
       }
-      if (a.status == CheckupStatus.upcoming && b.status == CheckupStatus.dueNow) {
-        return 1;
-      }
-      
+
+      final rankCompare = rank(a).compareTo(rank(b));
+      if (rankCompare != 0) return rankCompare;
+
       if (a.nextDueDate != null && b.nextDueDate != null) {
         return a.nextDueDate!.compareTo(b.nextDueDate!);
       }
-      
-      return 0;
+
+      return a.checkup.name.compareTo(b.checkup.name);
     });
 
     return result;

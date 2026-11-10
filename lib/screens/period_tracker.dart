@@ -469,8 +469,10 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
     final isFertile = isFertileDay(day, state);
     final isLogged = isLoggedDay(day, state);
     final hasSymptoms = hasSymptomsOnly(day, state);
-    final isPredicted = state.expectedNextPeriodDate != null &&
-        isSameDay(day, state.expectedNextPeriodDate);
+    final isPredicted = !isLogged &&
+        state.expectedNextPeriodDate != null &&
+        isSameDay(day, state.expectedNextPeriodDate) &&
+        !isLoggedDay(DateTime.now(), state);
 
     final isPrevFertile =
         isFertileDay(day.subtract(const Duration(days: 1)), state);
@@ -610,34 +612,78 @@ class _PeriodTrackerScreenState extends ConsumerState<PeriodTrackerScreen> {
   }
 
   Widget _buildContextualMessage(PeriodState state) {
-    if (!state.trackOvulation) return const SizedBox();
-
-    final today = DateTime.now();
-    final isFertile = isFertileDay(today, state);
-    final isPredicted = state.expectedNextPeriodDate != null &&
-        today.compareTo(state.expectedNextPeriodDate!) <= 0 &&
-        !isSameDay(today, state.expectedNextPeriodDate);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final isOnPeriod = isLoggedDay(today, state);
 
     String? message;
-    if (isFertile) {
-      message = "You are in your fertile stage.";
-    } else if (isPredicted) {
-      final daysTill = state.expectedNextPeriodDate!
-          .difference(DateTime(today.year, today.month, today.day))
-          .inDays;
-      message = "$daysTill days till your next period.";
+    Color? badgeColor;
+    Color? textColor;
+    IconData? badgeIcon;
+
+    if (isOnPeriod) {
+      var blockStart = today;
+      while (isLoggedDay(blockStart.subtract(const Duration(days: 1)), state)) {
+        blockStart = blockStart.subtract(const Duration(days: 1));
+      }
+      final periodDay = today.difference(blockStart).inDays + 1;
+      message = 'Period Day $periodDay';
+      badgeColor = Colors.pink.shade50;
+      textColor = Colors.pink.shade900;
+      badgeIcon = Icons.water_drop;
+    } else if (state.trackOvulation && isFertileDay(today, state)) {
+      message = 'You are in your fertile window.';
+      badgeColor = Colors.teal.shade50;
+      textColor = Colors.teal.shade900;
+      badgeIcon = Icons.spa_outlined;
+    } else if (state.expectedNextPeriodDate != null) {
+      final expected = DateTime(
+        state.expectedNextPeriodDate!.year,
+        state.expectedNextPeriodDate!.month,
+        state.expectedNextPeriodDate!.day,
+      );
+      final daysTill = expected.difference(today).inDays;
+      if (daysTill > 0) {
+        message = '$daysTill ${daysTill == 1 ? 'day' : 'days'} until your next period';
+        badgeColor = Colors.purple.shade50;
+        textColor = Colors.purple.shade900;
+        badgeIcon = Icons.event_available_outlined;
+      } else if (daysTill == 0) {
+        message = 'Period expected today';
+        badgeColor = Colors.purple.shade50;
+        textColor = Colors.purple.shade900;
+        badgeIcon = Icons.event_available_outlined;
+      }
     }
 
     if (message == null) return const SizedBox();
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(
-        message,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontStyle: FontStyle.italic,
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: badgeColor ?? Theme.of(context).colorScheme.surfaceVariant,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (badgeIcon != null) ...[
+              Icon(badgeIcon, size: 16, color: textColor),
+              const SizedBox(width: 6),
+            ],
+            Flexible(
+              child: Text(
+                message,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: textColor ?? Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
             ),
+          ],
+        ),
       ),
     );
   }

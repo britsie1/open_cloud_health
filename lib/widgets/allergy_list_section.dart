@@ -243,22 +243,36 @@ class AllergyListSection extends ConsumerWidget {
                 final chipColor = info.color;
                 final noteSuffix = allergy.note.trim().isNotEmpty ? ' (${allergy.note.trim()})' : '';
 
-                return Chip(
-                  avatar: info.iconBuilder(
-                    color: chipColor.withOpacity(0.9),
-                    width: 18,
-                    height: 18,
-                  ),
-                  label: Text(
-                    '${allergy.name}$noteSuffix',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  backgroundColor: chipColor.withOpacity(0.1),
-                  side: BorderSide(
-                    color: chipColor.withOpacity(0.3),
-                  ),
-                  shape: RoundedRectangleBorder(
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: chipColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: chipColor.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 1.0),
+                        child: info.iconBuilder(
+                          color: chipColor.withOpacity(0.9),
+                          width: 18,
+                          height: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          '${allergy.name}$noteSuffix',
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, height: 1.3),
+                          softWrap: true,
+                        ),
+                      ),
+                    ],
                   ),
                 );
               }).toList(),

@@ -24,6 +24,12 @@ class AppThemeData {
         centerTitle: false,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
+      tabBarTheme: const TabBarTheme(
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white70,
+        indicatorColor: Colors.white,
+        dividerColor: Colors.transparent,
+      ),
       cardTheme: CardTheme(
         color: Colors.white,
         elevation: 0,
@@ -80,6 +86,12 @@ class AppThemeData {
         elevation: 0,
         centerTitle: false,
         iconTheme: IconThemeData(color: Colors.white),
+      ),
+      tabBarTheme: TabBarTheme(
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white70,
+        indicatorColor: colorScheme.primary,
+        dividerColor: Colors.transparent,
       ),
       cardTheme: CardTheme(
         color: darkSurfaceBg,

@@ -6,6 +6,7 @@ import 'package:printing/printing.dart';
 import 'package:open_cloud_health/models/pdf_export_options.dart';
 import 'package:open_cloud_health/models/profile.dart';
 import 'package:open_cloud_health/providers/profiles_provider.dart';
+import 'package:open_cloud_health/screens/settings.dart';
 import 'package:open_cloud_health/services/medical_pdf_service.dart';
 import 'package:open_cloud_health/utils/constants.dart';
 
@@ -101,71 +102,6 @@ class _ExportProfileScreenState extends ConsumerState<ExportProfileScreen> {
         setState(() => _isExporting = false);
       }
     }
-  }
-
-  void _simulateJsonExport() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        Future.delayed(const Duration(milliseconds: 1200), () {
-          if (ctx.mounted) {
-            Navigator.of(ctx).pop();
-            _showJsonExportDialog();
-          }
-        });
-
-        return const AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 20),
-              Text(
-                'Compiling health data into JSON...',
-                style: TextStyle(fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Please wait while we package your local medical records securely.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showJsonExportDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.code, color: Colors.teal),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'JSON Profile Export',
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        content: const Text(
-          'For complete raw data backups or migrating to another device, please use Settings > Google Drive Backup or Export Local Encrypted Backup (.ochbackup).',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Understood'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -356,7 +292,7 @@ class _ExportProfileScreenState extends ConsumerState<ExportProfileScreen> {
               ),
               const SizedBox(height: 16),
               
-              // JSON Export Card
+              // Encrypted Backup & Device Migration Card
               Card(
                 elevation: 2,
                 shape: RoundedRectangleBorder(
@@ -364,7 +300,11 @@ class _ExportProfileScreenState extends ConsumerState<ExportProfileScreen> {
                 ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(16),
-                  onTap: _simulateJsonExport,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const LocalStorageSettingsScreen(),
+                    ),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
                     child: Row(
@@ -376,7 +316,7 @@ class _ExportProfileScreenState extends ConsumerState<ExportProfileScreen> {
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
-                            Icons.code_outlined,
+                            Icons.enhanced_encryption_outlined,
                             size: 32,
                             color: Colors.teal,
                           ),
@@ -387,7 +327,7 @@ class _ExportProfileScreenState extends ConsumerState<ExportProfileScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Export as JSON Backup Data',
+                                'Encrypted Device Backup',
                                 style: Theme.of(context)
                                     .textTheme
                                     .titleMedium!
@@ -395,7 +335,7 @@ class _ExportProfileScreenState extends ConsumerState<ExportProfileScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Export all raw profile records, settings, and logs in JSON format. Best for transferring to a new device.',
+                                'Create or restore a full encrypted .ochbackup archive in Local Storage & Backup.',
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodySmall!

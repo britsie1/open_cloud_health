@@ -74,7 +74,7 @@ class MedicationTodayTab extends ConsumerWidget {
         return logsAsync.when(
           data: (logs) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -353,8 +353,8 @@ class MedicationTodayTab extends ConsumerWidget {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        med.trackInventory
-                                            ? '${med.dosage} • Stock: ${med.stockQuantityFormatted} left'
+                                        (med.trackInventory && !isLowStock)
+                                            ? '${med.dosage} • Stock: ${med.stockQuantityFormatted}'
                                             : med.dosage,
                                         style: theme.textTheme.bodyMedium?.copyWith(
                                           color: theme.colorScheme.onSurfaceVariant,
